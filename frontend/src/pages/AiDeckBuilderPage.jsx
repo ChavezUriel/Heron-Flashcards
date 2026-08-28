@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AiProviderPanel from '../components/AiProviderPanel';
+import AiModeTabs from '../components/AiModeTabs';
 import DeckSpecEditor from '../components/DeckSpecEditor';
 import { DEFAULT_SPEC, normalizeSpec, plannedCardCount, validateSpec } from '../ai/deckSpec';
 import { specDraftPrompt, specRefinePrompt } from '../ai/specPrompts';
@@ -112,6 +113,7 @@ function AiDeckBuilderPage() {
 
   return (
     <div className="ai-page">
+      <AiModeTabs />
       <header className="st-header">
         <p className="st-kicker">AI DECK BUILDER</p>
         <h1 className="st-header__title">Build a deck with your own AI key</h1>

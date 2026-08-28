@@ -230,6 +230,11 @@ export function fetchDeckPreview(deckId) {
   return rpc('get_deck_preview', { p_deck_id: deckId });
 }
 
+export function fetchDeckCardsForAi(deckId) {
+  return rpc('get_deck_cards_for_ai', { p_deck_id: deckId });
+}
+
+
 // ===========================================================================
 // Cards
 // ===========================================================================

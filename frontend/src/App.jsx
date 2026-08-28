@@ -14,6 +14,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import SettingsPage from './pages/SettingsPage';
 import AiDeckBuilderPage from './pages/AiDeckBuilderPage';
+import AiDeckCompletePage from './pages/AiDeckCompletePage';
 import DeckRunPage from './pages/DeckRunPage';
 import InstallButton from './components/InstallButton';
 import AiRunIndicator from './components/AiRunIndicator';
@@ -119,6 +120,7 @@ function App() {
           <Route path="/market" element={<PrivateRoute session={session}><MarketPage /></PrivateRoute>} />
           <Route path="/market/proposals" element={<PrivateRoute session={session}><ProposalsPage /></PrivateRoute>} />
           <Route path="/decks/new" element={<PrivateRoute session={session}><AiDeckBuilderPage /></PrivateRoute>} />
+          <Route path="/decks/complete" element={<PrivateRoute session={session}><AiDeckCompletePage /></PrivateRoute>} />
           <Route path="/decks/runs/:jobId" element={<PrivateRoute session={session}><DeckRunPage /></PrivateRoute>} />
           <Route path="/decks/:deckId/words" element={<PrivateRoute session={session}><DeckWordsPage /></PrivateRoute>} />
           <Route path="/practice" element={<PrivateRoute session={session}><PracticePage /></PrivateRoute>} />
