@@ -1771,6 +1771,14 @@ html {
   color: var(--muted);
 }
 
+.clozegame__slot--line {
+  display: inline-block;
+  min-width: 3.5em;
+  border-bottom: 2px solid currentColor;
+  vertical-align: -0.1em;
+  margin: 0 0.15em;
+}
+
 .clozegame__slot--known {
   color: var(--success);
 }

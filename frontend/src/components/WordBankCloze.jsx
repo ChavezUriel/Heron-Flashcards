@@ -26,9 +26,7 @@ function WordBankCloze({ card, clozeExample, distractors, onResolve, onOpenDetai
   const promptNode = (
     <p className="clozegame__sentence wordbankgame__sentence">
       {before}
-      <span className="clozegame__slot clozegame__slot--blank" aria-label="missing word">
-        ______
-      </span>
+      <span className="clozegame__slot clozegame__slot--blank clozegame__slot--line" aria-label="missing word" />
       {after}
     </p>
   );

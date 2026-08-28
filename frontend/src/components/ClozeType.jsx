@@ -113,9 +113,7 @@ function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
               <AnswerShape answer={card.answer_en} />
             </span>
           ) : (
-            <span className="clozegame__slot clozegame__slot--blank" aria-label="missing word">
-              ______
-            </span>
+            <span className="clozegame__slot clozegame__slot--blank clozegame__slot--line" aria-label="missing word" />
           )}
           {after}
         </p>
