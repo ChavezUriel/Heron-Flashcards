@@ -1,3 +1,5 @@
+import { sentenceIndex } from './minigameFrequency';
+
 // Shared text helpers for the answer-matching minigames. Kept in one module so the
 // Tier-A free-type games (Type the translation, Recall from definition, Cloze) all
 // normalize and grade answers identically (classifyGuess: correct / almost / wrong),
@@ -130,6 +132,54 @@ export function classifyGuess(guess, card) {
 // "don't" and "hold-up" stay single tokens.
 const WORD_RE = /\p{L}[\p{L}\p{M}'’-]*/gu;
 
+// Extract all valid example sentence pairs ({ es, en }) from a card.
+// Falls back to legacy example_es/example_en/example_sentence when examples is empty.
+export function getCardExamplePairs(card) {
+  const pairs = [
+    ...(Array.isArray(card?.examples)
+      ? card.examples.map((p) => ({
+          en: p?.en ?? p?.example_en ?? '',
+          es: p?.es ?? p?.example_es ?? '',
+        }))
+      : []),
+    {
+      en: card?.example_en ?? card?.example_sentence ?? '',
+      es: card?.example_es ?? '',
+    },
+  ];
+
+  const out = [];
+  const seen = new Set();
+  for (const pair of pairs) {
+    const en = typeof pair.en === 'string' ? pair.en.trim() : '';
+    const es = typeof pair.es === 'string' ? pair.es.trim() : '';
+    if (!en && !es) {
+      continue;
+    }
+    const key = `${normalizeAnswer(es)}|${normalizeAnswer(en)}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push({ en: en || null, es: es || null });
+  }
+  return out;
+}
+
+// Deterministically pick which example sentence pair this presentation displays
+// (for Flashcard, Listening, TypeTranslation, etc.), rotating across repeat passes.
+export function pickCardExample(card) {
+  const pairs = getCardExamplePairs(card);
+  if (pairs.length === 0) {
+    return {
+      es: card?.example_es ?? null,
+      en: card?.example_en ?? card?.example_sentence ?? null,
+    };
+  }
+  const idx = sentenceIndex(card, pairs.length);
+  return pairs[idx] ?? pairs[0];
+}
+
 // Every sentence a card offers the cloze games: the primary example_en plus
 // the additional `examples` pairs (migration 0019), deduped by normalized
 // English text and filtered to the ones where the answer is actually
@@ -140,7 +190,7 @@ export function clozeCandidates(card) {
   const pairs = [
     { en: card?.example_en, es: card?.example_es },
     ...(Array.isArray(card?.examples)
-      ? card.examples.map((p) => ({ en: p?.en, es: p?.es }))
+      ? card.examples.map((p) => ({ en: p?.en ?? p?.example_en, es: p?.es ?? p?.example_es }))
       : []),
   ];
   const out = [];

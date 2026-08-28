@@ -260,6 +260,7 @@ export function updateCard(cardId, payload) {
     p_example_es: payload.example_es ?? null,
     p_example_en: payload.example_en ?? null,
     p_mnemonic_en: payload.mnemonic_en ?? null,
+    p_examples: payload.examples ?? null,
   });
 }
 

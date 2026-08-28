@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { classifyGuess, normalizeAnswer } from '../minigameText';
+import { classifyGuess, normalizeAnswer, pickCardExample } from '../minigameText';
 import MinigameFeedback from './MinigameFeedback';
 import { useAutoAdvance } from '../useAutoAdvance';
 
@@ -19,6 +19,7 @@ const FEEDBACK_MS = { known: 1100, almost: 2000, unknown: 2000 };
 // never graded, recycled for a clean rep (§4 near-miss aside).
 function TypeTranslation({ card, onResolve, onOpenDetails }) {
   const [guess, setGuess] = useState('');
+  const activeExample = pickCardExample(card);
   // null while typing; 'known' | 'almost' | 'unknown' once submitted (drives the reveal).
   const [outcome, setOutcome] = useState(null);
   // First empty submit arms a "Sure?" skip confirmation; the second one skips.
@@ -86,7 +87,7 @@ function TypeTranslation({ card, onResolve, onOpenDetails }) {
       <div className="typegame__body">
         <p className="flashcard__label">Type the translation</p>
         <h2 className="typegame__prompt">{card.prompt_es}</h2>
-        {card.example_es ? <p className="flashcard__example typegame__example">{card.example_es}</p> : null}
+        {activeExample.example_es ?? activeExample.es ? <p className="flashcard__example typegame__example">{activeExample.example_es ?? activeExample.es}</p> : null}
 
         <form className="typegame__form" onSubmit={handleSubmit}>
           <input

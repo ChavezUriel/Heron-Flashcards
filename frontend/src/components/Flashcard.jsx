@@ -1,4 +1,5 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { pickCardExample } from '../minigameText';
 
 const AUTO_SPEECH_DEDUPE_WINDOW_MS = 750;
 const TAP_REVEAL_TOLERANCE_PX = 12;
@@ -192,6 +193,7 @@ function Flashcard({
   const [enterGeneration, setEnterGeneration] = useState(0);
 
   const displayCard = exitCardRef.current ?? card;
+  const activeExample = pickCardExample(displayCard);
   const isBackVisible = exitDirection ? true : isAnswerVisible;
   const hasAnswerSpeech = canUseSpeechSynthesis() && Boolean(normalizeSpeechText(displayCard.answer_en));
   const knownSwipeProgress = clampProgress(dragOffsetX / TOUCH_SWIPE_REVIEW_THRESHOLD_PX);
@@ -620,7 +622,7 @@ function Flashcard({
                 <span>{displayCard.prompt_es}</span>
               </h2>
             </div>
-            {displayCard.example_es ? <p className="flashcard__example">{displayCard.example_es}</p> : null}
+            {activeExample.example_es ?? activeExample.es ? <p className="flashcard__example">{activeExample.example_es ?? activeExample.es}</p> : null}
 
             {showRevealHint ? (
               <div className="flashcard__reveal-hint" aria-hidden="true">
@@ -654,7 +656,7 @@ function Flashcard({
                 </button>
               </h3>
             </div>
-            {displayCard.example_en ? <p className="flashcard__example flashcard__example--answer">{displayCard.example_en}</p> : null}
+            {activeExample.example_en ?? activeExample.en ? <p className="flashcard__example flashcard__example--answer">{activeExample.example_en ?? activeExample.en}</p> : null}
             <button
               aria-label="Show flashcard metadata"
               className="info-button"

@@ -11,6 +11,7 @@ const CARD_DIFF_FIELDS = [
   { key: 'main_translations_es', label: 'Translations', isArray: true },
   { key: 'collocations', label: 'Collocations', isArray: true },
   { key: 'synonyms_en', label: 'Synonyms', isArray: true },
+  { key: 'examples', label: 'Examples', isArray: true },
   { key: 'example_sentence', label: 'Example' },
   { key: 'example_es', label: 'Example (ES)' },
   { key: 'example_en', label: 'Example (EN)' },
@@ -21,6 +22,14 @@ export function normalizeCardContent(raw) {
   if (!raw) {
     return null;
   }
+  const examplesList = Array.isArray(raw.examples) && raw.examples.length > 0
+    ? raw.examples.map((p) => {
+        const es = p?.es ?? p?.example_es ?? '';
+        const en = p?.en ?? p?.example_en ?? '';
+        return es && en ? `${es} / ${en}` : (es || en || '');
+      }).filter(Boolean)
+    : [];
+
   return {
     prompt: raw.prompt_es ?? raw.spanish_text ?? null,
     answer: raw.answer_en ?? raw.english_text ?? null,
@@ -30,6 +39,7 @@ export function normalizeCardContent(raw) {
     main_translations_es: raw.main_translations_es ?? [],
     collocations: raw.collocations ?? [],
     synonyms_en: raw.synonyms_en ?? [],
+    examples: examplesList,
     example_sentence: raw.example_sentence ?? null,
     example_es: raw.example_es ?? null,
     example_en: raw.example_en ?? null,

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cancelSpeech, canUseSpeechSynthesis, speak } from '../speech';
+import { pickCardExample } from '../minigameText';
 
 // Tier-C encoding aid (docs/minigames.md §3.1, §4 #11) shown on a NEW card's very
 // first exposure. It is PASSIVE "listen then reveal": the learner hears the English
@@ -15,6 +16,7 @@ import { cancelSpeech, canUseSpeechSynthesis, speak } from '../speech';
 function Listening({ card, onResolve, onOpenDetails }) {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const activeExample = pickCardExample(card);
   const playRef = useRef(null);
   const continueRef = useRef(null);
   const hasResolvedRef = useRef(false);
@@ -153,7 +155,7 @@ function Listening({ card, onResolve, onOpenDetails }) {
                 </button>
               </span>
             </p>
-            {card.example_en ? <p className="listengame__example">{card.example_en}</p> : null}
+            {activeExample.example_en ?? activeExample.en ? <p className="listengame__example">{activeExample.example_en ?? activeExample.en}</p> : null}
             <button
               ref={continueRef}
               type="button"

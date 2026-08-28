@@ -780,6 +780,67 @@ html {
   padding-left: 1.1rem;
 }
 
+.flashcard-details__examples-list {
+  display: flex !important;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-left: 0 !important;
+  list-style: none !important;
+}
+
+.flashcard-details__example-item {
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.flashcard-details__example-num {
+  font-family: var(--mono-font) !important;
+  font-size: 0.62rem !important;
+  color: var(--muted) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.flashcard-details__example-es {
+  color: var(--ink);
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.flashcard-details__example-en {
+  color: var(--accent) !important;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.flashcard-details__examples-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.flashcard-details__example-edit-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.flashcard-details__example-edit-label {
+  font-family: var(--mono-font) !important;
+  font-size: 0.62rem !important;
+  color: var(--muted) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0 !important;
+}
+
 .flashcard__reveal {
   justify-self: center;
   min-width: 180px;

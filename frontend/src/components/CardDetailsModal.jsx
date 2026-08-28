@@ -25,12 +25,34 @@ function CardDetailsModal({
     setFormValues((current) => ({ ...current, [name]: value }));
   }
 
+  function updateExamplePair(index, field, value) {
+    setFormValues((current) => {
+      const updatedExamples = current.examples.map((pair, idx) =>
+        idx === index ? { ...pair, [field]: value } : pair
+      );
+      const first = updatedExamples[0] ?? { es: '', en: '' };
+      return {
+        ...current,
+        examples: updatedExamples,
+        example_es: first.es,
+        example_en: first.en,
+        example_sentence: first.en,
+      };
+    });
+  }
+
   async function handleSave() {
     if (!canEdit) {
       return;
     }
 
     setSaveError('');
+
+    const cleanedExamples = formValues.examples
+      .map((pair) => ({ es: pair.es.trim(), en: pair.en.trim() }))
+      .filter((pair) => pair.es || pair.en);
+
+    const first = cleanedExamples[0] ?? null;
 
     const savedCard = await onSave({
       prompt_es: formValues.prompt_es.trim(),
@@ -40,9 +62,10 @@ function CardDetailsModal({
       definition_en: nullableText(formValues.definition_en),
       main_translations_es: splitMultiline(formValues.main_translations_es),
       collocations: splitMultiline(formValues.collocations),
-      example_sentence: nullableText(formValues.example_sentence),
-      example_es: nullableText(formValues.example_es),
-      example_en: nullableText(formValues.example_en),
+      examples: cleanedExamples,
+      example_sentence: first ? first.en : null,
+      example_es: first ? first.es : null,
+      example_en: first ? first.en : null,
       // No longer shown or editable anywhere, but update_card nulls the column
       // when the param is omitted — pass the stored value through untouched.
       mnemonic_en: card.mnemonic_en ?? null,
@@ -173,29 +196,52 @@ function CardDetailsModal({
             )}
           </Field>
 
-          <Field label="Example sentence">
-            {isEditing ? (
-              <textarea value={formValues.example_sentence} onChange={(event) => updateField('example_sentence', event.target.value)} rows={2} />
-            ) : (
-              <p>{card.example_sentence || 'Not set'}</p>
-            )}
-          </Field>
-
-          <Field label="Example in Spanish">
-            {isEditing ? (
-              <textarea value={formValues.example_es} onChange={(event) => updateField('example_es', event.target.value)} rows={2} />
-            ) : (
-              <p>{card.example_es || 'Not set'}</p>
-            )}
-          </Field>
-
-          <Field label="Example in English">
-            {isEditing ? (
-              <textarea value={formValues.example_en} onChange={(event) => updateField('example_en', event.target.value)} rows={2} />
-            ) : (
-              <p>{card.example_en || 'Not set'}</p>
-            )}
-          </Field>
+          {isEditing ? (
+            <Field label="Example sentences (3 standard)" wide>
+              <div className="flashcard-details__examples-edit">
+                {[0, 1, 2].map((idx) => (
+                  <div key={idx} className="flashcard-details__example-edit-group">
+                    <span className="flashcard-details__example-edit-label">Example {idx + 1}</span>
+                    <input
+                      type="text"
+                      value={formValues.examples[idx]?.es ?? ''}
+                      onChange={(event) => updateExamplePair(idx, 'es', event.target.value)}
+                      placeholder={`Spanish sentence ${idx + 1}`}
+                      aria-label={`Example ${idx + 1} Spanish`}
+                    />
+                    <input
+                      type="text"
+                      value={formValues.examples[idx]?.en ?? ''}
+                      onChange={(event) => updateExamplePair(idx, 'en', event.target.value)}
+                      placeholder={`English sentence ${idx + 1}`}
+                      aria-label={`Example ${idx + 1} English`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </Field>
+          ) : card.examples && card.examples.length > 0 ? (
+            <Field label="Example sentences" wide>
+              <ul className="flashcard-details__examples-list">
+                {card.examples.map((pair, idx) => (
+                  <li key={idx} className="flashcard-details__example-item">
+                    <span className="flashcard-details__example-num">Example {idx + 1}</span>
+                    {pair.es ? <p className="flashcard-details__example-es">{pair.es}</p> : null}
+                    {pair.en ? <p className="flashcard-details__example-en">{pair.en}</p> : null}
+                  </li>
+                ))}
+              </ul>
+            </Field>
+          ) : (
+            <>
+              <Field label="Example in Spanish">
+                <p>{card.example_es || 'Not set'}</p>
+              </Field>
+              <Field label="Example in English">
+                <p>{card.example_en || card.example_sentence || 'Not set'}</p>
+              </Field>
+            </>
+          )}
         </div>
 
         {saveError ? <p className="details-modal__status details-modal__status--error">{saveError}</p> : null}
@@ -271,6 +317,24 @@ function Field({ label, wide = false, children }) {
 }
 
 function buildFormValues(card) {
+  const existingPairs = (Array.isArray(card.examples) && card.examples.length > 0)
+    ? card.examples.map((p) => ({
+        es: p?.es ?? p?.example_es ?? '',
+        en: p?.en ?? p?.example_en ?? '',
+      }))
+    : [
+        {
+          es: card.example_es ?? '',
+          en: card.example_en ?? card.example_sentence ?? '',
+        },
+      ];
+
+  const examples = [
+    { es: existingPairs[0]?.es ?? '', en: existingPairs[0]?.en ?? '' },
+    { es: existingPairs[1]?.es ?? '', en: existingPairs[1]?.en ?? '' },
+    { es: existingPairs[2]?.es ?? '', en: existingPairs[2]?.en ?? '' },
+  ];
+
   return {
     prompt_es: card.prompt_es ?? '',
     answer_en: card.answer_en ?? '',
@@ -280,9 +344,10 @@ function buildFormValues(card) {
     main_translations_es: (card.main_translations_es ?? []).join('\n'),
     collocations: (card.collocations ?? []).join('\n'),
     synonyms_en: (card.synonyms_en ?? []).join('\n'),
-    example_sentence: card.example_sentence ?? '',
-    example_es: card.example_es ?? '',
-    example_en: card.example_en ?? '',
+    examples,
+    example_sentence: examples[0].en || card.example_sentence || '',
+    example_es: examples[0].es || card.example_es || '',
+    example_en: examples[0].en || card.example_en || '',
   };
 }
 
