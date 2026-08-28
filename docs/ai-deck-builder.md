@@ -10,19 +10,21 @@ same three-stage pipeline, same prompts, same audits, same card shape — the CL
 writes `seed_data/*.json` for the global starter decks, this writes rows the
 signed-in user owns.
 
-| | CLI (`generate_cards.cjs`) | In-app builder |
+| | CLI (`generate_cards.cjs` / `update_cards.cjs`) | In-app builder & completion |
 | --- | --- | --- |
 | Runs in | Node, on your machine | The browser tab |
 | Key from | environment variables | the user, stored in their browser |
-| Output | `supabase/seed_data/*.json` → `seed.sql` | `decks` + `cards` rows owned by the user |
+| Create output | `supabase/seed_data/*.json` → `seed.sql` | `decks` + `cards` rows owned by the user (`/decks/new`) |
+| Complete output | `update_cards.cjs` edits seed files inplace | Partial card patches on existing database rows (`/decks/complete`) |
 | Providers | ollama, opencode, gemini | opencode, openai, anthropic, gemini |
 
 ## Screens
 
 | Route | What it does |
 | --- | --- |
-| `/decks/new` | Describe → specification (form or YAML) → provider/key → launch |
-| `/decks/runs/:jobId` | Live status, per-card results, activity log, save/download |
+| `/decks/new` | Describe → specification (form or YAML) → provider/key → launch builder |
+| `/decks/complete` | Pick deck → free scan → mode & groups → context → launch fill run |
+| `/decks/runs/:jobId` | Live status, per-card results / diffs, activity log, save / apply |
 | Settings → **AI deck builder** | Manage provider keys outside a run |
 
 A run keeps going while the learner navigates elsewhere in the app; the header
@@ -69,17 +71,76 @@ Cards finish in one of three states:
 | `src/ai/specPrompts.js` | "Draft my spec" / "improve my spec" assistant prompts |
 | `src/ai/runManager.js` | Runs at module scope so navigation doesn't kill them |
 | `src/ai/jobStore.js` | Run persistence (localStorage, newest 6) |
+| `src/ai/deckAudit.js` | Deterministic deck scanner and fill call estimator |
+| `src/ai/applyFill.js` | Partial patch chunk applicator (`applyCardAiPatches`) |
 | `src/ai/saveDeck.js` | Deck + card inserts under the existing RLS policies |
 | `api/_llmProxy.js` | The relay (see below); mounted by `vite.config.js` and `api/llm.js` |
 
-**No migration is required.** `decks_insert_own` and `cards_insert_own`
-(migration `0002`) already allow a user to create decks they own, and
-`get_home_decks()` returns any deck with `user_id = auth.uid()`, so a generated
-deck behaves exactly like a market deck the user added — smart practice,
-minigames, FSRS scheduling included. Cards are written with
-`generation_phase = 'refined'` (the app ignores `'draft'` cards) and carry
-`examples` (0019) and `cloze_distractors_en` (0018), so the fill-in-the-blank
-games work on them from the first review.
+For deck creation (`/decks/new`), `decks_insert_own` and `cards_insert_own`
+(migration `0002`) allow a user to create personal decks directly. For deck
+completion (`/decks/complete`), migration `0026_ai_card_patch.sql` introduces
+`get_deck_cards_for_ai`, `apply_card_ai_patch`, and `apply_card_ai_patches` for
+safe partial patching, server-side example mirroring, and `_audits` metadata
+merging under owner and maintainer authorization.
+
+Cards are written with `generation_phase = 'refined'` (the app ignores `'draft'`
+cards) and carry `examples` (0019) and `cloze_distractors_en` (0018), so the
+fill-in-the-blank games work on them from the first review.
+
+## Completing an existing deck
+
+While `/decks/new` builds a deck from scratch, `/decks/complete` enriches cards
+the learner already owns (personal home decks and market decks they maintain). It
+runs the exact same validation and enrichment pipeline against existing `cards`
+rows instead of an empty spec.
+
+### Free scan
+The deck picker runs an instant, zero-LLM client scan (`scanDeck` in
+`deckAudit.js`) using deterministic field validators (`validateCard`,
+`fieldPresence`). It counts missing examples, missing word-bank options,
+un-audited cards, and structural issues before any provider key or run is
+committed.
+
+### Two modes
+1. **Fill in blanks only** (`protect` mode): Fills only missing values
+   (definitions, examples, collocations, synonyms, or word-bank distractors).
+   Non-empty existing fields are protected and never overwritten. Audits are
+   disabled.
+2. **Audit and improve**: Evaluates existing cards with LLM-as-judge across
+   lexical accuracy, translation/collocation consistency, synonym sense, example
+   quality, and cloze solvability. Failing fields are rewritten within the
+   repair budget. Invalid word pairs trigger a `pair_correct` flag for review
+   rather than an automatic rewrite (protecting the card's identity for sync and
+   review history).
+
+### Real per-mode cost
+Unlike the flat ~15 calls per card for generating a new deck, fill-mode cost is
+exact and countable:
+- Filling only word-bank options on a deck costs ~2 calls per card.
+- Auditing a complete deck costs ~1 field audit + 3–4 example audits + 3–4 cloze
+  solves (~8–10 calls per card before repairs).
+Step 3 computes an exact upfront estimate (`estimateFillRun`) so the learner sees
+the real cost before launching.
+
+### Review-and-apply gate
+Fill runs transition from `cards` to `review` rather than writing directly to
+the database. The review screen shows a before → after diff for each card and
+field, accompanied by the audit reason that prompted the change. All cards are
+checked by default; learners can uncheck specific fields or entire cards. On
+approval, `applyFillJob` chunks the patches through `applyCardAiPatches`
+(migration `0026`). FSRS scheduling and review history are untouched.
+
+### Market-sync drift caveat
+On personal copies of market decks (`base_deck_id`), patching synced fields
+(`definition_en`, translations, collocations, synonyms, or the mirrored
+`example_es` / `example_en` / `example_sentence`) modifies `_card_content_hash`
+(0017), causing enriched cards to become `locally_modified`. Note the asymmetry:
+`cloze_distractors_en` is not part of `_card_sync_content`, so filling only
+distractors causes zero drift, whereas adding `examples` mirrors `examples[0]`
+into `example_es`/`example_en`. After applying, the review screen alerts the user
+to the count of locally modified cards and provides a one-click handoff to
+"Propose these to the market deck" via `ProposeChangesModal` and
+`createDeckChangeProposal`.
 
 ## Keys and the relay
 

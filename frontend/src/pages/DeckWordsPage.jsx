@@ -442,6 +442,13 @@ function DeckWordsPage() {
       to: '/market/proposals',
     });
   }
+  if (canEdit) {
+    deckActions.push({
+      key: 'complete-ai',
+      label: 'Complete with AI',
+      to: `/decks/complete?deck=${preview.deck_id}`,
+    });
+  }
   if (isClaimable) {
     deckActions.push({
       key: 'claim',

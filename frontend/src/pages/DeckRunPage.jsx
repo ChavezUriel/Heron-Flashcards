@@ -9,6 +9,7 @@ import { saveJobAsDeck } from '../ai/saveDeck';
 import { applyFillJob } from '../ai/applyFill';
 import GeneratedCardList from '../components/GeneratedCardList';
 import ProposedChangeList from '../components/ProposedChangeList';
+import ProposeChangesModal from '../components/ProposeChangesModal';
 
 const CREATE_STAGES = [
   ['blueprint', 'Blueprint'],
@@ -48,6 +49,7 @@ function DeckRunPage() {
   const [saveState, setSaveState] = useState({ status: 'idle', message: '' });
   const [deckTitle, setDeckTitle] = useState(job?.spec?.title ?? '');
   const [showLog, setShowLog] = useState(true);
+  const [showProposeModal, setShowProposeModal] = useState(false);
   const logBoxRef = useRef(null);
 
   const live = isRunning(jobId);
@@ -97,9 +99,9 @@ function DeckRunPage() {
   const selectedCards = (job.cards ?? []).filter((c) => c._selected !== false && c._status !== CARD_STATUS.failed);
   const appliable = selectedCards.length;
 
-  const isMarketLinked = Boolean(
-    job.targetDeck?.base_deck_id || (job.targetDeck?.isMarket === false && job.targetDeck?.base_deck_id),
-  );
+  // A personal copy of a market deck: base_deck_id is what links the two, so
+  // edits here can be offered back upstream as a change proposal.
+  const isMarketLinked = Boolean(job.targetDeck?.base_deck_id);
 
   const syncModifyingFields = [
     'definition_en', 'part_of_speech', 'main_translations_es', 'collocations',
@@ -400,6 +402,15 @@ function DeckRunPage() {
                 ? 'Applying patches…'
                 : job.appliedDeck ? 'Apply changes again' : `Apply to ${job.targetDeck?.title || 'deck'}`}
             </button>
+            {isMarketLinked && job.appliedDeck ? (
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={() => setShowProposeModal(true)}
+              >
+                Propose these to the market deck
+              </button>
+            ) : null}
             {job.targetDeck?.id ? (
               <Link className="button button--secondary" to={`/decks/${job.targetDeck.id}/words`}>
                 Open the deck
@@ -445,6 +456,16 @@ function DeckRunPage() {
           </ol>
         ) : null}
       </section>
+
+      {showProposeModal && job.targetDeck?.id ? (
+        <ProposeChangesModal
+          deckId={job.targetDeck.id}
+          onClose={() => setShowProposeModal(false)}
+          onSubmitted={() => {
+            // proposal sent; modal shows success view
+          }}
+        />
+      ) : null}
     </div>
   );
 }

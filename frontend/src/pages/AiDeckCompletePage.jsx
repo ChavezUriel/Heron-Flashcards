@@ -144,7 +144,14 @@ export default function AiDeckCompletePage() {
     };
   }, []);
 
-  const selectedDeck = decks.find((d) => d.id === selectedDeckId) || null;
+  useEffect(() => {
+    const deckParam = searchParams.get('deck');
+    if (deckParam) {
+      setSelectedDeckId(Number(deckParam));
+    }
+  }, [searchParams]);
+
+  const selectedDeck = decks.find((d) => Number(d.id) === Number(selectedDeckId)) || null;
 
   // Run scan whenever selected deck changes
   useEffect(() => {
