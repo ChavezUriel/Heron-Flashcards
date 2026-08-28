@@ -310,7 +310,7 @@ async function test(name, fn) {
     assert.strictEqual(secondCalls.length, 0, 'zero LLM calls on fresh card');
   });
 
-  await test('T14 pair_correct failure sets card._pair_correct and _pair_issues without changing texts', async () => {
+  await test('T14 pair_correct failure without proposed_fixes sets card._pair_correct without changing texts', async () => {
     const calls = [];
     const script = {
       ...BASE_SCRIPT,
@@ -330,6 +330,93 @@ async function test(name, fn) {
     assert.deepStrictEqual(card._pair_issues, ['Pasaporte means passport, not ticket.']);
     assert.strictEqual(card.spanish_text, 'Pasaporte', 'spanish text untouched');
     assert.strictEqual(card.english_text, 'Ticket', 'english text untouched');
+  });
+
+  await test('T15 translation_mismatch proposes 2 fixes, defaults to target language term update', async () => {
+    const calls = [];
+    const script = {
+      ...BASE_SCRIPT,
+      fieldAudit: [
+        {
+          pair_correct: 'fail',
+          pair_issues: ['Pasaporte (passport) does not match Ticket (boleto).'],
+          mismatch_type: 'translation_mismatch',
+          proposed_fixes: [
+            {
+              target: 'target_language',
+              spanish_text: 'Boleto',
+              english_text: 'Ticket',
+              reason: 'Match English answer (Ticket)',
+            },
+            {
+              target: 'source_language',
+              spanish_text: 'Pasaporte',
+              english_text: 'Passport',
+              reason: 'Match Spanish prompt (Pasaporte)',
+            },
+          ],
+          lexical: 'pass',
+          equivalents: 'pass',
+          synonyms: 'pass',
+        },
+      ],
+    };
+    const draft = { spanish_text: 'Pasaporte', english_text: 'Ticket' };
+    const { card } = await processCard(draft, { deck: DECK, runPrompt: makeStub(script, calls) });
+    assert.strictEqual(card._pair_correct, false);
+    assert.ok(card._pair_mismatch, 'must create _pair_mismatch object');
+    assert.strictEqual(card._pair_mismatch.type, 'translation_mismatch');
+    assert.strictEqual(card._pair_mismatch.fixes.length, 2);
+
+    const fix0 = card._pair_mismatch.fixes[0];
+    const fix1 = card._pair_mismatch.fixes[1];
+    assert.strictEqual(fix0.target, 'target_language');
+    assert.strictEqual(fix0._selected, true, 'target language fix must be selected by default');
+    assert.strictEqual(fix0.spanish_text, 'Boleto');
+    assert.strictEqual(fix0.english_text, 'Ticket');
+
+    assert.strictEqual(fix1.target, 'source_language');
+    assert.strictEqual(fix1._selected, false, 'source language fix must not be selected by default');
+    assert.strictEqual(fix1.spanish_text, 'Pasaporte');
+    assert.strictEqual(fix1.english_text, 'Passport');
+
+    // Card should be updated by the default primary fix (target language)
+    assert.strictEqual(card.spanish_text, 'Boleto', 'card prompt updated to target term counterpart');
+    assert.strictEqual(card.english_text, 'Ticket', 'card answer preserved');
+  });
+
+  await test('T16 totally_incorrect proposes 1 repair fix and updates card by default', async () => {
+    const calls = [];
+    const script = {
+      ...BASE_SCRIPT,
+      fieldAudit: [
+        {
+          pair_correct: 'fail',
+          pair_issues: ['Garbled text in prompt and wrong answer.'],
+          mismatch_type: 'totally_incorrect',
+          proposed_fixes: [
+            {
+              target: 'repair',
+              spanish_text: 'Maleta',
+              english_text: 'Suitcase',
+              reason: 'Replaced garbled pair with valid travel term',
+            },
+          ],
+          lexical: 'pass',
+          equivalents: 'pass',
+          synonyms: 'pass',
+        },
+      ],
+    };
+    const draft = { spanish_text: 'asdf123', english_text: 'wrong123' };
+    const { card } = await processCard(draft, { deck: DECK, runPrompt: makeStub(script, calls) });
+    assert.strictEqual(card._pair_correct, false);
+    assert.ok(card._pair_mismatch);
+    assert.strictEqual(card._pair_mismatch.type, 'totally_incorrect');
+    assert.strictEqual(card._pair_mismatch.fixes.length, 1);
+    assert.strictEqual(card._pair_mismatch.fixes[0]._selected, true);
+    assert.strictEqual(card.spanish_text, 'Maleta');
+    assert.strictEqual(card.english_text, 'Suitcase');
   });
 
   console.log(`\nALL ${passed} STUB TESTS PASSED`);

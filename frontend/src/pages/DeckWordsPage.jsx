@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
-import { claimMarketDeck, fetchDeckPreview, updateCard, updateCardVisibility, updateCardsVisibility } from '../api';
+import {
+  claimMarketDeck,
+  deleteCard,
+  deleteCards,
+  fetchDeckPreview,
+  updateCard,
+  updateCardVisibility,
+  updateCardsVisibility,
+} from '../api';
 import CardDetailsModal from '../components/CardDetailsModal';
 import DeckSyncModal from '../components/DeckSyncModal';
 import ProposeChangesModal from '../components/ProposeChangesModal';
@@ -267,6 +275,7 @@ function DeckWordsPage() {
   const [previewRefreshToken, setPreviewRefreshToken] = useState(0);
   const [isClaimPending, setIsClaimPending] = useState(false);
   const [isBulkPending, setIsBulkPending] = useState(false);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sort, setSort] = useState({ key: null, dir: 1 });
@@ -309,6 +318,7 @@ function DeckWordsPage() {
     setSearchQuery('');
     setStatusFilter('all');
     setSort({ key: null, dir: 1 });
+    setBulkDeleteConfirm(false);
   }, [deckId]);
 
   const normalizedQuery = normalizeSearchText(searchQuery);
@@ -473,6 +483,12 @@ function DeckWordsPage() {
       isDisabled: isBulkPending || showableCount === 0,
       onSelect: () => handleBulkVisibility(true),
     });
+    deckActions.push({
+      key: 'bulk-delete',
+      label: bulkActionLabel('Delete', tableRows.length, isFiltered),
+      isDisabled: isBulkPending || tableRows.length === 0,
+      onSelect: () => setBulkDeleteConfirm(true),
+    });
   }
 
   // Collapsing the toolbar would otherwise hide the counts that made you open the
@@ -485,6 +501,74 @@ function DeckWordsPage() {
       if (current.dir === 1) return { key, dir: -1 };
       return { key: null, dir: 1 };
     });
+  }
+
+  async function handleDeleteCard(cardId) {
+    setActionError('');
+    setPendingCardIds((current) => [...current, cardId]);
+
+    const targetCard = preview?.cards?.find((card) => card.card_id === cardId);
+    const wasLinked = targetCard && targetCard.base_card_id != null;
+    const wasEnabled = targetCard?.is_enabled;
+
+    try {
+      await deleteCard(cardId);
+      setPreview((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const outgoingDelta = (wasLinked && wasEnabled) ? 1 : 0;
+
+        return {
+          ...current,
+          cards: current.cards.filter((card) => card.card_id !== cardId),
+          outgoing_changes: (current.outgoing_changes ?? 0) + outgoingDelta,
+        };
+      });
+      setDetailsCardId(null);
+    } catch (requestError) {
+      setActionError(requestError.message);
+    } finally {
+      setPendingCardIds((current) => current.filter((pendingCardId) => pendingCardId !== cardId));
+    }
+  }
+
+  async function handleBulkDelete(cardIds) {
+    if (!cardIds || !cardIds.length) {
+      return;
+    }
+
+    setActionError('');
+    setIsBulkPending(true);
+
+    const deletedSet = new Set(cardIds);
+    const newlyOutgoingCount = preview?.cards
+      ? preview.cards.filter((card) => deletedSet.has(card.card_id) && card.base_card_id != null && card.is_enabled).length
+      : 0;
+
+    try {
+      await deleteCards(cardIds);
+      setPreview((current) => {
+        if (!current) {
+          return current;
+        }
+
+        return {
+          ...current,
+          cards: current.cards.filter((card) => !deletedSet.has(card.card_id)),
+          outgoing_changes: (current.outgoing_changes ?? 0) + newlyOutgoingCount,
+        };
+      });
+      setBulkDeleteConfirm(false);
+      if (detailsCardId && deletedSet.has(detailsCardId)) {
+        setDetailsCardId(null);
+      }
+    } catch (requestError) {
+      setActionError(requestError.message);
+    } finally {
+      setIsBulkPending(false);
+    }
   }
 
   async function handleToggleCard(cardId, isEnabled) {
@@ -746,7 +830,72 @@ function DeckWordsPage() {
           onClose={() => setDetailsCardId(null)}
           onSave={canEdit ? (values) => handleSaveCard(detailsCard.card_id, values) : undefined}
           onToggle={canEdit ? () => handleToggleCard(detailsCard.card_id, !detailsCard.is_enabled) : undefined}
+          onDelete={canEdit ? () => handleDeleteCard(detailsCard.card_id) : undefined}
         />
+      ) : null}
+
+      {bulkDeleteConfirm ? (
+        <div className="details-modal" role="dialog" aria-modal="true" aria-label="Confirm bulk delete">
+          <button
+            aria-label="Close dialog"
+            className="details-modal__backdrop"
+            type="button"
+            onClick={() => setBulkDeleteConfirm(false)}
+          />
+          <div className="details-modal__panel details-modal__panel--confirm">
+            <button
+              aria-label="Close dialog"
+              className="details-modal__close"
+              type="button"
+              onClick={() => setBulkDeleteConfirm(false)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M7 7 17 17" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                <path d="M17 7 7 17" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+              </svg>
+            </button>
+
+            <div className="details-modal__header">
+              <p className="flashcard__label">Delete cards</p>
+              <h3>Delete {tableRows.length} {tableRows.length === 1 ? 'card' : 'cards'}?</h3>
+            </div>
+
+            <div className="bulk-delete-dialog__body">
+              <p>
+                {isFiltered
+                  ? `Are you sure you want to delete all ${tableRows.length} matching cards currently shown?`
+                  : `Are you sure you want to delete all ${tableRows.length} cards from this deck?`}
+              </p>
+              {isLinked ? (
+                <p className="bulk-delete-dialog__note">
+                  Linked cards will be marked as removed in your copy, and you can propose these deletions to the market deck.
+                </p>
+              ) : null}
+            </div>
+
+            <div className="details-modal__actions">
+              <span />
+              <div className="details-modal__actions-group">
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  onClick={() => setBulkDeleteConfirm(false)}
+                  disabled={isBulkPending}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="button button--danger"
+                  type="button"
+                  onClick={() => handleBulkDelete(tableRows.map((row) => row.card.card_id))}
+                  disabled={isBulkPending}
+                >
+                  {isBulkPending ? 'Deleting…' : 'Confirm delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {activeSyncModal === 'sync' ? (

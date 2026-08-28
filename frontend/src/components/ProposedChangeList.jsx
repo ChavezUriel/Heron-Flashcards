@@ -16,7 +16,13 @@ const STATUS_LABEL = {
   [CARD_STATUS.failed]: 'Failed',
 };
 
-export default function ProposedChangeList({ job, onToggleCard, onToggleAll, onToggleField }) {
+export default function ProposedChangeList({
+  job,
+  onToggleCard,
+  onToggleAll,
+  onToggleField,
+  onToggleMismatchFix,
+}) {
   const [filter, setFilter] = useState('all');
   const [openCardId, setOpenCardId] = useState(null);
 
@@ -149,7 +155,11 @@ export default function ProposedChangeList({ job, onToggleCard, onToggleAll, onT
                   <span className="ai-card__tags">
                     {hasPairIssue ? (
                       <span className="st-chip st-chip--warning" title="Potential translation mismatch">
-                        Pair mismatch
+                        {card._pair_mismatch?.fixes?.length > 1
+                          ? `Pair mismatch (${card._pair_mismatch.fixes.length} fixes)`
+                          : card._pair_mismatch?.fixes?.length === 1
+                            ? 'Pair mismatch (1 fix)'
+                            : 'Pair mismatch'}
                       </span>
                     ) : null}
                     {hasDiffs ? (
@@ -167,23 +177,63 @@ export default function ProposedChangeList({ job, onToggleCard, onToggleAll, onT
               {isOpen ? (
                 <div className="ai-card__detail">
                   {hasPairIssue ? (
-                    <div className="st-alert st-alert--warning" style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '4px' }}>
-                      <strong>⚠️ Potential translation mismatch</strong>
-                      <p style={{ margin: '0.25rem 0' }}>
-                        {card._pair_issues?.length ? card._pair_issues.join('. ') : 'The Spanish and English pair was flagged as potentially inaccurate.'}
-                        {' '}<em>Spanish and English texts were not rewritten to protect card identity.</em>
+                    <div className="ai-mismatch-panel">
+                      <div className="ai-mismatch-panel__head">
+                        <span>⚠️ Potential Translation Mismatch</span>
+                      </div>
+                      <p className="ai-mismatch-panel__desc">
+                        {card._pair_mismatch?.explanation || (card._pair_issues?.length ? card._pair_issues.join('. ') : 'The Spanish and English terms do not match.')}
                       </p>
-                      {job.targetDeck?.id ? (
-                        <a
-                          href={`/decks/${job.targetDeck.id}/words`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="ai-link"
-                          style={{ fontSize: '0.85rem' }}
-                        >
-                          Review in Deck Explorer ↗
-                        </a>
-                      ) : null}
+
+                      {card._pair_mismatch?.fixes?.length ? (
+                        <>
+                          <div className="ai-mismatch-fixes">
+                            {card._pair_mismatch.fixes.map((fix) => {
+                              const isFixSelected = fix._selected !== false;
+                              return (
+                                <label
+                                  key={fix.id}
+                                  className={`ai-mismatch-fix${isFixSelected ? ' ai-mismatch-fix--selected' : ''}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isFixSelected}
+                                    onChange={() => onToggleMismatchFix && onToggleMismatchFix(cardId, fix.id)}
+                                    style={{ marginTop: '0.2rem' }}
+                                  />
+                                  <div className="ai-mismatch-fix__content">
+                                    <span className="ai-mismatch-fix__title">{fix.label}</span>
+                                    <span className="ai-mismatch-fix__pair">
+                                      <span>{fix.spanish_text}</span>
+                                      <span>➔</span>
+                                      <span>{fix.english_text}</span>
+                                    </span>
+                                    {fix.definition_en ? (
+                                      <span className="ai-mismatch-fix__def">{fix.definition_en}</span>
+                                    ) : null}
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                          <div className="ai-mismatch-summary">
+                            {(() => {
+                              const selectedFixes = card._pair_mismatch.fixes.filter((f) => f._selected !== false);
+                              if (selectedFixes.length >= 2) {
+                                return 'Fix #1 (target term) will update this card. Fix #2 will be added as a new flashcard in your deck.';
+                              }
+                              if (selectedFixes.length === 1) {
+                                return `This card will be updated to “${selectedFixes[0].spanish_text} ➔ ${selectedFixes[0].english_text}”.`;
+                              }
+                              return 'No pair fixes selected. Original word pair will remain unchanged.';
+                            })()}
+                          </div>
+                        </>
+                      ) : (
+                        <p style={{ margin: '0.25rem 0', fontSize: '0.85rem' }}>
+                          <em>Spanish and English texts were not rewritten to protect card identity.</em>
+                        </p>
+                      )}
                     </div>
                   ) : null}
 

@@ -60,7 +60,7 @@ export function computeCardPatch(card, before) {
   if (!before) return {};
   const patch = {};
 
-  const scalarFields = ['part_of_speech', 'definition_en', 'example_es', 'example_en', 'example_sentence', 'mnemonic_en', 'section_name'];
+  const scalarFields = ['spanish_text', 'english_text', 'part_of_speech', 'definition_en', 'example_es', 'example_en', 'example_sentence', 'mnemonic_en', 'section_name'];
   for (const field of scalarFields) {
     if (card[field] !== undefined && card[field] !== null && card[field] !== before[field]) {
       patch[field] = card[field];
@@ -84,6 +84,49 @@ export function computeCardPatch(card, before) {
   }
 
   return patch;
+}
+
+export function recomputeMismatchCard(card) {
+  if (!card || !card._pair_mismatch?.fixes?.length) return;
+  const fixes = card._pair_mismatch.fixes;
+  const targetFix = fixes.find((f) => f.target === 'target_language' && f._selected);
+  const sourceFix = fixes.find((f) => f.target === 'source_language' && f._selected);
+  const repairFix = fixes.find((f) => f.target === 'repair' && f._selected);
+  const firstSelected = fixes.find((f) => f._selected);
+
+  // Preference for updating the current card: target language fix > repair fix > source language fix
+  const primary = targetFix || repairFix || sourceFix || firstSelected;
+
+  if (primary) {
+    card.spanish_text = primary.spanish_text;
+    card.english_text = primary.english_text;
+    card.part_of_speech = primary.part_of_speech;
+    card.definition_en = primary.definition_en;
+    card.main_translations_es = primary.main_translations_es;
+    card.collocations = primary.collocations;
+    card.synonyms_en = primary.synonyms_en;
+    card.examples = primary.examples;
+    card.example_es = primary.example_es;
+    card.example_en = primary.example_en;
+    card.example_sentence = primary.example_sentence;
+    card.cloze_distractors_en = primary.cloze_distractors_en;
+  } else if (card._before) {
+    // No fixes selected: revert back to before state
+    card.spanish_text = card._before.spanish_text;
+    card.english_text = card._before.english_text;
+    card.part_of_speech = card._before.part_of_speech;
+    card.definition_en = card._before.definition_en;
+    card.main_translations_es = card._before.main_translations_es;
+    card.collocations = card._before.collocations;
+    card.synonyms_en = card._before.synonyms_en;
+    card.examples = card._before.examples;
+    card.example_es = card._before.example_es;
+    card.example_en = card._before.example_en;
+    card.example_sentence = card._before.example_sentence;
+    card.cloze_distractors_en = card._before.cloze_distractors_en;
+  }
+
+  card._patch = computeCardPatch(card, card._before);
 }
 
 export function createFillJob({ deck, cards = [], deckCtx = {}, mode = 'fill', groups = null, provider, concurrency = 3 }) {

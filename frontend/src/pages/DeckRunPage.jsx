@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { CARD_STATUS, jobProgress, usableCards } from '../ai/generator';
+import { CARD_STATUS, jobProgress, usableCards, recomputeMismatchCard } from '../ai/generator';
 import { deleteJob, getJob, saveJob } from '../ai/jobStore';
 import { getLiveJob, isRunning, startRun, stopRun, subscribeToJob } from '../ai/runManager';
 import { loadCredential } from '../ai/keyStore';
@@ -158,6 +158,19 @@ function DeckRunPage() {
     }
   }
 
+  function handleToggleMismatchFix(cardId, fixId) {
+    const card = (job.cards ?? []).find((c) => (c.card_id ?? c._before?.card_id ?? c.id) === cardId);
+    if (card && card._pair_mismatch?.fixes) {
+      const fix = card._pair_mismatch.fixes.find((f) => f.id === fixId);
+      if (fix) {
+        fix._selected = fix._selected === false ? true : false;
+        recomputeMismatchCard(card);
+        saveJob(job);
+        bump();
+      }
+    }
+  }
+
   function handleToggleAll(selected) {
     for (const card of job.cards ?? []) {
       card._selected = selected;
@@ -190,18 +203,20 @@ function DeckRunPage() {
   async function handleApply() {
     setSaveState({ status: 'working', message: '' });
     try {
-      const { appliedCount } = await applyFillJob(job);
+      const { appliedCount, insertedCount } = await applyFillJob(job);
       job.appliedDeck = {
         id: job.targetDeck?.id,
         title: job.targetDeck?.title || job.spec?.title,
         appliedAt: new Date().toISOString(),
         appliedCount,
+        insertedCount: insertedCount || 0,
       };
       job.stage = 'applied';
       saveJob(job);
+      const insertedMsg = insertedCount > 0 ? ` and added ${insertedCount} new flashcard(s)` : '';
       setSaveState({
         status: 'done',
-        message: `Successfully applied changes to ${appliedCount} card(s) in “${job.targetDeck?.title || 'your deck'}”.`,
+        message: `Successfully applied changes to ${appliedCount} card(s)${insertedMsg} in “${job.targetDeck?.title || 'your deck'}”.`,
       });
       bump();
     } catch (error) {
@@ -433,6 +448,7 @@ function DeckRunPage() {
           onToggleCard={handleToggleCard}
           onToggleAll={handleToggleAll}
           onToggleField={handleToggleField}
+          onToggleMismatchFix={handleToggleMismatchFix}
         />
       ) : (
         <GeneratedCardList job={job} />

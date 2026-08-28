@@ -100,7 +100,10 @@ export async function saveJobAsDeck(job, { title, description, existingDeckId = 
   let pendingCards = cards;
   if (existingDeckId) {
     const { data: existing, error } = await supabase
-      .from('cards').select('spanish_text, english_text').eq('deck_id', deck.id);
+      .from('cards')
+      .select('spanish_text, english_text')
+      .eq('deck_id', deck.id)
+      .eq('is_deleted', false);
     if (error) throw new Error(error.message);
     const seen = new Set(
       (existing ?? []).map((row) => `${row.spanish_text.toLowerCase()} ${row.english_text.toLowerCase()}`),

@@ -28,7 +28,7 @@ const PROMPT_VERSIONS = {
   clozeDistractors: 'cloze-distractors-v1',
   exampleAudit: 'audit-examples-v1',
   clozeSolve: 'audit-cloze-solve-v1',
-  fieldAudit: 'audit-fields-v1',
+  fieldAudit: 'audit-fields-v2',
 };
 
 // How many example sentence pairs a card carries (fill-in-the-blank variety:
@@ -353,6 +353,15 @@ function fieldAuditPrompt(card, deck) {
     required_output: {
       pair_correct: 'pass | fail',
       pair_issues: ['string'],
+      mismatch_type: 'translation_mismatch | totally_incorrect',
+      proposed_fixes: [
+        {
+          target: 'target_language | source_language | repair',
+          spanish_text: 'string',
+          english_text: 'string',
+          reason: 'string',
+        },
+      ],
       lexical: 'pass | fail',
       lexical_issues: ['string'],
       equivalents: 'pass | fail',
@@ -361,7 +370,15 @@ function fieldAuditPrompt(card, deck) {
       synonyms_issues: ['string'],
     },
     rules: [
-      'pair_correct: pass if spanish (the prompt) and english (the answer) are valid translation counterparts of each other in the context of the deck. Fail only if the pair is mistranslated, inverted, or completely unrelated.',
+      'pair_correct: pass if spanish (the prompt) and english (the answer) are valid translation counterparts of each other in the context of the deck. Fail if the pair is mistranslated, mismatched, or invalid.',
+      'mismatch_type: when pair_correct fails, set to "translation_mismatch" if both terms are valid words on their own but do not translate to each other. Set to "totally_incorrect" if one or both terms are nonsense, corrupted, severe typos, or unusable.',
+      'proposed_fixes: when pair_correct fails:',
+      '  - If mismatch_type is "translation_mismatch", provide exactly 2 candidate fixes:',
+      '    1. target="target_language": preserves the English answer (english_text: card.english) and provides its correct Spanish translation (spanish_text).',
+      '    2. target="source_language": preserves the Spanish prompt (spanish_text: card.spanish) and provides its correct English translation (english_text).',
+      '  - If mismatch_type is "totally_incorrect", provide exactly 1 candidate fix:',
+      '    1. target="repair": provides a clean, corrected Spanish-English pair (spanish_text, english_text).',
+      '  - Empty array when pair_correct passes.',
       'lexical: pass if part_of_speech accurately describes the English answer, AND definition_en is an accurate, concise English definition for THIS sense of the word in English only. Fail if definition is in Spanish, inaccurate for this sense, or part of speech is wrong.',
       'equivalents: pass if main_translations_es are natural Spanish translations of the prompt (in Spanish) consistent with spanish_text, AND collocations are natural, common English collocations of the English answer (in English).',
       'synonyms: pass if synonyms_en contains 1 to 3 true English synonyms for the English answer in THIS sense (synonyms in English, NOT Spanish translations or unrelated words).',

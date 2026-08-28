@@ -7,16 +7,20 @@ function CardDetailsModal({
   onClose,
   onSave,
   onToggle,
+  onDelete = undefined,
 }) {
   const canEdit = typeof onSave === 'function';
   const canToggle = typeof onToggle === 'function' && typeof card.is_enabled === 'boolean';
+  const canDelete = typeof onDelete === 'function';
   const toggleLabel = card.is_enabled ? 'Hide card' : 'Show card';
   const [isEditing, setIsEditing] = useState(startInEditMode && canEdit);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [formValues, setFormValues] = useState(() => buildFormValues(card));
 
   useEffect(() => {
     setIsEditing(startInEditMode && canEdit);
+    setIsConfirmingDelete(false);
     setSaveError('');
     setFormValues(buildFormValues(card));
   }, [canEdit, card.card_id, startInEditMode]);
@@ -83,6 +87,7 @@ function CardDetailsModal({
 
   function handleCancelEdit() {
     setIsEditing(false);
+    setIsConfirmingDelete(false);
     setSaveError('');
     setFormValues(buildFormValues(card));
   }
@@ -246,60 +251,107 @@ function CardDetailsModal({
 
         {saveError ? <p className="details-modal__status details-modal__status--error">{saveError}</p> : null}
 
-        {(canEdit || canToggle) ? (
+        {(canEdit || canToggle || canDelete) ? (
           <div className="details-modal__actions">
-            {isEditing ? (
-              <button className="button button--primary" type="button" onClick={handleSave} disabled={isPending}>
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M5 12.5 9.2 16.7 19 7" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span>Save</span>
-              </button>
+            {isConfirmingDelete ? (
+              <div className="details-modal__confirm-delete">
+                <div className="details-modal__confirm-message">
+                  <p className="details-modal__confirm-title">Delete this card from the deck?</p>
+                  {card.base_card_id != null ? (
+                    <p className="details-modal__confirm-note">
+                      You can propose this deletion to the market deck.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="details-modal__confirm-buttons">
+                  <button
+                    className="button button--danger"
+                    type="button"
+                    onClick={onDelete}
+                    disabled={isPending}
+                  >
+                    Confirm delete
+                  </button>
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    onClick={() => setIsConfirmingDelete(false)}
+                    disabled={isPending}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             ) : (
-              <span />
+              <>
+                {isEditing ? (
+                  <button className="button button--primary" type="button" onClick={handleSave} disabled={isPending}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M5 12.5 9.2 16.7 19 7" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <span>Save</span>
+                  </button>
+                ) : canDelete ? (
+                  <button
+                    className="button button--danger-outline"
+                    type="button"
+                    onClick={() => setIsConfirmingDelete(true)}
+                    disabled={isPending}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                      <line x1="10" y1="11" x2="10" y2="17" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                      <line x1="14" y1="11" x2="14" y2="17" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                    </svg>
+                    <span>Delete card</span>
+                  </button>
+                ) : (
+                  <span />
+                )}
+
+                <div className="details-modal__actions-group">
+                  {canToggle ? (
+                    <button className="button button--secondary" type="button" onClick={onToggle} disabled={isPending}>
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        {card.is_enabled ? (
+                          <>
+                            <path d="M1.5 12s3.9-6.5 10.5-6.5S22.5 12 22.5 12s-3.9 6.5-10.5 6.5S1.5 12 1.5 12Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                            <circle cx="12" cy="12" r="3.25" fill="none" stroke="currentColor" strokeWidth="1.7" />
+                          </>
+                        ) : (
+                          <>
+                            <path d="M2.5 12s3.3-5.8 9.5-5.8c2.3 0 4.2.8 5.8 1.9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M21.5 12s-3.3 5.8-9.5 5.8c-2.3 0-4.2-.8-5.8-1.9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M9.9 9.9A3.2 3.2 0 0 1 15 14.1" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M3 3l18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                          </>
+                        )}
+                      </svg>
+                      <span>{toggleLabel}</span>
+                    </button>
+                  ) : null}
+
+                  {canEdit ? (
+                    <button className="button button--secondary" type="button" onClick={isEditing ? handleCancelEdit : () => setIsEditing(true)} disabled={isPending}>
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        {isEditing ? (
+                          <>
+                            <path d="M7 7 17 17" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                            <path d="M17 7 7 17" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                          </>
+                        ) : (
+                          <>
+                            <path d="M4 20h4.2L19 9.2a1.5 1.5 0 0 0 0-2.1l-2.1-2.1a1.5 1.5 0 0 0-2.1 0L4 15.8V20Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M13.5 6.5l4 4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                          </>
+                        )}
+                      </svg>
+                      <span>{isEditing ? 'Cancel' : 'Edit'}</span>
+                    </button>
+                  ) : null}
+                </div>
+              </>
             )}
-
-            <div className="details-modal__actions-group">
-              {canToggle ? (
-                <button className="button button--secondary" type="button" onClick={onToggle} disabled={isPending}>
-                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    {card.is_enabled ? (
-                      <>
-                        <path d="M1.5 12s3.9-6.5 10.5-6.5S22.5 12 22.5 12s-3.9 6.5-10.5 6.5S1.5 12 1.5 12Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                        <circle cx="12" cy="12" r="3.25" fill="none" stroke="currentColor" strokeWidth="1.7" />
-                      </>
-                    ) : (
-                      <>
-                        <path d="M2.5 12s3.3-5.8 9.5-5.8c2.3 0 4.2.8 5.8 1.9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M21.5 12s-3.3 5.8-9.5 5.8c-2.3 0-4.2-.8-5.8-1.9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M9.9 9.9A3.2 3.2 0 0 1 15 14.1" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M3 3l18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                      </>
-                    )}
-                  </svg>
-                  <span>{toggleLabel}</span>
-                </button>
-              ) : null}
-
-              {canEdit ? (
-                <button className="button button--secondary" type="button" onClick={isEditing ? handleCancelEdit : () => setIsEditing(true)} disabled={isPending}>
-                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    {isEditing ? (
-                      <>
-                        <path d="M7 7 17 17" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
-                        <path d="M17 7 7 17" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
-                      </>
-                    ) : (
-                      <>
-                        <path d="M4 20h4.2L19 9.2a1.5 1.5 0 0 0 0-2.1l-2.1-2.1a1.5 1.5 0 0 0-2.1 0L4 15.8V20Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M13.5 6.5l4 4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                      </>
-                    )}
-                  </svg>
-                  <span>{isEditing ? 'Cancel' : 'Edit'}</span>
-                </button>
-              ) : null}
-            </div>
           </div>
         ) : null}
       </div>

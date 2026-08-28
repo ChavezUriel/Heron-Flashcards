@@ -189,6 +189,20 @@ function interpretFieldVerdict(response) {
   const pairCorrect = passes(response?.pair_correct);
   const rawPairIssues = normList(response?.pair_issues);
 
+  const mismatchType = response?.mismatch_type
+    ? String(response.mismatch_type).trim().toLowerCase()
+    : null;
+
+  const rawFixes = Array.isArray(response?.proposed_fixes) ? response.proposed_fixes : [];
+  const proposedFixes = rawFixes
+    .map((f) => ({
+      target: f?.target ? String(f.target).trim().toLowerCase() : 'repair',
+      spanish_text: String(f?.spanish_text ?? '').trim(),
+      english_text: String(f?.english_text ?? '').trim(),
+      reason: String(f?.reason ?? '').trim(),
+    }))
+    .filter((f) => f.spanish_text && f.english_text);
+
   const lexicalPass = passes(response?.lexical?.verdict ?? response?.lexical);
   const equivalentsPass = passes(response?.equivalents?.verdict ?? response?.equivalents);
   const synonymsPass = passes(response?.synonyms?.verdict ?? response?.synonyms);
@@ -224,6 +238,8 @@ function interpretFieldVerdict(response) {
   return {
     pairCorrect,
     pairIssues,
+    mismatchType,
+    proposedFixes,
     lexicalPass: !failingGroups.includes('lexical'),
     lexicalIssues,
     equivalentsPass: !failingGroups.includes('equivalents'),
@@ -232,6 +248,73 @@ function interpretFieldVerdict(response) {
     synonymsIssues,
     failingGroups,
   };
+}
+
+async function enrichCandidateCard(draft, { deck, runPrompt, wantCloze = true, signal }) {
+  const c = {
+    spanish_text: draft.spanish_text,
+    english_text: draft.english_text,
+    section_name: draft.section_name ?? null,
+    part_of_speech: null,
+    definition_en: null,
+    main_translations_es: [],
+    collocations: [],
+    synonyms_en: [],
+    examples: [],
+    example_es: null,
+    example_en: null,
+    example_sentence: null,
+    mnemonic_en: null,
+    cloze_distractors_en: [],
+  };
+
+  const throwIfAborted = () => {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  };
+
+  try {
+    throwIfAborted();
+    const lexRes = await runPrompt(lexicalPrompt(c));
+    applyLexical(c, lexRes);
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+  }
+
+  try {
+    throwIfAborted();
+    const eqRes = await runPrompt(equivalentsPrompt(c));
+    applyEquivalents(c, eqRes);
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+  }
+
+  try {
+    throwIfAborted();
+    const synRes = await runPrompt(synonymsPrompt(c));
+    applySynonyms(c, synRes);
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+  }
+
+  try {
+    throwIfAborted();
+    const exRes = await runPrompt(examplesPrompt(c, undefined, deck));
+    applyExamples(c, exRes);
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+  }
+
+  if (wantCloze && examplePairs(c).length > 0) {
+    try {
+      throwIfAborted();
+      const clozeRes = await runPrompt(clozeDistractorsPrompt(c, deck));
+      applyClozeDistractors(c, clozeRes);
+    } catch (err) {
+      if (err?.name === 'AbortError') throw err;
+    }
+  }
+
+  return c;
 }
 
 function interpretExampleVerdict(response) {
@@ -535,6 +618,79 @@ export async function processCard(draft, options = {}) {
         if (!verdict.pairCorrect) {
           card._pair_correct = false;
           card._pair_issues = verdict.pairIssues;
+
+          const fixes = [];
+          const isTranslationMismatch = verdict.mismatchType === 'translation_mismatch' || verdict.proposedFixes.length >= 2;
+
+          for (let i = 0; i < verdict.proposedFixes.length; i += 1) {
+            const fix = verdict.proposedFixes[i];
+            const fixDraft = {
+              spanish_text: fix.spanish_text,
+              english_text: fix.english_text,
+              section_name: card.section_name ?? null,
+            };
+            const enriched = await enrichCandidateCard(fixDraft, {
+              deck,
+              runPrompt,
+              wantCloze,
+              signal,
+            });
+            enriched._target = fix.target || (isTranslationMismatch ? (i === 0 ? 'target_language' : 'source_language') : 'repair');
+            enriched._reason = fix.reason || '';
+            fixes.push(enriched);
+          }
+
+          if (fixes.length > 0) {
+            card._pair_mismatch = {
+              type: isTranslationMismatch ? 'translation_mismatch' : 'totally_incorrect',
+              explanation: verdict.pairIssues.join('. '),
+              fixes: fixes.map((fixCard, idx) => {
+                const isTargetLang = fixCard._target === 'target_language' || (isTranslationMismatch && idx === 0);
+                const isRepair = fixCard._target === 'repair' || !isTranslationMismatch;
+                const isDefaultSelected = isTargetLang || isRepair;
+
+                return {
+                  id: fixCard._target || (isRepair ? 'repair' : idx === 0 ? 'target_language' : 'source_language'),
+                  target: fixCard._target || (isRepair ? 'repair' : idx === 0 ? 'target_language' : 'source_language'),
+                  label: isRepair
+                    ? `Repaired Card (“${fixCard.spanish_text}” ➔ “${fixCard.english_text}”)`
+                    : isTargetLang
+                      ? `Preserve English Answer / Target Language (“${fixCard.spanish_text}” ➔ “${fixCard.english_text}”)`
+                      : `Preserve Spanish Prompt / Source Language (“${fixCard.spanish_text}” ➔ “${fixCard.english_text}”)`,
+                  spanish_text: fixCard.spanish_text,
+                  english_text: fixCard.english_text,
+                  part_of_speech: fixCard.part_of_speech ?? null,
+                  definition_en: fixCard.definition_en ?? null,
+                  main_translations_es: fixCard.main_translations_es ?? [],
+                  collocations: fixCard.collocations ?? [],
+                  synonyms_en: fixCard.synonyms_en ?? [],
+                  examples: fixCard.examples ?? [],
+                  example_es: fixCard.example_es ?? null,
+                  example_en: fixCard.example_en ?? null,
+                  example_sentence: fixCard.example_sentence ?? null,
+                  mnemonic_en: fixCard.mnemonic_en ?? null,
+                  cloze_distractors_en: fixCard.cloze_distractors_en ?? [],
+                  _selected: isDefaultSelected,
+                };
+              }),
+            };
+
+            const defaultPrimaryFix = card._pair_mismatch.fixes.find((f) => f._selected);
+            if (defaultPrimaryFix) {
+              card.spanish_text = defaultPrimaryFix.spanish_text;
+              card.english_text = defaultPrimaryFix.english_text;
+              card.part_of_speech = defaultPrimaryFix.part_of_speech;
+              card.definition_en = defaultPrimaryFix.definition_en;
+              card.main_translations_es = defaultPrimaryFix.main_translations_es;
+              card.collocations = defaultPrimaryFix.collocations;
+              card.synonyms_en = defaultPrimaryFix.synonyms_en;
+              card.examples = defaultPrimaryFix.examples;
+              card.example_es = defaultPrimaryFix.example_es;
+              card.example_en = defaultPrimaryFix.example_en;
+              card.example_sentence = defaultPrimaryFix.example_sentence;
+              card.cloze_distractors_en = defaultPrimaryFix.cloze_distractors_en;
+            }
+          }
         }
         if (verdict.failingGroups.length > 0) {
           fieldAuditFails += 1;

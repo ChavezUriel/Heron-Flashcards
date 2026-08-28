@@ -318,6 +318,22 @@ html {
   color: #fff;
 }
 
+.button--danger:hover {
+  background: #933f32;
+  color: #fff;
+}
+
+.button--danger-outline {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.button--danger-outline:hover {
+  background: rgba(166, 75, 60, 0.08);
+  color: var(--danger);
+}
+
 .review-screen {
   display: grid;
   grid-template-rows: minmax(0, 1fr);
@@ -3112,6 +3128,63 @@ html {
   margin-left: auto;
 }
 
+.details-modal__confirm-delete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(166, 75, 60, 0.08);
+  border: 1px solid rgba(166, 75, 60, 0.22);
+}
+
+.details-modal__confirm-message {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.details-modal__confirm-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+
+.details-modal__confirm-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.details-modal__confirm-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.details-modal__panel--confirm {
+  max-width: 480px;
+}
+
+.bulk-delete-dialog__body {
+  margin: 1rem 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.bulk-delete-dialog__body p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.bulk-delete-dialog__note {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .flashcard-details input,
 .flashcard-details textarea {
   display: block;
@@ -5254,6 +5327,16 @@ html {
 
   .details-modal__actions .button {
     flex: 1 1 auto;
+  }
+
+  .details-modal__confirm-delete {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .details-modal__confirm-buttons {
+    justify-content: flex-end;
   }
 
   /* ---- Market & deck explorer ---- */

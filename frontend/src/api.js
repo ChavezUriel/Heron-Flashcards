@@ -157,7 +157,7 @@ export async function exportAccountData() {
   const deckIds = decks.map((deck) => deck.id);
   const cards = deckIds.length > 0
     ? await fetchAllRows(() =>
-        supabase.from('cards').select('*').in('deck_id', deckIds).order('id'),
+        supabase.from('cards').select('*').in('deck_id', deckIds).eq('is_deleted', false).order('id'),
       )
     : [];
   const progress = await fetchAllRows(() =>
@@ -256,6 +256,14 @@ export function updateCardVisibility(cardId, isEnabled) {
 // unauthorized id rejects the batch.
 export function updateCardsVisibility(cardIds, isEnabled) {
   return rpc('update_cards_visibility', { p_card_ids: cardIds, p_is_enabled: isEnabled });
+}
+
+export function deleteCard(cardId) {
+  return rpc('delete_card', { p_card_id: cardId });
+}
+
+export function deleteCards(cardIds) {
+  return rpc('delete_cards', { p_card_ids: cardIds });
 }
 
 export function updateCard(cardId, payload) {

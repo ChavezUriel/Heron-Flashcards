@@ -47,9 +47,10 @@ function ProposalItemDiff({ item }) {
     return (
       <li className="sync-row">
         <p className="sync-row__title">
-          <span className="sync-chip sync-chip--warn">Remove</span>
+          <span className="sync-chip sync-chip--warn">Card removal</span>
           {cardTitle(item.base_snapshot)}
         </p>
+        <p className="proposal-item__detail">Proposed deletion from the public market deck.</p>
       </li>
     );
   }

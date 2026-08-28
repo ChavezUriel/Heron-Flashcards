@@ -243,7 +243,7 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
                     selected={selected}
                     onToggleAll={toggleAll}
                   />
-                  <p className="sync-section__hint">Applying hides these cards in your deck. Your progress is kept and you can re-enable them any time.</p>
+                  <p className="sync-section__hint">Applying removes or disables these cards in your deck. Your learning history is preserved.</p>
                   <ul className="sync-section__list">
                     {sections.removed.map(({ item, key }) => (
                       <li key={key} className="sync-row">

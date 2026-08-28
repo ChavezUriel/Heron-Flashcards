@@ -4,7 +4,7 @@ $TESTDIR = Split-Path -Parent $MyInvocation.MyCommand.Path
 $MIG = Join-Path $TESTDIR "..\..\migrations"
 $SHIM = Join-Path $TESTDIR "..\market_sync\shim.sql"
 $DATA = Join-Path $TESTDIR ".pgdata"
-$PORT = 55472
+$PORT = 55471
 
 if (Test-Path "$DATA") {
     & "$PGBIN\pg_ctl.exe" -D "$DATA" stop -m immediate 2>$null

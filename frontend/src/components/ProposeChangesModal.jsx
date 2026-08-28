@@ -15,7 +15,13 @@ function ProposeChangeRow({ change, checked, onToggle }) {
         <input type="checkbox" checked={checked} onChange={() => onToggle(cardId)} />
         <span className="sync-row__title">
           {kind === 'add' ? <span className="sync-chip sync-chip--add">New card</span> : null}
-          {kind === 'remove' ? <span className="sync-chip sync-chip--warn">Remove</span> : null}
+          {kind === 'remove' ? (
+            (change.is_deleted || change.user_card?.is_deleted) ? (
+              <span className="sync-chip sync-chip--warn">Deleted</span>
+            ) : (
+              <span className="sync-chip sync-chip--warn">Hidden</span>
+            )
+          ) : null}
           {cardTitle(change.user_card)}
           {change.already_proposed ? (
             <span className="sync-chip">Already in an open proposal</span>
@@ -198,7 +204,7 @@ function ProposeChangesModal({ deckId, onClose, onSubmitted }) {
                 />
                 <ProposeSection
                   title="Card removals"
-                  hint="Cards you hid in your copy. Approving a removal hides them for every subscriber of the market deck."
+                  hint="Cards you deleted or hid in your copy. Approving a removal deletes them for all subscribers of the market deck."
                   changes={removeChanges}
                   selectedIds={selectedIds}
                   onToggle={toggleCard}
