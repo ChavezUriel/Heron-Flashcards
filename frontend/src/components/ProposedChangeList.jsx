@@ -16,7 +16,7 @@ const STATUS_LABEL = {
   [CARD_STATUS.failed]: 'Failed',
 };
 
-export default function ProposedChangeList({ job, onToggleCard, onToggleAll }) {
+export default function ProposedChangeList({ job, onToggleCard, onToggleAll, onToggleField }) {
   const [filter, setFilter] = useState('all');
   const [openCardId, setOpenCardId] = useState(null);
 
@@ -121,6 +121,7 @@ export default function ProposedChangeList({ job, onToggleCard, onToggleAll }) {
           const cardId = card.card_id ?? card._before?.card_id ?? card.id;
           const isSelected = card._selected !== false;
           const isOpen = openCardId === cardId;
+          const hasPairIssue = card._pair_correct === false || (card._pair_issues && card._pair_issues.length > 0);
 
           return (
             <li key={cardId} className={`ai-card ai-card--${card._status}`}>
@@ -146,6 +147,11 @@ export default function ProposedChangeList({ job, onToggleCard, onToggleAll }) {
                   </span>
 
                   <span className="ai-card__tags">
+                    {hasPairIssue ? (
+                      <span className="st-chip st-chip--warning" title="Potential translation mismatch">
+                        Pair mismatch
+                      </span>
+                    ) : null}
                     {hasDiffs ? (
                       <span className="st-chip st-chip--muted">
                         {diffs.length} change{diffs.length === 1 ? '' : 's'}
@@ -160,6 +166,27 @@ export default function ProposedChangeList({ job, onToggleCard, onToggleAll }) {
 
               {isOpen ? (
                 <div className="ai-card__detail">
+                  {hasPairIssue ? (
+                    <div className="st-alert st-alert--warning" style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '4px' }}>
+                      <strong>⚠️ Potential translation mismatch</strong>
+                      <p style={{ margin: '0.25rem 0' }}>
+                        {card._pair_issues?.length ? card._pair_issues.join('. ') : 'The Spanish and English pair was flagged as potentially inaccurate.'}
+                        {' '}<em>Spanish and English texts were not rewritten to protect card identity.</em>
+                      </p>
+                      {job.targetDeck?.id ? (
+                        <a
+                          href={`/decks/${job.targetDeck.id}/words`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ai-link"
+                          style={{ fontSize: '0.85rem' }}
+                        >
+                          Review in Deck Explorer ↗
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
+
                   {hasDiffs ? (
                     <div className="ai-diff-wrapper">
                       <table className="ai-diff-table">
@@ -168,16 +195,34 @@ export default function ProposedChangeList({ job, onToggleCard, onToggleAll }) {
                             <th>Field</th>
                             <th>Current</th>
                             <th>Proposed</th>
+                            <th>Reason</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {diffs.map((diff) => (
-                            <tr key={diff.key}>
-                              <td className="ai-diff-field">{diff.label}</td>
-                              <td className="ai-diff-from">{diff.from || <em className="ai-diff-empty">(empty)</em>}</td>
-                              <td className="ai-diff-to">{diff.to}</td>
-                            </tr>
-                          ))}
+                          {diffs.map((diff) => {
+                            const isFieldIncluded = !card._rejectedFields?.includes(diff.key);
+                            const reason = card._fieldReasons?.[diff.key];
+                            return (
+                              <tr key={diff.key} style={!isFieldIncluded ? { opacity: 0.5, textDecoration: 'line-through' } : {}}>
+                                <td className="ai-diff-field">
+                                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={isFieldIncluded}
+                                      onChange={() => onToggleField && onToggleField(cardId, diff.key)}
+                                      title={isFieldIncluded ? 'Click to reject this field change' : 'Click to accept this field change'}
+                                    />
+                                    {diff.label}
+                                  </label>
+                                </td>
+                                <td className="ai-diff-from">{diff.from || <em className="ai-diff-empty">(empty)</em>}</td>
+                                <td className="ai-diff-to">{diff.to}</td>
+                                <td className="ai-diff-reason" style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                                  {reason || 'Fill gap'}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

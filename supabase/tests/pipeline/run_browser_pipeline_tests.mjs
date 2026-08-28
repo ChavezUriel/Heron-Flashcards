@@ -1,17 +1,24 @@
 #!/usr/bin/env node
-// Offline tests for the enrichment/audit pipeline (lib/enrich.cjs + friends).
-// No Ollama needed: processCard() takes a runPrompt injection, so these stubs
-// script the model's answers and assert on the resulting card + call pattern.
+// Offline tests for the browser ESM enrichment/audit pipeline (frontend/src/ai/enrich.js + friends).
+// Guarantees zero behavioral drift between browser ESM bundle and supabase/scripts/lib/enrich.cjs.
 //
-//   node supabase/tests/pipeline/run_stub_tests.cjs
+//   node supabase/tests/pipeline/run_browser_pipeline_tests.mjs
 
-const assert = require('assert');
-const path = require('path');
-const LIB = path.resolve(__dirname, '../../scripts/lib');
-const { processCard, cardStatus } = require(path.join(LIB, 'enrich.cjs'));
-const { validateCard, flatten } = require(path.join(LIB, 'validate.cjs'));
-const { locateAnswerInExample } = require(path.join(LIB, 'minigame_text.cjs'));
-const { normCard } = require(path.join(LIB, 'cards.cjs'));
+import assert from 'assert';
+import { createRequire } from 'node:module';
+import {
+  processCard,
+  cardStatus,
+  fieldFingerprint as esmFieldFingerprint,
+  exampleFingerprint as esmExampleFingerprint,
+  clozeFingerprint as esmClozeFingerprint,
+} from '../../../frontend/src/ai/enrich.js';
+import { validateCard, flatten } from '../../../frontend/src/ai/validate.js';
+import { locateAnswerInExample } from '../../../frontend/src/ai/cardText.js';
+import { normCard } from '../../../frontend/src/ai/cards.js';
+
+const require = createRequire(import.meta.url);
+const cjsEnrich = require('../../scripts/lib/enrich.cjs');
 
 const DECK = { slug: 'travel', title: 'Travel Phrases', description: 'Short phrases for transport, directions, and common travel moments.' };
 
@@ -332,8 +339,108 @@ async function test(name, fn) {
     assert.strictEqual(card.english_text, 'Ticket', 'english text untouched');
   });
 
-  console.log(`\nALL ${passed} STUB TESTS PASSED`);
+  await test('T15 cross-port parity: ESM and CJS compute identical fingerprints across fixtures', async () => {
+    const testCards = [
+      {
+        spanish_text: 'Pasaporte',
+        english_text: 'Passport',
+        part_of_speech: 'noun',
+        definition_en: 'An official travel document.',
+        main_translations_es: ['documento de viaje', 'pasaporte'],
+        collocations: ['passport control', 'passport photo'],
+        synonyms_en: ['travel document', 'ID'],
+        examples: PAIRS,
+        cloze_distractors_en: ['visa', 'ticket', 'suitcase', 'boarding pass'],
+      },
+      {
+        spanish_text: 'Boleto',
+        english_text: 'Ticket',
+        part_of_speech: 'noun',
+        definition_en: 'A certificate or token showing that a fare or admission fee has been paid.',
+        main_translations_es: ['billete', 'entrada'],
+        collocations: ['plane ticket', 'ticket counter'],
+        synonyms_en: ['pass', 'voucher'],
+        examples: [
+          { es: 'Compré un boleto para el tren.', en: 'I bought a ticket for the train.' },
+          { es: 'Muestre su boleto al conductor.', en: 'Show your ticket to the conductor.' },
+          { es: 'El boleto cuesta diez euros.', en: 'The ticket costs ten euros.' },
+        ],
+        cloze_distractors_en: ['receipt', 'passport', 'boarding pass'],
+      },
+    ];
+
+    for (const testCard of testCards) {
+      const esmField = esmFieldFingerprint(DECK, testCard);
+      const cjsField = cjsEnrich.fieldFingerprint(DECK, testCard);
+      assert.strictEqual(esmField, cjsField, `fieldFingerprint mismatch for ${testCard.english_text}: ESM=${esmField}, CJS=${cjsField}`);
+
+      const esmExample = esmExampleFingerprint(DECK, testCard);
+      const cjsExample = cjsEnrich.exampleFingerprint(DECK, testCard);
+      assert.strictEqual(esmExample, cjsExample, `exampleFingerprint mismatch for ${testCard.english_text}: ESM=${esmExample}, CJS=${cjsExample}`);
+
+      const esmCloze = esmClozeFingerprint(testCard);
+      const cjsCloze = cjsEnrich.clozeFingerprint(testCard);
+      assert.strictEqual(esmCloze, cjsCloze, `clozeFingerprint mismatch for ${testCard.english_text}: ESM=${esmCloze}, CJS=${cjsCloze}`);
+    }
+  });
+
+  await test('T16 cross-port parity: cardStatus returns identical issues and audits on same input', async () => {
+    const cardWithAudits = {
+      spanish_text: 'Pasaporte',
+      english_text: 'Passport',
+      part_of_speech: 'noun',
+      definition_en: 'An official travel document.',
+      main_translations_es: ['documento de viaje'],
+      collocations: ['passport control'],
+      synonyms_en: ['travel document'],
+      examples: PAIRS,
+      cloze_distractors_en: ['visa', 'ticket', 'suitcase'],
+    };
+
+    const esmStatus1 = cardStatus(cardWithAudits, DECK, { auditFields: true, auditExamples: true, auditCloze: true, wantCloze: true });
+    const cjsStatus1 = cjsEnrich.cardStatus(cardWithAudits, DECK, { auditFields: true, auditExamples: true, auditCloze: true, wantCloze: true });
+    assert.deepStrictEqual(esmStatus1, cjsStatus1, 'cardStatus (unaudited) must match across ESM and CJS');
+
+    const cardPassedAudits = {
+      ...cardWithAudits,
+      _audits: {
+        field_quality: { version: 'audit-fields-v1', fingerprint: esmFieldFingerprint(DECK, cardWithAudits), status: 'pass' },
+        example_quality: { version: 'audit-examples-v1', fingerprint: esmExampleFingerprint(DECK, cardWithAudits), status: 'pass' },
+        cloze_options: { version: 'audit-cloze-v1', fingerprint: esmClozeFingerprint(cardWithAudits), status: 'pass' },
+      },
+    };
+
+    const esmStatus2 = cardStatus(cardPassedAudits, DECK, { auditFields: true, auditExamples: true, auditCloze: true, wantCloze: true });
+    const cjsStatus2 = cjsEnrich.cardStatus(cardPassedAudits, DECK, { auditFields: true, auditExamples: true, auditCloze: true, wantCloze: true });
+    assert.deepStrictEqual(esmStatus2, cjsStatus2, 'cardStatus (audited) must match across ESM and CJS');
+    assert.strictEqual(esmStatus2.audits.length, 0);
+  });
+
+  await test('T17 cross-port parity: processCard produces identical resulting cards on same scripted prompts', async () => {
+    const callsESM = [];
+    const callsCJS = [];
+    const esmResult = await processCard({ ...DRAFT }, { deck: DECK, runPrompt: makeStub(BASE_SCRIPT, callsESM) });
+    const cjsResult = await cjsEnrich.processCard({ ...DRAFT }, { deck: DECK, runPrompt: makeStub(BASE_SCRIPT, callsCJS) });
+
+    assert.deepStrictEqual(callsESM, callsCJS, 'calls sequence must match across ESM and CJS');
+    assert.deepStrictEqual(esmResult.issues, cjsResult.issues, 'issues must match across ESM and CJS');
+
+    const stripAuditTimestamp = (c) => {
+      const copy = JSON.parse(JSON.stringify(c));
+      if (copy._audits) {
+        for (const k of Object.keys(copy._audits)) {
+          delete copy._audits[k].checked_at;
+        }
+      }
+      return copy;
+    };
+
+    assert.deepStrictEqual(stripAuditTimestamp(esmResult.card), stripAuditTimestamp(cjsResult.card), 'resulting card must match across ESM and CJS');
+  });
+
+  console.log(`\nALL ${passed} BROWSER ESM PIPELINE STUB TESTS PASSED`);
 })().catch((err) => {
   console.error('\n✗ FAILED:', err.message);
+  console.error(err.stack);
   process.exit(1);
 });

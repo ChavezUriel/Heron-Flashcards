@@ -15,6 +15,7 @@ const CARD_DIFF_FIELDS = [
   { key: 'example_sentence', label: 'Example' },
   { key: 'example_es', label: 'Example (ES)' },
   { key: 'example_en', label: 'Example (EN)' },
+  { key: 'cloze_distractors_en', label: 'Word-bank options', isArray: true },
 ];
 
 // Normalize either backend shape into the diffable key set above.
@@ -43,6 +44,7 @@ export function normalizeCardContent(raw) {
     example_sentence: raw.example_sentence ?? null,
     example_es: raw.example_es ?? null,
     example_en: raw.example_en ?? null,
+    cloze_distractors_en: raw.cloze_distractors_en ?? [],
   };
 }
 

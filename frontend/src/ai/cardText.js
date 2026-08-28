@@ -6,7 +6,8 @@
 // src/minigameText.js rather than reimplemented here. Only blankedExample is
 // new (it lives in supabase/scripts/lib/minigame_text.cjs on the CLI side).
 
-import { locateAnswerInExample, normalizeAnswer } from '../minigameText';
+// Explicit .js extension is required by run_browser_pipeline_tests.mjs (Node ESM resolver)
+import { locateAnswerInExample, normalizeAnswer } from '../minigameText.js';
 
 export { locateAnswerInExample, normalizeAnswer };
 

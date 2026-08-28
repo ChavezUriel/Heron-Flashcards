@@ -8,9 +8,9 @@
 // using deterministic validators (validateCard) and cache-key checks (cardStatus).
 // No provider key is needed to scan a deck.
 
-import { validateCard, EXAMPLES_MIN, CLOZE_DISTRACTORS_MIN } from './validate';
-import { cardStatus } from './enrich';
-import { normCard } from './cards';
+import { validateCard, EXAMPLES_MIN, CLOZE_DISTRACTORS_MIN } from './validate.js';
+import { cardStatus } from './enrich.js';
+import { normCard } from './cards.js';
 
 function isBlank(value) {
   return value === undefined || value === null || String(value).trim() === '';
@@ -126,16 +126,22 @@ export const FEATURE_GROUPS = [
     reasons: (card) => validateCard(card).clozeDistractors,
   },
   {
+    id: 'field-audit',
+    title: 'LLM audit: part of speech, definition, translations, collocations, and synonyms are accurate for this sense',
+    reasons: (card, deckCtx) =>
+      cardStatus(card, deckCtx, { auditFields: true, auditExamples: false, auditCloze: false, wantCloze: false }).audits,
+  },
+  {
     id: 'example-audit',
     title: 'LLM audit: examples fit the deck theme and imply the blanked answer',
     reasons: (card, deckCtx) =>
-      cardStatus(card, deckCtx, { auditExamples: true, auditCloze: false, wantCloze: false }).audits,
+      cardStatus(card, deckCtx, { auditFields: false, auditExamples: true, auditCloze: false, wantCloze: false }).audits,
   },
   {
     id: 'cloze-audit',
     title: 'LLM audit: only the real answer fits the blank among the options',
     reasons: (card, deckCtx) =>
-      cardStatus(card, deckCtx, { auditExamples: false, auditCloze: true, wantCloze: true }).audits,
+      cardStatus(card, deckCtx, { auditFields: false, auditExamples: false, auditCloze: true, wantCloze: true }).audits,
   },
 ];
 
@@ -155,6 +161,7 @@ export function scanDeck(rawCards = [], deckCtx = {}, quality = true) {
     fields: 0,
     examples: 0,
     'cloze-options': 0,
+    'field-audit': 0,
     'example-audit': 0,
     'cloze-audit': 0,
   };
@@ -171,6 +178,7 @@ export function scanDeck(rawCards = [], deckCtx = {}, quality = true) {
     const presence = fieldPresence(card);
     const issues = validateCard(card);
     const status = cardStatus(card, deckCtx, {
+      auditFields: quality,
       auditExamples: quality,
       auditCloze: quality,
       wantCloze: true,
@@ -180,7 +188,7 @@ export function scanDeck(rawCards = [], deckCtx = {}, quality = true) {
     const failingFeatures = [];
 
     for (const feature of FEATURE_GROUPS) {
-      if (!quality && (feature.id === 'example-audit' || feature.id === 'cloze-audit')) {
+      if (!quality && (feature.id === 'field-audit' || feature.id === 'example-audit' || feature.id === 'cloze-audit')) {
         reasons[feature.id] = [];
         continue;
       }
@@ -295,7 +303,7 @@ export function estimateFillRun(scan, mode = 'fill', groups = null, concurrency 
     if (!activeGroupSet) return true;
     if (activeGroupSet.has(groupId)) return true;
     // Map 'fields' alias to individual lexical/equivalents/synonyms
-    if (activeGroupSet.has('fields') && (groupId === 'lexical' || groupId === 'equivalents' || groupId === 'synonyms')) {
+    if (activeGroupSet.has('fields') && (groupId === 'lexical' || groupId === 'equivalents' || groupId === 'synonyms' || groupId === 'field-audit')) {
       return true;
     }
     if ((groupId === 'cloze-options' || groupId === 'clozeDistractors') &&
@@ -333,7 +341,7 @@ export function estimateFillRun(scan, mode = 'fill', groups = null, concurrency 
     } else {
       // Audit and improve mode:
       // Field audit call
-      if (isGroupActive('fields') || isGroupActive('lexical') || isGroupActive('equivalents') || isGroupActive('synonyms')) {
+      if (isGroupActive('fields') || isGroupActive('lexical') || isGroupActive('equivalents') || isGroupActive('synonyms') || isGroupActive('field-audit')) {
         cardCalls += 1;
       }
 

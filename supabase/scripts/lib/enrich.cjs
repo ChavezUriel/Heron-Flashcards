@@ -21,7 +21,6 @@
 // spend LLM time where something actually changed. _audits lives only in the
 // seed_data JSON; the seed SQL compilers never emit it.
 
-const crypto = require('crypto');
 const { chatJson } = require('./ollama.cjs');
 const {
   PROMPT_VERSIONS,
@@ -33,12 +32,14 @@ const {
   clozeDistractorsPrompt,
   exampleAuditPrompt,
   clozeSolvePrompt,
+  fieldAuditPrompt,
 } = require('./prompts.cjs');
 const { validateCard, CLOZE_DISTRACTORS_MIN, CLOZE_DISTRACTORS_MAX, EXAMPLES_MAX } = require('./validate.cjs');
 const { optText, normList } = require('./cards.cjs');
-const { normalizeAnswer, locateAnswerInExample, blankedExample } = require('./minigame_text.cjs');
+const { normalizeAnswer, locateAnswerInExample, blankedExample, contentHash } = require('./minigame_text.cjs');
 
 const AUDIT_VERSIONS = {
+  field_quality: PROMPT_VERSIONS.fieldAudit,
   example_quality: PROMPT_VERSIONS.exampleAudit,
   cloze_options: PROMPT_VERSIONS.clozeSolve,
 };
@@ -50,32 +51,41 @@ function defaultRunPrompt(p) {
 // ---------------------------------------------------------------------------
 // audit bookkeeping
 // ---------------------------------------------------------------------------
-function md5(s) {
-  return crypto.createHash('md5').update(s, 'utf8').digest('hex');
-}
-
 function examplePairs(card) {
   return Array.isArray(card.examples) ? card.examples : [];
 }
 
 // Content fingerprints: any change to an audited field (or to the deck's theme
 // text, for the example audit) invalidates the stored pass.
+// Control byte \u0000 is used instead of a space as separator so that moving text
+// between adjacent fields/list items changes the hash and triggers re-audit.
+function fieldFingerprint(deck, card) {
+  return contentHash([
+    deck?.title ?? '', deck?.description ?? '',
+    card.spanish_text ?? '', card.english_text ?? '',
+    card.part_of_speech ?? '', card.definition_en ?? '',
+    ...(Array.isArray(card.main_translations_es) ? card.main_translations_es : []),
+    ...(Array.isArray(card.collocations) ? card.collocations : []),
+    ...(Array.isArray(card.synonyms_en) ? card.synonyms_en : []),
+  ].join('\u0000'));
+}
+
 function exampleFingerprint(deck, card) {
-  return md5([
+  return contentHash([
     deck?.title ?? '', deck?.description ?? '',
     card.spanish_text ?? '', card.english_text ?? '',
     ...examplePairs(card).flatMap((p) => [p?.es ?? '', p?.en ?? '']),
-  ].join(''));
+  ].join('\u0000'));
 }
 
 function clozeFingerprint(card) {
   const opts = (Array.isArray(card.cloze_distractors_en) ? card.cloze_distractors_en : [])
     .map((o) => normalizeAnswer(String(o))).sort();
-  return md5([
+  return contentHash([
     card.english_text ?? '',
     ...examplePairs(card).map((p) => p?.en ?? ''),
     ...opts,
-  ].join(''));
+  ].join('\u0000'));
 }
 
 function auditFresh(card, key, fingerprint) {
@@ -177,6 +187,55 @@ function passes(v) {
   return v === true || String(v ?? '').trim().toLowerCase() === 'pass';
 }
 
+function interpretFieldVerdict(resp) {
+  const pairCorrect = passes(resp?.pair_correct);
+  const rawPairIssues = normList(resp?.pair_issues);
+
+  const lexicalPass = passes(resp?.lexical?.verdict ?? resp?.lexical);
+  const equivalentsPass = passes(resp?.equivalents?.verdict ?? resp?.equivalents);
+  const synonymsPass = passes(resp?.synonyms?.verdict ?? resp?.synonyms);
+
+  const lexicalIssues = normList(resp?.lexical?.issues ?? resp?.lexical_issues);
+  const equivalentsIssues = normList(resp?.equivalents?.issues ?? resp?.equivalents_issues);
+  const synonymsIssues = normList(resp?.synonyms?.issues ?? resp?.synonyms_issues);
+
+  const failingGroups = [];
+  if (!lexicalPass || lexicalIssues.length > 0) {
+    failingGroups.push('lexical');
+    if (!lexicalIssues.length) {
+      lexicalIssues.push('part_of_speech or definition_en is inaccurate or not in English');
+    }
+  }
+  if (!equivalentsPass || equivalentsIssues.length > 0) {
+    failingGroups.push('equivalents');
+    if (!equivalentsIssues.length) {
+      equivalentsIssues.push('translations or collocations are inaccurate or inconsistent');
+    }
+  }
+  if (!synonymsPass || synonymsIssues.length > 0) {
+    failingGroups.push('synonyms');
+    if (!synonymsIssues.length) {
+      synonymsIssues.push('synonyms_en are not accurate English synonyms in this sense');
+    }
+  }
+
+  const pairIssues = rawPairIssues.length
+    ? rawPairIssues
+    : (!pairCorrect ? ['Spanish and English pair may not be correct translations of each other'] : []);
+
+  return {
+    pairCorrect,
+    pairIssues,
+    lexicalPass: !failingGroups.includes('lexical'),
+    lexicalIssues,
+    equivalentsPass: !failingGroups.includes('equivalents'),
+    equivalentsIssues,
+    synonymsPass: !failingGroups.includes('synonyms'),
+    synonymsIssues,
+    failingGroups,
+  };
+}
+
 // -> [] when the example pair passed; otherwise rewrite instructions for
 // exampleRewritePrompt.
 function interpretExampleVerdict(resp) {
@@ -221,17 +280,23 @@ async function solveSentence(card, sentenceEn, runPrompt) {
 // work on it. This is the single "does this card meet the current feature
 // set?" question that update_cards.cjs / enrich --only-missing / review ask.
 function cardStatus(card, deck, opts = {}) {
-  const { auditExamples = true, auditCloze = true, wantCloze = true } = opts;
+  const { auditFields = true, auditExamples = true, auditCloze = true, wantCloze = true } = opts;
   const issues = validateCard(card);
   if (!wantCloze) issues.clozeDistractors = [];
   const audits = [];
-  if (!issues.card.length && !issues.examples.length) {
-    if (auditExamples && !auditFresh(card, 'example_quality', exampleFingerprint(deck, card))) {
-      audits.push('example audit (theme fit + blank inferability) has not passed for the current content');
+  if (!issues.card.length) {
+    if (auditFields && !issues.lexical.length && !issues.equivalents.length && !issues.synonyms.length &&
+        !auditFresh(card, 'field_quality', fieldFingerprint(deck, card))) {
+      audits.push('field quality audit (lexical, equivalents, synonyms) has not passed for the current content');
     }
-    if (auditCloze && wantCloze && !issues.clozeDistractors.length &&
-        !auditFresh(card, 'cloze_options', clozeFingerprint(card))) {
-      audits.push('cloze audit (only the answer fits the blank) has not passed for the current content');
+    if (!issues.examples.length) {
+      if (auditExamples && !auditFresh(card, 'example_quality', exampleFingerprint(deck, card))) {
+        audits.push('example audit (theme fit + blank inferability) has not passed for the current content');
+      }
+      if (auditCloze && wantCloze && !issues.clozeDistractors.length &&
+          !auditFresh(card, 'cloze_options', clozeFingerprint(card))) {
+        audits.push('cloze audit (only the answer fits the blank) has not passed for the current content');
+      }
     }
   }
   return { ...issues, audits };
@@ -302,6 +367,7 @@ async function processCard(draft, opts = {}) {
     deck = {},
     maxRepairs = 2,
     runPrompt = defaultRunPrompt,
+    auditFields = true,
     auditExamples = true,
     auditCloze = true,
     wantCloze = true,
@@ -314,9 +380,13 @@ async function processCard(draft, opts = {}) {
   const protectSet = protect ? new Set(Array.isArray(protect) ? protect : Array.from(protect)) : null;
 
   const card = { ...draft };
+  let lexicalHints = [];          // feedback for the next lexicalPrompt run
+  let equivalentsHints = [];      // feedback for the next equivalentsPrompt run
+  let synonymsHints = [];         // feedback for the next synonymsPrompt run
   let setHints = [];              // full-set feedback for the next examplesPrompt run
   let pairHints = new Map();      // pair index -> issues, for targeted rewrites
   let clozeHints = [];            // feedback for the next clozeDistractorsPrompt run
+  let fieldAuditFails = 0;
   let exampleAuditFails = 0;
   let clozeAuditFails = 0;
   // Every audit failure costs one rewrite round + one re-audit round; the cap
@@ -352,13 +422,27 @@ async function processCard(draft, opts = {}) {
       return merged.length ? merged : undefined;
     };
 
-    // --- deterministic gap-fill ---
-    if (det.lexical.length) {
-      applyLexical(card, await runPrompt(lexicalPrompt(card, hints(det.lexical, []))));
+    // --- deterministic gap-fill + audit repairs ---
+    if (det.lexical.length || lexicalHints.length) {
+      applyLexical(card, await runPrompt(lexicalPrompt(card, hints(det.lexical, lexicalHints))));
+      clearAudit(card, 'field_quality');
+      card._fieldReasons = card._fieldReasons || {};
+      if (lexicalHints.length) {
+        card._fieldReasons.part_of_speech = lexicalHints[0];
+        card._fieldReasons.definition_en = lexicalHints[0];
+      }
+      lexicalHints = [];
       acted = true;
     }
-    if (det.equivalents.length) {
-      applyEquivalents(card, await runPrompt(equivalentsPrompt(card, hints(det.equivalents, []))));
+    if (det.equivalents.length || equivalentsHints.length) {
+      applyEquivalents(card, await runPrompt(equivalentsPrompt(card, hints(det.equivalents, equivalentsHints))));
+      clearAudit(card, 'field_quality');
+      card._fieldReasons = card._fieldReasons || {};
+      if (equivalentsHints.length) {
+        card._fieldReasons.main_translations_es = equivalentsHints[0];
+        card._fieldReasons.collocations = equivalentsHints[0];
+      }
+      equivalentsHints = [];
       acted = true;
     }
     if (det.examples.length || setHints.length) {
@@ -424,8 +508,14 @@ async function processCard(draft, opts = {}) {
       pairHints = new Map();
       acted = true;
     }
-    if (det.synonyms.length) {
-      applySynonyms(card, await runPrompt(synonymsPrompt(card, hints(det.synonyms, []))));
+    if (det.synonyms.length || synonymsHints.length) {
+      applySynonyms(card, await runPrompt(synonymsPrompt(card, hints(det.synonyms, synonymsHints))));
+      clearAudit(card, 'field_quality');
+      card._fieldReasons = card._fieldReasons || {};
+      if (synonymsHints.length) {
+        card._fieldReasons.synonyms_en = synonymsHints[0];
+      }
+      synonymsHints = [];
       acted = true;
     }
 
@@ -442,6 +532,44 @@ async function processCard(draft, opts = {}) {
     }
 
     // --- audits (only over deterministically clean fields) ---
+    if (auditFields && !det.lexical.length && !det.equivalents.length && !det.synonyms.length &&
+        fieldAuditFails <= maxRepairs) {
+      const fp = fieldFingerprint(deck, card);
+      if (!auditFresh(card, 'field_quality', fp)) {
+        const verdict = interpretFieldVerdict(await runPrompt(fieldAuditPrompt(card, deck)));
+        if (!verdict.pairCorrect) {
+          card._pair_correct = false;
+          card._pair_issues = verdict.pairIssues;
+        }
+        if (verdict.failingGroups.length > 0) {
+          fieldAuditFails++;
+          log(`    audit: field quality audit rejected (${verdict.failingGroups.join(', ')})`);
+          if (fieldAuditFails <= maxRepairs) {
+            let queuedRepair = false;
+            if (verdict.lexicalIssues.length && isGroupAllowed('lexical', onlySet) && !isGroupProtected('lexical', protectSet)) {
+              lexicalHints = verdict.lexicalIssues;
+              queuedRepair = true;
+            }
+            if (verdict.equivalentsIssues.length && isGroupAllowed('equivalents', onlySet) && !isGroupProtected('equivalents', protectSet)) {
+              equivalentsHints = verdict.equivalentsIssues;
+              queuedRepair = true;
+            }
+            if (verdict.synonymsIssues.length && isGroupAllowed('synonyms', onlySet) && !isGroupProtected('synonyms', protectSet)) {
+              synonymsHints = verdict.synonymsIssues;
+              queuedRepair = true;
+            }
+            if (queuedRepair) {
+              acted = true;
+              continue;
+            }
+          }
+        } else {
+          setAudit(card, 'field_quality', fp);
+          acted = true;
+        }
+      }
+    }
+
     if (auditExamples && !det.examples.length && exampleAuditFails <= maxRepairs) {
       const fp = exampleFingerprint(deck, card);
       if (!auditFresh(card, 'example_quality', fp)) {
@@ -518,13 +646,14 @@ async function processCard(draft, opts = {}) {
     if (!acted) break;
   }
 
-  return { card, issues: cardStatus(card, deck, { auditExamples, auditCloze, wantCloze }) };
+  return { card, issues: cardStatus(card, deck, { auditFields, auditExamples, auditCloze, wantCloze }) };
 }
 
 module.exports = {
   processCard,
   cardStatus,
   AUDIT_VERSIONS,
+  fieldFingerprint,
   exampleFingerprint,
   clozeFingerprint,
 };

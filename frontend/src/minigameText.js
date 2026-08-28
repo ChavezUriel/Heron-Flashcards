@@ -1,4 +1,5 @@
-import { sentenceIndex } from './minigameFrequency';
+// Explicit .js extension is required by run_browser_pipeline_tests.mjs (Node ESM resolver)
+import { sentenceIndex } from './minigameFrequency.js';
 
 // Shared text helpers for the answer-matching minigames. Kept in one module so the
 // Tier-A free-type games (Type the translation, Recall from definition, Cloze) all

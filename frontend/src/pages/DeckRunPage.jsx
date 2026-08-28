@@ -141,6 +141,21 @@ function DeckRunPage() {
     }
   }
 
+  function handleToggleField(cardId, fieldKey) {
+    const card = (job.cards ?? []).find((c) => (c.card_id ?? c._before?.card_id ?? c.id) === cardId);
+    if (card) {
+      const rejected = new Set(card._rejectedFields || []);
+      if (rejected.has(fieldKey)) {
+        rejected.delete(fieldKey);
+      } else {
+        rejected.add(fieldKey);
+      }
+      card._rejectedFields = Array.from(rejected);
+      saveJob(job);
+      bump();
+    }
+  }
+
   function handleToggleAll(selected) {
     for (const card of job.cards ?? []) {
       card._selected = selected;
@@ -406,6 +421,7 @@ function DeckRunPage() {
           job={job}
           onToggleCard={handleToggleCard}
           onToggleAll={handleToggleAll}
+          onToggleField={handleToggleField}
         />
       ) : (
         <GeneratedCardList job={job} />

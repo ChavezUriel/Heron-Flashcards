@@ -30,7 +30,13 @@ export async function applyFillJob(job, { selectedIds = null } = {}) {
   for (const card of cards) {
     const cardId = card.card_id ?? card._before?.card_id ?? card.id;
     if (!cardId) continue;
-    const patch = card._patch || {};
+    let patch = card._patch || {};
+    if (card._rejectedFields && card._rejectedFields.length > 0) {
+      const rejected = new Set(card._rejectedFields);
+      patch = Object.fromEntries(
+        Object.entries(patch).filter(([key]) => !rejected.has(key))
+      );
+    }
     if (Object.keys(patch).length > 0) {
       patchItems.push({ card_id: Number(cardId), patch });
     }

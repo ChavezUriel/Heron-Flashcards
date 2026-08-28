@@ -16,7 +16,7 @@
 //     (one sentence) — verdicts that enrich.js turns into repair issues for the
 //     enrichment builders. Audits run at temperature 0 so verdicts are stable.
 
-import { blankedExample } from './cardText';
+import { blankedExample } from './cardText.js';
 
 export const PROMPT_VERSIONS = {
   blueprint: 'blueprint-v1',
@@ -29,6 +29,7 @@ export const PROMPT_VERSIONS = {
   clozeDistractors: 'cloze-distractors-v1',
   exampleAudit: 'audit-examples-v1',
   clozeSolve: 'audit-cloze-solve-v1',
+  fieldAudit: 'audit-fields-v1',
 };
 
 // How many example sentence pairs a card carries.
@@ -307,3 +308,42 @@ export function clozeSolvePrompt(sentenceWithBlank, options) {
   });
   return { system, user, temperature: 0 };
 }
+
+// ---- Audit C: field quality (lexical, equivalents, synonyms), ONE card ------
+export function fieldAuditPrompt(card, deck) {
+  const system =
+    'You are a strict but fair linguistic quality auditor for Spanish to English flashcards. Judge the accuracy and quality of vocabulary fields. Return JSON only.';
+  const user = JSON.stringify({
+    task: 'Audit the vocabulary fields of this Spanish to English flashcard.',
+    deck: deckContext(deck),
+    card: {
+      spanish: card.spanish_text,
+      english: card.english_text,
+      part_of_speech: card.part_of_speech || undefined,
+      definition_en: card.definition_en || undefined,
+      main_translations_es: Array.isArray(card.main_translations_es) ? card.main_translations_es : [],
+      collocations: Array.isArray(card.collocations) ? card.collocations : [],
+      synonyms_en: Array.isArray(card.synonyms_en) ? card.synonyms_en : [],
+    },
+    required_output: {
+      pair_correct: 'pass | fail',
+      pair_issues: ['string'],
+      lexical: 'pass | fail',
+      lexical_issues: ['string'],
+      equivalents: 'pass | fail',
+      equivalents_issues: ['string'],
+      synonyms: 'pass | fail',
+      synonyms_issues: ['string'],
+    },
+    rules: [
+      'pair_correct: pass if spanish (the prompt) and english (the answer) are valid translation counterparts of each other in the context of the deck. Fail only if the pair is mistranslated, inverted, or completely unrelated.',
+      'lexical: pass if part_of_speech accurately describes the English answer, AND definition_en is an accurate, concise English definition for THIS sense of the word in English only. Fail if definition is in Spanish, inaccurate for this sense, or part of speech is wrong.',
+      'equivalents: pass if main_translations_es are natural Spanish translations of the prompt (in Spanish) consistent with spanish_text, AND collocations are natural, common English collocations of the English answer (in English).',
+      'synonyms: pass if synonyms_en contains 1 to 3 true English synonyms for the English answer in THIS sense (synonyms in English, NOT Spanish translations or unrelated words).',
+      'For each group that fails, provide short, actionable English instructions in the corresponding *_issues list describing what is wrong (e.g. "definition must be in English", "part_of_speech should be verb"). Empty array when that group passes.',
+      'Return JSON only, no commentary or markdown.',
+    ],
+  });
+  return { system, user, temperature: 0 };
+}
+

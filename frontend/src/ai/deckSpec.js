@@ -7,7 +7,8 @@
 // (supabase/scripts/specs/example.json), so specs move between the two.
 
 import { dump as dumpYaml, load as loadYaml } from 'js-yaml';
-import { optText, normList } from './cards';
+// Explicit .js extension is required by run_browser_pipeline_tests.mjs (Node ESM resolver)
+import { optText, normList } from './cards.js';
 
 export const DIFFICULTIES = ['beginner', 'elementary', 'intermediate', 'advanced'];
 

@@ -79,4 +79,16 @@ function blankedExample(example, answer) {
   return example.slice(0, span.start) + '____' + example.slice(span.end);
 }
 
-module.exports = { normalizeAnswer, locateAnswerInExample, blankedExample };
+// Small, stable, non-cryptographic content hash (FNV-1a). Kept identical to
+// frontend/src/ai/cardText.js so CLI and browser compute identical audit fingerprints.
+function contentHash(value) {
+  let hash = 0x811c9dc5;
+  const text = String(value ?? '');
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+module.exports = { normalizeAnswer, locateAnswerInExample, blankedExample, contentHash };

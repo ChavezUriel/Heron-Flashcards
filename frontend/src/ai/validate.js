@@ -9,7 +9,8 @@
 // LLM-judged quality (theme fit, blank inferability, cloze solvability) is NOT
 // checked here — that lives in the audits in enrich.js.
 
-import { locateAnswerInExample, normalizeAnswer } from './cardText';
+// Explicit .js extension is required by run_browser_pipeline_tests.mjs (Node ESM resolver)
+import { locateAnswerInExample, normalizeAnswer } from './cardText.js';
 
 const INVERTED_PUNCT = /[¿¡]/; // Spanish-only punctuation; must not appear in English fields
 

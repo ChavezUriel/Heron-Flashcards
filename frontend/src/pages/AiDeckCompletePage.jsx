@@ -63,7 +63,7 @@ export default function AiDeckCompletePage() {
   const [scanError, setScanError] = useState('');
   const [scanResult, setScanResult] = useState(null);
 
-  const [mode] = useState('fill');
+  const [mode, setMode] = useState('fill');
   const [selectedGroups, setSelectedGroups] = useState([
     'lexical',
     'equivalents',
@@ -343,13 +343,13 @@ export default function AiDeckCompletePage() {
           <div className="st-field">
             <span className="st-field__label">Operation Mode</span>
             <div className="ai-mode-picker">
-              <label className="ai-mode-option ai-mode-option--active">
+              <label className={`ai-mode-option${mode === 'fill' ? ' ai-mode-option--active' : ''}`}>
                 <input
                   type="radio"
                   name="fill-mode"
                   value="fill"
                   checked={mode === 'fill'}
-                  readOnly
+                  onChange={() => setMode('fill')}
                 />
                 <div>
                   <strong>Fill in blanks only</strong>
@@ -359,17 +359,18 @@ export default function AiDeckCompletePage() {
                 </div>
               </label>
 
-              <label className="ai-mode-option ai-mode-option--disabled">
+              <label className={`ai-mode-option${mode === 'audit' ? ' ai-mode-option--active' : ''}`}>
                 <input
                   type="radio"
                   name="fill-mode"
                   value="audit"
-                  disabled
+                  checked={mode === 'audit'}
+                  onChange={() => setMode('audit')}
                 />
                 <div>
-                  <strong>Audit and improve</strong> <span className="st-chip st-chip--muted">Coming soon in Phase 3</span>
+                  <strong>Audit and improve</strong>
                   <p className="st-section__hint">
-                    Uses LLM-as-judge to evaluate existing cards and rewrite low-quality or inaccurate sentences and options.
+                    Uses LLM-as-judge to evaluate existing cards and rewrite low-quality or inaccurate sentences, definitions, and options.
                   </p>
                 </div>
               </label>
@@ -551,7 +552,7 @@ export default function AiDeckCompletePage() {
                 disabled={!hasKey || selectedGroups.length === 0 || estimate.cards === 0}
                 onClick={handleStart}
               >
-                Start fill run ({estimate.cards} cards)
+                Start {mode === 'audit' ? 'audit run' : 'fill run'} ({estimate.cards} cards)
               </button>
               <Link className="button button--secondary" to="/">Back to home</Link>
             </div>

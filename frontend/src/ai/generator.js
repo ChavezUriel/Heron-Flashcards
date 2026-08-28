@@ -11,11 +11,11 @@
 // can be resumed: cards already marked `ready` are skipped, and partially
 // enriched cards keep their fields and audit passes.
 
-import { blueprintPrompt, wordSetPrompt } from './prompts';
-import { processCard, cardStatus } from './enrich';
-import { normCard, pairKey, optText } from './cards';
-import { flatten } from './validate';
-import { plannedCardCount } from './deckSpec';
+import { blueprintPrompt, wordSetPrompt } from './prompts.js';
+import { processCard, cardStatus } from './enrich.js';
+import { normCard, pairKey, optText } from './cards.js';
+import { flatten } from './validate.js';
+import { plannedCardCount } from './deckSpec.js';
 
 export const CARD_STATUS = {
   pending: 'pending',
@@ -137,6 +137,7 @@ export function createFillJob({ deck, cards = [], deckCtx = {}, mode = 'fill', g
     sections: [],
     quality: {
       max_repairs: 2,
+      field_audit: mode === 'audit',
       example_audit: mode === 'audit',
       cloze_audit: mode === 'audit',
       cloze_options: true,
@@ -346,8 +347,9 @@ export async function runJob(job, { client, onUpdate = () => {}, signal }) {
           deck: job.spec,
           maxRepairs: job.spec.quality?.max_repairs ?? 2,
           runPrompt,
-          auditExamples: job.spec.quality?.example_audit ?? false,
-          auditCloze: job.spec.quality?.cloze_audit ?? false,
+          auditFields: isFill ? (job.mode === 'audit') : (job.spec.quality?.field_audit ?? true),
+          auditExamples: isFill ? (job.mode === 'audit') : (job.spec.quality?.example_audit ?? false),
+          auditCloze: isFill ? (job.mode === 'audit') : (job.spec.quality?.cloze_audit ?? false),
           wantCloze: job.groups ? (job.groups.includes('cloze-options') || job.groups.includes('clozeDistractors')) : (job.spec.quality?.cloze_options ?? true),
           only: isFill ? (job.groups ? new Set(job.groups) : null) : null,
           protect: isFill ? (job.mode === 'fill' ? (job.groups ? new Set(job.groups) : new Set(['fields', 'lexical', 'equivalents', 'synonyms', 'examples', 'cloze-options', 'clozeDistractors'])) : new Set()) : null,

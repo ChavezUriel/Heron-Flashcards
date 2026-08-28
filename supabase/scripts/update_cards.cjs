@@ -111,13 +111,19 @@ const FEATURES = [
     id: 'example-audit',
     title: 'LLM audit: examples fit the deck theme and imply the blanked answer',
     reasons: (card, deckCtx) =>
-      cardStatus(card, deckCtx, { auditExamples: true, auditCloze: false, wantCloze: false }).audits,
+      cardStatus(card, deckCtx, { auditFields: false, auditExamples: true, auditCloze: false, wantCloze: false }).audits,
   },
   {
     id: 'cloze-audit',
     title: 'LLM audit: only the real answer fits the blank among the options',
     reasons: (card, deckCtx) =>
-      cardStatus(card, deckCtx, { auditExamples: false, auditCloze: true, wantCloze: true }).audits,
+      cardStatus(card, deckCtx, { auditFields: false, auditExamples: false, auditCloze: true, wantCloze: true }).audits,
+  },
+  {
+    id: 'field-audit',
+    title: 'LLM audit: part of speech, definition, translations, collocations, and synonyms are accurate for this sense',
+    reasons: (card, deckCtx) =>
+      cardStatus(card, deckCtx, { auditFields: true, auditExamples: false, auditCloze: false, wantCloze: false }).audits,
   },
 ];
 
@@ -207,6 +213,7 @@ async function main() {
   // Pipeline gates derived from the selected features. Deterministic field
   // fixes always run on a selected card (they are prerequisites for audits).
   const gates = {
+    auditFields: selectedIds.includes('field-audit'),
     auditExamples: selectedIds.includes('example-audit'),
     auditCloze: selectedIds.includes('cloze-audit'),
     wantCloze: selectedIds.includes('cloze-options') || selectedIds.includes('cloze-audit'),
