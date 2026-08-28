@@ -647,6 +647,11 @@ function PracticePage() {
               {sessionShapeLabel(summary.session_shape) ? (
                 <span>{sessionShapeLabel(summary.session_shape)}</span>
               ) : null}
+              {!minigamesEnabled ? (
+                <span className="practice-session-summary__simplified-badge" title="Simplified mode: turning flashcards only">
+                  Simplified
+                </span>
+              ) : null}
             </div>
           </div>
         </div>

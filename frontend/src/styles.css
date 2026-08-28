@@ -2228,6 +2228,13 @@ html {
   font-size: 0.74rem;
 }
 
+.practice-session-summary__stats .practice-session-summary__simplified-badge {
+  background: rgba(47, 93, 107, 0.2);
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
 .practice-complete {
   display: grid;
   gap: 1rem;
@@ -3775,6 +3782,113 @@ html {
   line-height: 1.4;
   color: inherit;
   opacity: 0.82;
+}
+
+/* Simplified mode toggle on mode cards */
+.h-mode-card__toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.h-mode-card__toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.h-mode-card__toggle-hint {
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: inherit;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.h-toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.h-toggle-switch input {
+  position: absolute;
+  inset: -6px -8px;
+  width: auto;
+  height: auto;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.h-toggle-switch__track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.h-toggle-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  transition: transform 180ms cubic-bezier(0.4, 0, 0.2, 1), background-color 180ms ease;
+}
+
+.h-toggle-switch input:checked + .h-toggle-switch__track {
+  background: #ffffff;
+  border-color: #ffffff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
+}
+
+.h-toggle-switch input:checked + .h-toggle-switch__track .h-toggle-switch__thumb {
+  transform: translateX(18px);
+  background: var(--accent);
+}
+
+.h-toggle-switch:hover .h-toggle-switch__track {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.h-toggle-switch input:focus-visible + .h-toggle-switch__track {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* Fallback for toggle switch if placed on standard (non-primary) cards */
+.h-mode-card:not(.h-mode-card--primary) .h-toggle-switch__track {
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+
+.h-mode-card:not(.h-mode-card--primary) .h-toggle-switch__thumb {
+  background: var(--surface);
+  box-shadow: 0 2px 6px rgba(34, 42, 45, 0.22);
+}
+
+.h-mode-card:not(.h-mode-card--primary) .h-toggle-switch input:checked + .h-toggle-switch__track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.h-mode-card:not(.h-mode-card--primary) .h-toggle-switch input:checked + .h-toggle-switch__track .h-toggle-switch__thumb {
+  background: var(--surface);
 }
 
 .h-stepper {

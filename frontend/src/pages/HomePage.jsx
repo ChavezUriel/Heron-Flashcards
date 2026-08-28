@@ -4,7 +4,7 @@ import { fetchDeckPreview, fetchDueSummary, fetchHomeDecks, updateDeckSmartPract
 import DeckCard from '../components/DeckCard';
 import DeckSyncModal from '../components/DeckSyncModal';
 import { maybeNotifyDueCards } from '../notifications';
-import { loadPracticeSettings, savePracticeSettings } from '../practiceSettings';
+import { DEFAULT_PRACTICE_SETTINGS, loadPracticeSettings, savePracticeSettings } from '../practiceSettings';
 import { normalizeSearchText, scoreFieldMatch } from '../textSearch';
 
 const NEW_BLOCK_SIZE_RANGE = { min: 5, max: 12, step: 1 };
@@ -231,6 +231,19 @@ function HomePage() {
     });
   }
 
+  const isSimplifiedMode = !(settings?.minigames?.enabled ?? true);
+
+  function handleToggleSimplifiedMode(event) {
+    event.stopPropagation();
+    const nextSimplified = !isSimplifiedMode;
+    updateSettings({
+      minigames: {
+        ...(settings?.minigames || DEFAULT_PRACTICE_SETTINGS.minigames),
+        enabled: !nextSimplified,
+      },
+    });
+  }
+
   function stepSetting(key, delta, range) {
     setSettings((current) => {
       const nextValue = Math.min(range.max, Math.max(range.min, current[key] + delta));
@@ -394,15 +407,36 @@ function HomePage() {
               </div>
             </div>
           </Link>
-          {recommendedSession ? (
-            <div className="h-mode-card__setting">
-              <span className="h-mode-card__setting-label">Session plan</span>
+          <div className="h-mode-card__setting">
+            <div className="h-mode-card__toggle-row">
+              <div className="h-mode-card__toggle-info">
+                <span className="h-mode-card__setting-label">Simplified mode</span>
+                <span className="h-mode-card__toggle-hint">
+                  {isSimplifiedMode ? 'Turning flashcards only' : 'Flashcards & mini-games'}
+                </span>
+              </div>
+              <label
+                className="h-toggle-switch"
+                title={isSimplifiedMode ? 'Simplified mode active: turning flashcards only' : 'Simplified mode inactive: mini-games enabled'}
+              >
+                <input
+                  type="checkbox"
+                  checked={isSimplifiedMode}
+                  onChange={handleToggleSimplifiedMode}
+                  aria-label="Simplified mode (turning flashcards only)"
+                />
+                <span className="h-toggle-switch__track" aria-hidden="true">
+                  <span className="h-toggle-switch__thumb" />
+                </span>
+              </label>
+            </div>
+            {recommendedSession ? (
               <div className="h-plan">
                 <span className="h-plan__tag">{recommendedSession.tag}</span>
                 <span className="h-plan__blurb">{recommendedSession.blurb}</span>
               </div>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </article>
 
         <article className="h-mode-card">
