@@ -37,6 +37,7 @@ export function createJob({ spec, provider, concurrency = 3 }) {
   const now = new Date().toISOString();
   return {
     id: `job_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    kind: 'create',
     createdAt: now,
     updatedAt: now,
     startedAt: null,
@@ -52,6 +53,123 @@ export function createJob({ spec, provider, concurrency = 3 }) {
     usage: { calls: 0, input_tokens: 0, output_tokens: 0 },
     error: null,
     savedDeck: null,
+  };
+}
+
+export function computeCardPatch(card, before) {
+  if (!before) return {};
+  const patch = {};
+
+  const scalarFields = ['part_of_speech', 'definition_en', 'example_es', 'example_en', 'example_sentence', 'mnemonic_en', 'section_name'];
+  for (const field of scalarFields) {
+    if (card[field] !== undefined && card[field] !== null && card[field] !== before[field]) {
+      patch[field] = card[field];
+    }
+  }
+
+  const arrayFields = ['main_translations_es', 'collocations', 'synonyms_en', 'cloze_distractors_en', 'examples'];
+  for (const field of arrayFields) {
+    if (card[field] && JSON.stringify(card[field]) !== JSON.stringify(before[field])) {
+      patch[field] = card[field];
+    }
+  }
+
+  const beforeAudits = before._audits || {};
+  const currentAudits = card._audits || {};
+  if (Object.keys(currentAudits).length > 0) {
+    const merged = { ...beforeAudits, ...currentAudits };
+    if (JSON.stringify(merged) !== JSON.stringify(beforeAudits)) {
+      patch.generation_metadata = { _audits: merged };
+    }
+  }
+
+  return patch;
+}
+
+export function createFillJob({ deck, cards = [], deckCtx = {}, mode = 'fill', groups = null, provider, concurrency = 3 }) {
+  const now = new Date().toISOString();
+  const groupSet = groups ? Array.from(groups) : ['fields', 'examples', 'cloze-options'];
+  const rawCards = Array.isArray(cards) ? cards : [];
+
+  const preparedCards = rawCards.map((raw) => {
+    const card = normCard(raw, deckCtx?.title || deck?.title || '') || raw;
+    const _before = {
+      card_id: raw.card_id ?? raw.id ?? card.card_id ?? card.id,
+      spanish_text: card.spanish_text,
+      english_text: card.english_text,
+      section_name: card.section_name ?? null,
+      part_of_speech: card.part_of_speech ?? null,
+      definition_en: card.definition_en ?? null,
+      main_translations_es: card.main_translations_es ? [...card.main_translations_es] : [],
+      collocations: card.collocations ? [...card.collocations] : [],
+      synonyms_en: card.synonyms_en ? [...card.synonyms_en] : [],
+      examples: card.examples ? JSON.parse(JSON.stringify(card.examples)) : [],
+      example_es: card.example_es ?? null,
+      example_en: card.example_en ?? null,
+      example_sentence: card.example_sentence ?? null,
+      mnemonic_en: card.mnemonic_en ?? null,
+      cloze_distractors_en: card.cloze_distractors_en ? [...card.cloze_distractors_en] : [],
+      _audits: card._audits ? { ...card._audits } : null,
+    };
+
+    return {
+      ...card,
+      card_id: _before.card_id,
+      _before,
+      _patch: {},
+      _status: CARD_STATUS.pending,
+      _issues: [],
+      _ms: 0,
+      _selected: true,
+    };
+  });
+
+  const spec = {
+    title: deckCtx?.title || deck?.title || 'Fill deck',
+    description: deckCtx?.description || deck?.description || '',
+    topic: deckCtx?.topic || deck?.topic || deck?.title || '',
+    difficulty: deckCtx?.difficulty || deck?.difficulty || 'intermediate',
+    learner_profile: deckCtx?.learner_profile || deck?.learner_profile || '',
+    generation_notes: deckCtx?.generation_notes || deck?.generation_notes || '',
+    language_from: deck?.language_from || 'es',
+    language_to: deck?.language_to || 'en',
+    target_card_count: preparedCards.length,
+    sections: [],
+    quality: {
+      max_repairs: 2,
+      example_audit: mode === 'audit',
+      cloze_audit: mode === 'audit',
+      cloze_options: true,
+    },
+  };
+
+  return {
+    id: `fill_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    kind: 'fill',
+    createdAt: now,
+    updatedAt: now,
+    startedAt: null,
+    finishedAt: null,
+    status: 'pending',
+    stage: 'cards',
+    targetDeck: {
+      id: deck?.id,
+      title: deck?.title,
+      slug: deck?.slug,
+      isMarket: Boolean(deck?.isMarket || deck?.user_id === null),
+      base_deck_id: deck?.base_deck_id ?? null,
+    },
+    mode,
+    groups: groupSet,
+    spec,
+    provider,
+    concurrency,
+    sections: [],
+    cards: preparedCards,
+    log: [makeLogEntry('info', `Fill run created for “${spec.title}” — ${preparedCards.length} cards.`)],
+    usage: { calls: 0, input_tokens: 0, output_tokens: 0 },
+    error: null,
+    appliedDeck: null,
   };
 }
 
@@ -138,6 +256,7 @@ async function mapWithConcurrency(items, limit, worker) {
 // Returns the job. Never throws for a cancel: the job's status carries the
 // outcome ('completed' | 'cancelled' | 'failed').
 export async function runJob(job, { client, onUpdate = () => {}, signal }) {
+  const isFill = job.kind === 'fill';
   const touch = (mutate) => {
     mutate();
     job.updatedAt = new Date().toISOString();
@@ -158,54 +277,56 @@ export async function runJob(job, { client, onUpdate = () => {}, signal }) {
   });
 
   try {
-    // --- stage 1: blueprint ------------------------------------------------
-    if (!job.sections.length) {
-      if (job.spec.sections.length) {
-        touch(() => { job.stage = 'blueprint'; job.sections = sectionsFromSpec(job.spec); });
-        log('info', `Using the ${job.sections.length} section(s) from the spec.`);
-      } else {
-        touch(() => { job.stage = 'blueprint'; });
-        log('info', 'Planning the deck sections…');
-        const response = await runPrompt(blueprintPrompt(job.spec));
-        touch(() => { job.sections = normalizeBlueprint(response, job.spec); });
-        log('success', `Blueprint ready: ${job.sections.map((section) => section.name).join(', ')}.`);
-      }
-    }
-
-    // --- stage 2: word sets ------------------------------------------------
-    if (!job.cards.length) {
-      touch(() => { job.stage = 'wordsets'; });
-      const seen = new Set();
-      const drafts = [];
-      for (const section of job.sections) {
-        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-        log('info', `Drafting words for “${section.name}” (${section.target_card_count} cards)…`);
-        // Earlier sections' pairs go into must_avoid_pairs so the model doesn't
-        // rediscover the same words section after section.
-        const avoid = drafts.map((draft) => ({ spanish: draft.spanish_text, english: draft.english_text }));
-        const response = await runPrompt(
-          wordSetPrompt(job.spec, section, section.target_card_count, avoid),
-        );
-        const rows = Array.isArray(response?.cards) ? response.cards : [];
-        let kept = 0;
-        for (const row of rows) {
-          const card = normCard({ ...row, section_name: section.name }, job.spec.title);
-          if (!card) continue;
-          const key = pairKey(card.spanish_text, card.english_text);
-          if (seen.has(key)) continue;
-          seen.add(key);
-          drafts.push({ ...card, _status: CARD_STATUS.pending, _issues: [], _ms: 0 });
-          kept += 1;
-          if (kept >= section.target_card_count) break;
+    if (!isFill) {
+      // --- stage 1: blueprint ------------------------------------------------
+      if (!job.sections.length) {
+        if (job.spec.sections.length) {
+          touch(() => { job.stage = 'blueprint'; job.sections = sectionsFromSpec(job.spec); });
+          log('info', `Using the ${job.sections.length} section(s) from the spec.`);
+        } else {
+          touch(() => { job.stage = 'blueprint'; });
+          log('info', 'Planning the deck sections…');
+          const response = await runPrompt(blueprintPrompt(job.spec));
+          touch(() => { job.sections = normalizeBlueprint(response, job.spec); });
+          log('success', `Blueprint ready: ${job.sections.map((section) => section.name).join(', ')}.`);
         }
-        touch(() => { job.cards = drafts.slice(); });
-        log(
-          kept > 0 ? 'success' : 'warn',
-          `“${section.name}”: ${kept} card(s) drafted${rows.length > kept ? ` (${rows.length - kept} duplicate/invalid dropped)` : ''}.`,
-        );
       }
+
+      // --- stage 2: word sets ------------------------------------------------
       if (!job.cards.length) {
-        throw new Error('The model returned no usable word pairs. Try a different model or a more concrete topic.');
+        touch(() => { job.stage = 'wordsets'; });
+        const seen = new Set();
+        const drafts = [];
+        for (const section of job.sections) {
+          if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+          log('info', `Drafting words for “${section.name}” (${section.target_card_count} cards)…`);
+          // Earlier sections' pairs go into must_avoid_pairs so the model doesn't
+          // rediscover the same words section after section.
+          const avoid = drafts.map((draft) => ({ spanish: draft.spanish_text, english: draft.english_text }));
+          const response = await runPrompt(
+            wordSetPrompt(job.spec, section, section.target_card_count, avoid),
+          );
+          const rows = Array.isArray(response?.cards) ? response.cards : [];
+          let kept = 0;
+          for (const row of rows) {
+            const card = normCard({ ...row, section_name: section.name }, job.spec.title);
+            if (!card) continue;
+            const key = pairKey(card.spanish_text, card.english_text);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            drafts.push({ ...card, _status: CARD_STATUS.pending, _issues: [], _ms: 0 });
+            kept += 1;
+            if (kept >= section.target_card_count) break;
+          }
+          touch(() => { job.cards = drafts.slice(); });
+          log(
+            kept > 0 ? 'success' : 'warn',
+            `“${section.name}”: ${kept} card(s) drafted${rows.length > kept ? ` (${rows.length - kept} duplicate/invalid dropped)` : ''}.`,
+          );
+        }
+        if (!job.cards.length) {
+          throw new Error('The model returned no usable word pairs. Try a different model or a more concrete topic.');
+        }
       }
     }
 
@@ -223,16 +344,21 @@ export async function runJob(job, { client, onUpdate = () => {}, signal }) {
       try {
         const { card: enriched, issues } = await processCard(card, {
           deck: job.spec,
-          maxRepairs: job.spec.quality.max_repairs,
+          maxRepairs: job.spec.quality?.max_repairs ?? 2,
           runPrompt,
-          auditExamples: job.spec.quality.example_audit,
-          auditCloze: job.spec.quality.cloze_audit,
-          wantCloze: job.spec.quality.cloze_options,
+          auditExamples: job.spec.quality?.example_audit ?? false,
+          auditCloze: job.spec.quality?.cloze_audit ?? false,
+          wantCloze: job.groups ? (job.groups.includes('cloze-options') || job.groups.includes('clozeDistractors')) : (job.spec.quality?.cloze_options ?? true),
+          only: isFill ? (job.groups ? new Set(job.groups) : null) : null,
+          protect: isFill ? (job.mode === 'fill' ? (job.groups ? new Set(job.groups) : new Set(['fields', 'lexical', 'equivalents', 'synonyms', 'examples', 'cloze-options', 'clozeDistractors'])) : new Set()) : null,
           log: (message) => log('info', `${card.english_text}: ${message}`),
           signal,
         });
         const problems = flatten(issues);
         touch(() => {
+          if (isFill && card._before) {
+            card._patch = computeCardPatch(enriched, card._before);
+          }
           Object.assign(card, enriched);
           card._ms = Date.now() - startedAt;
           card._issues = problems;
@@ -263,7 +389,7 @@ export async function runJob(job, { client, onUpdate = () => {}, signal }) {
 
     const progress = jobProgress(job);
     touch(() => {
-      job.stage = 'done';
+      job.stage = isFill ? 'review' : 'done';
       job.status = 'completed';
       job.finishedAt = new Date().toISOString();
     });

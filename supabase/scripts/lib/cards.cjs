@@ -27,8 +27,13 @@ function normList(v) {
 // ({ example_quality: { version, fingerprint, status, checked_at }, ... }).
 // Lives ONLY in the seed_data JSON so re-runs can skip already-passed audits;
 // the seed SQL compilers ignore it (it never reaches the database).
-function normAudits(v) {
-  return v && typeof v === 'object' && !Array.isArray(v) ? v : null;
+function normAudits(v, genMeta) {
+  if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+  if (genMeta && typeof genMeta === 'object' && !Array.isArray(genMeta) &&
+      genMeta._audits && typeof genMeta._audits === 'object' && !Array.isArray(genMeta._audits)) {
+    return genMeta._audits;
+  }
+  return null;
 }
 
 // Example sentence pairs (migration 0019): [{ es, en }], deduped by normalized
@@ -62,8 +67,8 @@ function normExamplePairs(v, legacyEs, legacyEn) {
 // are the source of truth and the mirror is what pre-0019 consumers (and the
 // 0017 sync hash) read.
 function normCard(card, deckTitle) {
-  const spanish = optText(card.spanish ?? card.prompt_es);
-  const english = optText(card.english ?? card.answer_en);
+  const spanish = optText(card.spanish ?? card.spanish_text ?? card.prompt_es);
+  const english = optText(card.english ?? card.english_text ?? card.answer_en);
   if (!spanish || !english) throw new Error('card missing spanish/english: ' + JSON.stringify(card));
   const examples = normExamplePairs(card.examples, card.example_es, card.example_en);
   const first = examples[0] || null;
@@ -85,7 +90,7 @@ function normCard(card, deckTitle) {
     mnemonic_en: optText(card.mnemonic_en),
     // Curated word-bank cloze options (migration 0018).
     cloze_distractors_en: normList(card.cloze_distractors_en),
-    _audits: normAudits(card._audits),
+    _audits: normAudits(card._audits, card.generation_metadata),
   };
 }
 

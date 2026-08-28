@@ -1,15 +1,40 @@
 // AI deck completion page (/decks/complete).
 //
-// Phase 1: Free, read-only deck gap scan.
-// Inspects existing cards from the user's decks to detect missing example pairs,
-// unpopulated word-bank distractors, incomplete lexical fields, or stale audits.
+// Steps:
+//   1. Pick a deck (home decks + maintained market decks)
+//   2. Free gap scan (DeckGapReport: missing examples, distractors, lexical fields)
+//   3. Choose what to do (mode + per-group checkboxes)
+//   4. Deck context (topic, difficulty, notes; "Infer from the deck" button)
+//   5. Provider & launch (AiProviderPanel, concurrency slider, start fill run)
 
-import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import AiModeTabs from '../components/AiModeTabs';
 import DeckGapReport from '../components/DeckGapReport';
+import AiProviderPanel from '../components/AiProviderPanel';
 import { fetchHomeDecks, fetchMarketDecks, fetchDeckCardsForAi } from '../api';
-import { scanDeck } from '../ai/deckAudit';
+import { scanDeck, estimateFillRun } from '../ai/deckAudit';
+import { DIFFICULTIES } from '../ai/deckSpec';
+import {
+  specFromDeckPrompt,
+  loadDeckContextCache,
+  saveDeckContextCache,
+} from '../ai/specPrompts';
+import { createLlmClient } from '../ai/llmClient';
+import { loadBuilderPrefs, saveBuilderPrefs } from '../ai/keyStore';
+import { createFillJob } from '../ai/generator';
+import { listJobs, saveJob, reconcileInterruptedJobs } from '../ai/jobStore';
+import { startRun } from '../ai/runManager';
+
+const CONCURRENCY_RANGE = { min: 1, max: 8 };
+
+const GROUP_OPTIONS = [
+  { id: 'lexical', label: 'Part of speech & English definitions' },
+  { id: 'equivalents', label: 'Translations & collocations' },
+  { id: 'synonyms', label: 'English synonyms' },
+  { id: 'examples', label: '3+ blankable example sentence pairs' },
+  { id: 'cloze-options', label: 'Curated word-bank distractors' },
+];
 
 function StepHeader({ index, title, hint }) {
   return (
@@ -24,6 +49,7 @@ function StepHeader({ index, title, hint }) {
 }
 
 export default function AiDeckCompletePage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialDeckId = searchParams.get('deck');
 
@@ -32,9 +58,49 @@ export default function AiDeckCompletePage() {
   const [decksError, setDecksError] = useState('');
 
   const [selectedDeckId, setSelectedDeckId] = useState(initialDeckId ? Number(initialDeckId) : null);
+  const [rawCards, setRawCards] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState('');
   const [scanResult, setScanResult] = useState(null);
+
+  const [mode] = useState('fill');
+  const [selectedGroups, setSelectedGroups] = useState([
+    'lexical',
+    'equivalents',
+    'synonyms',
+    'examples',
+    'cloze-options',
+  ]);
+
+  const [deckCtx, setDeckCtx] = useState({
+    topic: '',
+    difficulty: 'intermediate',
+    learner_profile: '',
+    generation_notes: '',
+  });
+  const [inferring, setInferring] = useState(false);
+  const [inferError, setInferError] = useState('');
+
+  const [prefs, setPrefs] = useState(() => loadBuilderPrefs());
+  const [credential, setCredential] = useState(null);
+  const [launchError, setLaunchError] = useState('');
+  const [recentJobs, setRecentJobs] = useState([]);
+
+  useEffect(() => {
+    reconcileInterruptedJobs();
+    setRecentJobs(listJobs().filter((j) => j.kind === 'fill'));
+  }, []);
+
+  const hasKey = Boolean(credential?.apiKey);
+  const handleCredentialChange = useCallback((next) => setCredential(next), []);
+
+  function updatePrefs(patch) {
+    setPrefs((current) => {
+      const next = { ...current, ...patch };
+      saveBuilderPrefs(next);
+      return next;
+    });
+  }
 
   // Load candidate writable decks: personal home decks + market decks the user maintains
   useEffect(() => {
@@ -84,6 +150,7 @@ export default function AiDeckCompletePage() {
   useEffect(() => {
     if (!selectedDeckId || !selectedDeck) {
       setScanResult(null);
+      setRawCards([]);
       return;
     }
 
@@ -94,14 +161,28 @@ export default function AiDeckCompletePage() {
       try {
         const cards = await fetchDeckCardsForAi(selectedDeck.id);
         if (!cancelled) {
-          const deckCtx = {
+          setRawCards(cards || []);
+          const ctx = {
             id: selectedDeck.id,
             title: selectedDeck.title,
             description: selectedDeck.description,
             slug: selectedDeck.slug,
           };
-          const scan = scanDeck(cards, deckCtx, true);
+          const scan = scanDeck(cards, ctx, true);
           setScanResult(scan);
+
+          // Populate or load cached deck context
+          const cached = loadDeckContextCache(selectedDeck.id);
+          if (cached) {
+            setDeckCtx(cached);
+          } else {
+            setDeckCtx({
+              topic: selectedDeck.title || '',
+              difficulty: 'intermediate',
+              learner_profile: '',
+              generation_notes: '',
+            });
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -119,6 +200,67 @@ export default function AiDeckCompletePage() {
       cancelled = true;
     };
   }, [selectedDeckId, selectedDeck]);
+
+  const estimate = useMemo(
+    () => estimateFillRun(scanResult, mode, selectedGroups, prefs.concurrency),
+    [scanResult, mode, selectedGroups, prefs.concurrency],
+  );
+
+  function toggleGroup(groupId) {
+    setSelectedGroups((current) =>
+      current.includes(groupId)
+        ? current.filter((id) => id !== groupId)
+        : [...current, groupId],
+    );
+  }
+
+  async function handleInferContext() {
+    if (!hasKey || !selectedDeck || !rawCards.length) return;
+    setInferring(true);
+    setInferError('');
+    try {
+      const client = createLlmClient(credential);
+      const prompt = specFromDeckPrompt(selectedDeck, rawCards);
+      const response = await client.chatJson(prompt);
+      const inferred = {
+        topic: response.topic || selectedDeck.title || '',
+        difficulty: response.difficulty || 'intermediate',
+        learner_profile: response.learner_profile || '',
+        generation_notes: response.generation_notes || '',
+      };
+      setDeckCtx(inferred);
+      saveDeckContextCache(selectedDeck.id, inferred);
+    } catch (err) {
+      setInferError(err.message || 'Failed to infer deck context');
+    } finally {
+      setInferring(false);
+    }
+  }
+
+  function handleStart() {
+    if (!hasKey || !selectedDeck || !rawCards.length) return;
+    setLaunchError('');
+    try {
+      const job = createFillJob({
+        deck: selectedDeck,
+        cards: rawCards,
+        deckCtx: {
+          ...deckCtx,
+          title: selectedDeck.title,
+          description: selectedDeck.description,
+        },
+        mode,
+        groups: selectedGroups,
+        provider: { providerId: credential.providerId, model: credential.model },
+        concurrency: prefs.concurrency,
+      });
+      saveJob(job);
+      startRun(job, credential);
+      navigate(`/decks/runs/${job.id}`);
+    } catch (err) {
+      setLaunchError(err.message || 'Failed to start fill run');
+    }
+  }
 
   return (
     <div className="ai-page">
@@ -189,39 +331,261 @@ export default function AiDeckCompletePage() {
         </section>
       ) : null}
 
-      {/* --- Steps 3–5: Stubs for subsequent phases --- */}
-      <section className="panel st-section ai-step ai-step--disabled" aria-labelledby="ai-complete-step-3">
-        <StepHeader
-          index="3"
-          title={<span id="ai-complete-step-3">Choose what to do</span>}
-          hint="Fill in blanks only (never touch existing values) or Audit and improve (re-evaluate and rewrite failing fields)."
-        />
-        <p className="st-section__hint">
-          <em>Coming next in Phase 2: Select fill mode and customize which feature groups to repair.</em>
-        </p>
-      </section>
+      {/* --- Step 3: Choose What to Do --- */}
+      {selectedDeck && scanResult ? (
+        <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-3">
+          <StepHeader
+            index="3"
+            title={<span id="ai-complete-step-3">Choose what to do</span>}
+            hint="Fill in blanks only (never touch existing values) or Audit and improve (re-evaluate and rewrite failing fields)."
+          />
 
-      <section className="panel st-section ai-step ai-step--disabled" aria-labelledby="ai-complete-step-4">
-        <StepHeader
-          index="4"
-          title={<span id="ai-complete-step-4">Deck context</span>}
-          hint="Provide deck topic and difficulty to guide the AI, or infer them automatically from the deck's cards."
-        />
-        <p className="st-section__hint">
-          <em>Coming next in Phase 2: Automatic topic &amp; difficulty inference.</em>
-        </p>
-      </section>
+          <div className="st-field">
+            <span className="st-field__label">Operation Mode</span>
+            <div className="ai-mode-picker">
+              <label className="ai-mode-option ai-mode-option--active">
+                <input
+                  type="radio"
+                  name="fill-mode"
+                  value="fill"
+                  checked={mode === 'fill'}
+                  readOnly
+                />
+                <div>
+                  <strong>Fill in blanks only</strong>
+                  <p className="st-section__hint">
+                    Never overwrites non-empty hand-written values. Only gaps (missing examples, definitions, or distractors) are filled.
+                  </p>
+                </div>
+              </label>
 
-      <section className="panel st-section ai-step ai-step--disabled" aria-labelledby="ai-complete-step-5">
-        <StepHeader
-          index="5"
-          title={<span id="ai-complete-step-5">Provider &amp; launch</span>}
-          hint="Run the fill job with your chosen LLM provider key, review the proposed diffs, and apply."
-        />
-        <p className="st-section__hint">
-          <em>Coming next in Phase 2: Live fill run, per-card diff review, and batch patching.</em>
-        </p>
-      </section>
+              <label className="ai-mode-option ai-mode-option--disabled">
+                <input
+                  type="radio"
+                  name="fill-mode"
+                  value="audit"
+                  disabled
+                />
+                <div>
+                  <strong>Audit and improve</strong> <span className="st-chip st-chip--muted">Coming soon in Phase 3</span>
+                  <p className="st-section__hint">
+                    Uses LLM-as-judge to evaluate existing cards and rewrite low-quality or inaccurate sentences and options.
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div className="st-field">
+            <div className="ai-run__log-head">
+              <span className="st-field__label">Feature groups to fill</span>
+              <div className="st-actions">
+                <button
+                  type="button"
+                  className="ai-link"
+                  onClick={() => setSelectedGroups(GROUP_OPTIONS.map((g) => g.id))}
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  className="ai-link"
+                  onClick={() => setSelectedGroups([])}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div className="ai-group-checkboxes">
+              {GROUP_OPTIONS.map((group) => {
+                const checked = selectedGroups.includes(group.id);
+                return (
+                  <label key={group.id} className={`ai-group-box${checked ? ' ai-group-box--checked' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleGroup(group.id)}
+                    />
+                    <span>{group.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="ai-estimate-box">
+            <span className="st-field__label">Estimated Run</span>
+            <p className="st-section__hint">
+              <strong>{estimate.cards}</strong> cards will be processed · roughly{' '}
+              <strong>{estimate.calls}</strong> model calls · <strong>{estimate.label}</strong>.
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      {/* --- Step 4: Deck Context --- */}
+      {selectedDeck && scanResult ? (
+        <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-4">
+          <StepHeader
+            index="4"
+            title={<span id="ai-complete-step-4">Deck context</span>}
+            hint="Guiding context fed into every model prompt to keep examples and definitions cohesive."
+          />
+
+          <div className="ai-context-editor">
+            <label className="st-field">
+              <span className="st-field__label">Deck Topic</span>
+              <input
+                className="st-input"
+                value={deckCtx.topic}
+                onChange={(e) => setDeckCtx((c) => ({ ...c, topic: e.target.value }))}
+                placeholder="e.g. Travel and airport navigation"
+              />
+            </label>
+
+            <label className="st-field">
+              <span className="st-field__label">Difficulty</span>
+              <select
+                className="st-input"
+                value={deckCtx.difficulty}
+                onChange={(e) => setDeckCtx((c) => ({ ...c, difficulty: e.target.value }))}
+              >
+                {DIFFICULTIES.map((d) => (
+                  <option key={d} value={d}>
+                    {d.charAt(0).toUpperCase() + d.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="st-field">
+              <span className="st-field__label">Learner Profile</span>
+              <input
+                className="st-input"
+                value={deckCtx.learner_profile}
+                onChange={(e) => setDeckCtx((c) => ({ ...c, learner_profile: e.target.value }))}
+                placeholder="e.g. Intermediate Spanish speaker preparing for travel"
+              />
+            </label>
+
+            <label className="st-field">
+              <span className="st-field__label">Generation Notes</span>
+              <input
+                className="st-input"
+                value={deckCtx.generation_notes}
+                onChange={(e) => setDeckCtx((c) => ({ ...c, generation_notes: e.target.value }))}
+                placeholder="e.g. Neutral Latin American Spanish, formal register"
+              />
+            </label>
+
+            <div className="st-actions">
+              <button
+                type="button"
+                className="button button--secondary st-button--compact"
+                disabled={!hasKey || inferring || !rawCards.length}
+                onClick={handleInferContext}
+              >
+                {inferring ? 'Inferring from deck…' : 'Infer from the deck'}
+              </button>
+              {!hasKey ? (
+                <span className="st-section__hint">Add a provider key in step 5 first.</span>
+              ) : null}
+              {inferError ? <span className="st-error">{inferError}</span> : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* --- Step 5: Provider & Launch --- */}
+      {selectedDeck && scanResult ? (
+        <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-5">
+          <StepHeader
+            index="5"
+            title={<span id="ai-complete-step-5">Provider &amp; launch</span>}
+            hint="Run the fill job with your chosen LLM provider key, review the proposed diffs, and apply."
+          />
+
+          <AiProviderPanel
+            providerId={prefs.providerId}
+            onProviderChange={(providerId) => updatePrefs({ providerId })}
+            onCredentialChange={handleCredentialChange}
+          />
+
+          <label className="st-field">
+            <span className="st-field__label">Cards in parallel — {prefs.concurrency}</span>
+            <input
+              className="ai-range"
+              type="range"
+              min={CONCURRENCY_RANGE.min}
+              max={CONCURRENCY_RANGE.max}
+              value={prefs.concurrency}
+              onChange={(event) => updatePrefs({ concurrency: Number(event.target.value) })}
+            />
+            <span className="ai-provider__hint">
+              Higher is faster but more likely to hit your provider's rate limit. 3–4 is a safe start.
+            </span>
+          </label>
+
+          <div className="ai-launch-box">
+            <div>
+              <h3 className="st-section__title">Ready to complete</h3>
+              <p className="st-section__hint">
+                {estimate.cards} card(s) · roughly {estimate.calls} model calls · {estimate.label}.
+                You will review all proposed diffs before anything is written to your deck.
+              </p>
+            </div>
+
+            {!hasKey ? (
+              <p className="st-error">Add an API key for {prefs.providerId} to start.</p>
+            ) : null}
+            {selectedGroups.length === 0 ? (
+              <p className="st-error">Select at least one feature group to fill.</p>
+            ) : null}
+            {launchError ? <p className="st-error">{launchError}</p> : null}
+
+            <div className="st-actions">
+              <button
+                type="button"
+                className="button button--primary"
+                disabled={!hasKey || selectedGroups.length === 0 || estimate.cards === 0}
+                onClick={handleStart}
+              >
+                Start fill run ({estimate.cards} cards)
+              </button>
+              <Link className="button button--secondary" to="/">Back to home</Link>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {recentJobs.length > 0 ? (
+        <section className="panel st-section" aria-labelledby="ai-recent-fill">
+          <div>
+            <h2 className="st-section__title" id="ai-recent-fill">Recent fill runs</h2>
+            <p className="st-section__hint">Runs stay on this device so you can resume or review them.</p>
+          </div>
+          <ul className="st-identity-list">
+            {recentJobs.map((job) => (
+              <li className="st-identity" key={job.id}>
+                <div className="st-identity__info">
+                  <span className="st-identity__name">{job.spec?.title || 'Untitled deck'}</span>
+                  <span className="st-identity__meta">
+                    {new Date(job.createdAt).toLocaleString()} · {job.cards?.length ?? 0} cards ·{' '}
+                    {job.provider?.model ?? job.provider?.providerId}
+                  </span>
+                </div>
+                <div className="st-actions">
+                  <span className={`ai-status ai-status--${job.status}`}>{job.status}</span>
+                  <Link className="button button--secondary st-button--compact" to={`/decks/runs/${job.id}`}>
+                    Open
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -6,13 +6,22 @@ import { getLiveJob, isRunning, startRun, stopRun, subscribeToJob } from '../ai/
 import { loadCredential } from '../ai/keyStore';
 import { getProvider } from '../ai/providers';
 import { saveJobAsDeck } from '../ai/saveDeck';
+import { applyFillJob } from '../ai/applyFill';
 import GeneratedCardList from '../components/GeneratedCardList';
+import ProposedChangeList from '../components/ProposedChangeList';
 
-const STAGES = [
+const CREATE_STAGES = [
   ['blueprint', 'Blueprint'],
   ['wordsets', 'Word sets'],
   ['cards', 'Cards'],
   ['done', 'Done'],
+];
+
+const FILL_STAGES = [
+  ['scan', 'Scan'],
+  ['cards', 'Cards'],
+  ['review', 'Review'],
+  ['applied', 'Applied'],
 ];
 
 const STATUS_COPY = {
@@ -37,7 +46,7 @@ function DeckRunPage() {
   const [, bump] = useReducer((count) => count + 1, 0);
   const [job, setJob] = useState(() => getLiveJob(jobId) ?? getJob(jobId));
   const [saveState, setSaveState] = useState({ status: 'idle', message: '' });
-  const [deckTitle, setDeckTitle] = useState(job?.spec.title ?? '');
+  const [deckTitle, setDeckTitle] = useState(job?.spec?.title ?? '');
   const [showLog, setShowLog] = useState(true);
   const logBoxRef = useRef(null);
 
@@ -59,7 +68,7 @@ function DeckRunPage() {
   useEffect(() => {
     const box = logBoxRef.current;
     if (box && showLog && live) box.scrollTop = box.scrollHeight;
-  }, [showLog, live, job?.log.length]);
+  }, [showLog, live, job?.log?.length]);
 
   const progress = useMemo(() => (job ? jobProgress(job) : null), [job, job?.updatedAt]);
 
@@ -74,16 +83,33 @@ function DeckRunPage() {
     );
   }
 
+  const isFill = job.kind === 'fill';
+  const stages = isFill ? FILL_STAGES : CREATE_STAGES;
   const provider = getProvider(job.provider?.providerId);
   const finished = ['completed', 'cancelled', 'failed', 'interrupted'].includes(job.status);
-  // Cards that never got their turn (a stop, a closed tab) are what "resume"
-  // is for; cards the provider errored on get their own retry button, so a run
-  // whose only gap is failures doesn't offer two buttons that do the same thing.
+
   const resumable = finished && (
-    job.stage !== 'done' ||
+    (isFill ? job.stage !== 'review' && job.stage !== 'applied' : job.stage !== 'done') ||
     job.cards.some((card) => card._status === CARD_STATUS.pending || card._status === CARD_STATUS.working)
   );
+
   const savable = usableCards(job).length;
+  const selectedCards = (job.cards ?? []).filter((c) => c._selected !== false && c._status !== CARD_STATUS.failed);
+  const appliable = selectedCards.length;
+
+  const isMarketLinked = Boolean(
+    job.targetDeck?.base_deck_id || (job.targetDeck?.isMarket === false && job.targetDeck?.base_deck_id),
+  );
+
+  const syncModifyingFields = [
+    'definition_en', 'part_of_speech', 'main_translations_es', 'collocations',
+    'synonyms_en', 'examples', 'example_es', 'example_en', 'example_sentence', 'mnemonic_en',
+  ];
+
+  const locallyModifiedCount = selectedCards.filter((card) => {
+    const patch = card._patch || {};
+    return syncModifyingFields.some((field) => patch[field] !== undefined);
+  }).length;
 
   function handleResume() {
     const credential = loadCredential(job.provider?.providerId ?? 'opencode');
@@ -96,7 +122,7 @@ function DeckRunPage() {
   }
 
   function handleRetryFailed() {
-    for (const card of job.cards) {
+    for (const card of job.cards ?? []) {
       if (card._status === CARD_STATUS.failed) {
         card._status = CARD_STATUS.pending;
         card._issues = [];
@@ -104,6 +130,23 @@ function DeckRunPage() {
     }
     saveJob(job);
     handleResume();
+  }
+
+  function handleToggleCard(cardId) {
+    const card = (job.cards ?? []).find((c) => (c.card_id ?? c._before?.card_id ?? c.id) === cardId);
+    if (card) {
+      card._selected = card._selected === false ? true : false;
+      saveJob(job);
+      bump();
+    }
+  }
+
+  function handleToggleAll(selected) {
+    for (const card of job.cards ?? []) {
+      card._selected = selected;
+    }
+    saveJob(job);
+    bump();
   }
 
   async function handleSave() {
@@ -127,9 +170,40 @@ function DeckRunPage() {
     }
   }
 
+  async function handleApply() {
+    setSaveState({ status: 'working', message: '' });
+    try {
+      const { appliedCount } = await applyFillJob(job);
+      job.appliedDeck = {
+        id: job.targetDeck?.id,
+        title: job.targetDeck?.title || job.spec?.title,
+        appliedAt: new Date().toISOString(),
+        appliedCount,
+      };
+      job.stage = 'applied';
+      saveJob(job);
+      setSaveState({
+        status: 'done',
+        message: `Successfully applied changes to ${appliedCount} card(s) in “${job.targetDeck?.title || 'your deck'}”.`,
+      });
+      bump();
+    } catch (error) {
+      if (error.partial) {
+        job.appliedDeck = {
+          id: job.targetDeck?.id,
+          title: job.targetDeck?.title,
+          appliedAt: new Date().toISOString(),
+          appliedCount: error.partial.appliedCount,
+        };
+        saveJob(job);
+      }
+      setSaveState({ status: 'error', message: error.message });
+    }
+  }
+
   function handleDownload() {
     const payload = {
-      slug: job.savedDeck?.slug ?? null,
+      slug: job.savedDeck?.slug ?? job.targetDeck?.slug ?? null,
       title: job.spec.title,
       description: job.spec.description,
       language_from: job.spec.language_from,
@@ -150,16 +224,16 @@ function DeckRunPage() {
   function handleDelete() {
     if (live) stopRun(jobId);
     deleteJob(jobId);
-    navigate('/decks/new');
+    navigate(isFill ? '/decks/complete' : '/decks/new');
   }
 
-  const stageIndex = STAGES.findIndex(([id]) => id === job.stage);
+  const stageIndex = stages.findIndex(([id]) => id === job.stage);
 
   return (
     <div className="ai-page">
       <header className="ai-run__header">
         <div>
-          <p className="st-kicker">RUN · {job.id.slice(4, 12)}</p>
+          <p className="st-kicker">{isFill ? 'FILL RUN' : 'RUN'} · {job.id.slice(5, 13)}</p>
           <h1 className="st-header__title">{job.spec.title || 'Untitled deck'}</h1>
           <p className="st-section__hint">
             {provider.label} · {job.provider?.model} · started {job.startedAt ? new Date(job.startedAt).toLocaleTimeString() : '—'} ·{' '}
@@ -173,7 +247,7 @@ function DeckRunPage() {
 
       <section className="panel st-section" aria-label="Progress">
         <ol className="ai-stages">
-          {STAGES.map(([id, label], index) => (
+          {stages.map(([id, label], index) => (
             <li
               key={id}
               className={`ai-stage${index < stageIndex ? ' ai-stage--done' : ''}${index === stageIndex ? ' ai-stage--active' : ''}`}
@@ -186,13 +260,13 @@ function DeckRunPage() {
 
         <div className="ai-progress">
           <div className="ai-progress__bar">
-            <span className="ai-progress__fill" style={{ width: `${Math.round(progress.ratio * 100)}%` }} />
+            <span className="ai-progress__fill" style={{ width: `${Math.round((progress?.ratio ?? 0) * 100)}%` }} />
           </div>
           <div className="ai-progress__counts">
-            <span><strong>{progress.done}</strong> of {progress.total} cards</span>
-            {progress.working > 0 ? <span>{progress.working} in flight</span> : null}
-            {progress.flagged > 0 ? <span className="ai-count--warn">{progress.flagged} with open issues</span> : null}
-            {progress.failed > 0 ? <span className="ai-count--error">{progress.failed} failed</span> : null}
+            <span><strong>{progress?.done ?? 0}</strong> of {progress?.total ?? 0} cards</span>
+            {(progress?.working ?? 0) > 0 ? <span>{progress.working} in flight</span> : null}
+            {(progress?.flagged ?? 0) > 0 ? <span className="ai-count--warn">{progress.flagged} with open issues</span> : null}
+            {(progress?.failed ?? 0) > 0 ? <span className="ai-count--error">{progress.failed} failed</span> : null}
             <span className="ai-count--muted">
               {job.usage.calls} calls · {(job.usage.input_tokens + job.usage.output_tokens).toLocaleString()} tokens
             </span>
@@ -212,7 +286,7 @@ function DeckRunPage() {
               Resume run
             </button>
           ) : null}
-          {!live && progress.failed > 0 ? (
+          {!live && (progress?.failed ?? 0) > 0 ? (
             <button type="button" className="button button--secondary" onClick={handleRetryFailed}>
               Retry {progress.failed} failed card{progress.failed === 1 ? '' : 's'}
             </button>
@@ -225,7 +299,8 @@ function DeckRunPage() {
         </div>
       </section>
 
-      {savable > 0 ? (
+      {/* --- Action section: Save to your decks (create) OR Apply to target deck (fill) --- */}
+      {!isFill && savable > 0 ? (
         <section className="panel st-section" aria-labelledby="ai-save-title">
           <div>
             <h2 className="st-section__title" id="ai-save-title">
@@ -274,7 +349,67 @@ function DeckRunPage() {
         </section>
       ) : null}
 
-      <GeneratedCardList job={job} />
+      {isFill && appliable > 0 ? (
+        <section className="panel st-section" aria-labelledby="ai-apply-title">
+          <div>
+            <h2 className="st-section__title" id="ai-apply-title">
+              {job.appliedDeck
+                ? `Applied to “${job.targetDeck?.title || 'deck'}”`
+                : `Apply to “${job.targetDeck?.title || 'deck'}”`}
+            </h2>
+            <p className="st-section__hint">
+              {job.appliedDeck
+                ? `Patches applied to ${job.appliedDeck.appliedCount} card(s) in “${job.targetDeck?.title}”.`
+                : `${appliable} selected card(s) ready to be patched in “${job.targetDeck?.title}”. Progress and scheduling are untouched.`}
+            </p>
+          </div>
+
+          {isMarketLinked && locallyModifiedCount > 0 ? (
+            <div className="ai-warning-box">
+              <span aria-hidden="true">⚠️</span>
+              <div>
+                <strong>Market sync note:</strong> {locallyModifiedCount} card(s) will become locally modified
+                in your copy, which will appear in outgoing changes for deck sync.
+              </div>
+            </div>
+          ) : null}
+
+          <div className="st-actions">
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={handleApply}
+              disabled={saveState.status === 'working' || appliable === 0}
+            >
+              {saveState.status === 'working'
+                ? 'Applying patches…'
+                : job.appliedDeck ? 'Apply changes again' : `Apply to ${job.targetDeck?.title || 'deck'}`}
+            </button>
+            {job.targetDeck?.id ? (
+              <Link className="button button--secondary" to={`/decks/${job.targetDeck.id}/words`}>
+                Open the deck
+              </Link>
+            ) : null}
+            <Link className="button button--secondary" to="/">Go to home</Link>
+            <button type="button" className="button button--secondary st-button--compact" onClick={handleDownload}>
+              Download JSON
+            </button>
+          </div>
+          {saveState.status === 'done' ? <p className="st-success">{saveState.message}</p> : null}
+          {saveState.status === 'error' ? <p className="st-error">{saveState.message}</p> : null}
+        </section>
+      ) : null}
+
+      {/* --- Card review list --- */}
+      {isFill ? (
+        <ProposedChangeList
+          job={job}
+          onToggleCard={handleToggleCard}
+          onToggleAll={handleToggleAll}
+        />
+      ) : (
+        <GeneratedCardList job={job} />
+      )}
 
       <section className="panel st-section" aria-labelledby="ai-log-title">
         <div className="ai-run__log-head">

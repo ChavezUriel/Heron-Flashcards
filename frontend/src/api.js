@@ -234,6 +234,14 @@ export function fetchDeckCardsForAi(deckId) {
   return rpc('get_deck_cards_for_ai', { p_deck_id: deckId });
 }
 
+export function applyCardAiPatch(cardId, patch) {
+  return rpc('apply_card_ai_patch', { p_card_id: cardId, p_patch: patch });
+}
+
+export function applyCardAiPatches(patches) {
+  return rpc('apply_card_ai_patches', { p_patches: patches });
+}
+
 
 // ===========================================================================
 // Cards

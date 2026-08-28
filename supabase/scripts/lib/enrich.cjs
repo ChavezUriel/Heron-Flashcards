@@ -237,6 +237,51 @@ function cardStatus(card, deck, opts = {}) {
   return { ...issues, audits };
 }
 
+function isBlank(value) {
+  return value === undefined || value === null || String(value).trim() === '';
+}
+
+function isGroupAllowed(group, onlySet) {
+  if (!onlySet) return true;
+  if (onlySet.has(group)) return true;
+  if (group === 'clozeDistractors' && (onlySet.has('cloze-options') || onlySet.has('cloze_distractors'))) return true;
+  if ((group === 'lexical' || group === 'equivalents' || group === 'synonyms') && onlySet.has('fields')) return true;
+  return false;
+}
+
+function isGroupProtected(group, protectSet) {
+  if (!protectSet) return false;
+  if (protectSet.has(group)) return true;
+  if (group === 'clozeDistractors' && (protectSet.has('cloze-options') || protectSet.has('cloze_distractors'))) return true;
+  if ((group === 'lexical' || group === 'equivalents' || group === 'synonyms') && protectSet.has('fields')) return true;
+  return false;
+}
+
+function isGroupNonEmpty(group, card) {
+  if (!card) return false;
+  if (group === 'lexical') {
+    return !isBlank(card.part_of_speech) || !isBlank(card.definition_en);
+  }
+  if (group === 'equivalents') {
+    const t = Array.isArray(card.main_translations_es) ? card.main_translations_es.filter((x) => !isBlank(x)) : [];
+    const c = Array.isArray(card.collocations) ? card.collocations.filter((x) => !isBlank(x)) : [];
+    return t.length > 0 || c.length > 0;
+  }
+  if (group === 'synonyms') {
+    const s = Array.isArray(card.synonyms_en) ? card.synonyms_en.filter((x) => !isBlank(x)) : [];
+    return s.length > 0;
+  }
+  if (group === 'examples') {
+    const pairs = Array.isArray(card.examples) ? card.examples.filter((p) => p && !isBlank(p.es) && !isBlank(p.en)) : [];
+    return pairs.length > 0 || (!isBlank(card.example_es) && !isBlank(card.example_en));
+  }
+  if (group === 'clozeDistractors' || group === 'cloze-options' || group === 'cloze_distractors') {
+    const opts = Array.isArray(card.cloze_distractors_en) ? card.cloze_distractors_en.filter((x) => !isBlank(x)) : [];
+    return opts.length > 0;
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // main loop
 // ---------------------------------------------------------------------------
@@ -247,6 +292,8 @@ function cardStatus(card, deck, opts = {}) {
 //   runPrompt     prompt runner (tests inject a stub; defaults to Ollama).
 //   auditExamples / auditCloze / wantCloze
 //                 feature gates used by update_cards.cjs --features.
+//   only          optional Set of feature groups allowed to be written.
+//   protect       optional Set of feature groups whose non-empty values must not be overwritten.
 //   log           progress logger (msg) => void.
 // Returns { card, issues } where issues = cardStatus() of the final card —
 // empty groups mean the card fully meets the feature set.
@@ -258,8 +305,13 @@ async function processCard(draft, opts = {}) {
     auditExamples = true,
     auditCloze = true,
     wantCloze = true,
+    only = null,
+    protect = null,
     log = () => {},
   } = opts;
+
+  const onlySet = only ? new Set(Array.isArray(only) ? only : Array.from(only)) : null;
+  const protectSet = protect ? new Set(Array.isArray(protect) ? protect : Array.from(protect)) : null;
 
   const card = { ...draft };
   let setHints = [];              // full-set feedback for the next examplesPrompt run
@@ -275,6 +327,23 @@ async function processCard(draft, opts = {}) {
     let acted = false;
     let det = validateCard(card);
     if (det.card.length) break; // spanish/english problems can't be fixed by enrichment
+
+    // Filter det based on only and protect options
+    if (onlySet) {
+      if (!isGroupAllowed('lexical', onlySet)) det.lexical = [];
+      if (!isGroupAllowed('equivalents', onlySet)) det.equivalents = [];
+      if (!isGroupAllowed('examples', onlySet)) det.examples = [];
+      if (!isGroupAllowed('synonyms', onlySet)) det.synonyms = [];
+      if (!isGroupAllowed('clozeDistractors', onlySet)) det.clozeDistractors = [];
+    }
+
+    if (protectSet) {
+      if (isGroupProtected('lexical', protectSet) && isGroupNonEmpty('lexical', card)) det.lexical = [];
+      if (isGroupProtected('equivalents', protectSet) && isGroupNonEmpty('equivalents', card)) det.equivalents = [];
+      if (isGroupProtected('synonyms', protectSet) && isGroupNonEmpty('synonyms', card)) det.synonyms = [];
+      if (isGroupProtected('clozeDistractors', protectSet) && isGroupNonEmpty('clozeDistractors', card)) det.clozeDistractors = [];
+      if (isGroupProtected('examples', protectSet) && examplePairs(card).length >= 3) det.examples = [];
+    }
 
     // Pass validator/audit feedback from the second attempt on (a fresh first
     // attempt needs no "fix these issues" preamble).
@@ -293,14 +362,50 @@ async function processCard(draft, opts = {}) {
       acted = true;
     }
     if (det.examples.length || setHints.length) {
+      const prevPairs = examplePairs(card);
+      const isProtectedExamples = isGroupProtected('examples', protectSet);
       // Structural problems (missing pairs, non-blankable sentences, ...):
       // regenerate the full set. The prompt sees the current pairs and keeps
       // the rule-compliant ones.
       applyExamples(card, await runPrompt(examplesPrompt(card, hints(det.examples, setHints), deck)));
-      // The sentence set changed: stored distractors and audit passes are void.
-      card.cloze_distractors_en = [];
-      clearAudit(card, 'example_quality');
-      clearAudit(card, 'cloze_options');
+
+      if (isProtectedExamples && prevPairs.length > 0) {
+        // Under protect, deterministically restore any previous pairs missing from the new set,
+        // keeping previous pairs first and filling up to EXAMPLES_MAX with generated ones.
+        const seen = new Set();
+        const merged = [];
+        for (const pair of prevPairs) {
+          const key = normalizeAnswer(pair.en);
+          if (key && !seen.has(key)) {
+            seen.add(key);
+            merged.push(pair);
+          }
+        }
+        for (const pair of examplePairs(card)) {
+          const key = normalizeAnswer(pair.en);
+          if (key && !seen.has(key)) {
+            seen.add(key);
+            merged.push(pair);
+            if (merged.length >= EXAMPLES_MAX) break;
+          }
+        }
+        applyExamples(card, { examples: merged });
+      }
+
+      // Check if existing pairs survived under protect
+      const survivingPairs = prevPairs.filter((prev) =>
+        examplePairs(card).some((curr) => curr.en === prev.en && curr.es === prev.es)
+      );
+      const existingSurvived = prevPairs.length > 0 && survivingPairs.length === prevPairs.length;
+
+      if (isProtectedExamples && existingSurvived) {
+        // Under protect when existing pairs survive, do NOT clear distractors or void audits
+      } else {
+        // The sentence set changed: stored distractors and audit passes are void.
+        card.cloze_distractors_en = [];
+        clearAudit(card, 'example_quality');
+        clearAudit(card, 'cloze_options');
+      }
       setHints = [];
       pairHints = new Map();
       acted = true;
@@ -326,6 +431,8 @@ async function processCard(draft, opts = {}) {
 
     // Distractors need a valid, fully blankable example set — recheck first.
     det = validateCard(card);
+    if (onlySet && !isGroupAllowed('clozeDistractors', onlySet)) det.clozeDistractors = [];
+    if (protectSet && isGroupProtected('clozeDistractors', protectSet) && isGroupNonEmpty('clozeDistractors', card)) det.clozeDistractors = [];
     if (wantCloze && !det.examples.length && (det.clozeDistractors.length || clozeHints.length)) {
       applyClozeDistractors(card, await runPrompt(clozeDistractorsPrompt(card, deck, hints(det.clozeDistractors, clozeHints))));
       clearAudit(card, 'cloze_options');

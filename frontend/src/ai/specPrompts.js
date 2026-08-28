@@ -72,3 +72,59 @@ export function specRefinePrompt(spec, instruction) {
   });
   return { system, user, temperature: 0.3 };
 }
+
+const DECK_SPEC_CACHE_PREFIX = 'duocards.aiDeckCtx.';
+
+export function loadDeckContextCache(deckId) {
+  if (!deckId) return null;
+  try {
+    const raw = window.localStorage.getItem(`${DECK_SPEC_CACHE_PREFIX}${deckId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveDeckContextCache(deckId, context) {
+  if (!deckId || !context) return;
+  try {
+    window.localStorage.setItem(`${DECK_SPEC_CACHE_PREFIX}${deckId}`, JSON.stringify(context));
+  } catch {
+    // quota ignore
+  }
+}
+
+// Inferred context from existing deck rows and sample cards (Phase 2).
+export function specFromDeckPrompt(deck, sampleCards = []) {
+  const system =
+    'You analyze a Spanish to English flashcard deck and infer its topic, difficulty, ' +
+    'learner profile, and generation notes to guide AI completion. Return JSON only.';
+
+  const sampled = (sampleCards || []).slice(0, 15).map((card) => ({
+    spanish: card.spanish_text || card.prompt_es || '',
+    english: card.english_text || card.answer_en || '',
+    section: card.section_name || undefined,
+  }));
+
+  const user = JSON.stringify({
+    task: 'Infer deck specification context from the deck metadata and sample cards.',
+    deck_title: deck?.title || '',
+    deck_description: deck?.description || '',
+    sample_cards: sampled,
+    required_output: {
+      topic: 'string',
+      difficulty: `one of: ${DIFFICULTIES.join(' | ')}`,
+      learner_profile: 'string',
+      generation_notes: 'string',
+    },
+    rules: [
+      'topic: 1-2 sentences summarizing the subject matter in learner terms.',
+      `difficulty: one of ${DIFFICULTIES.join(', ')}.`,
+      'learner_profile: who studies this deck and why they need it.',
+      'generation_notes: 1-2 concise instructions steering register, tone, and vocabulary choice.',
+      'Return JSON only, no commentary or markdown.',
+    ],
+  });
+
+  return { system, user, temperature: 0.3 };
+}

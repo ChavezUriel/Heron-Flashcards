@@ -48,6 +48,15 @@ export function normExamplePairs(value, legacyEs, legacyEn) {
   return out;
 }
 
+function normAudits(v, genMeta) {
+  if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+  if (genMeta && typeof genMeta === 'object' && !Array.isArray(genMeta) &&
+      genMeta._audits && typeof genMeta._audits === 'object' && !Array.isArray(genMeta._audits)) {
+    return genMeta._audits;
+  }
+  return null;
+}
+
 // Normalize one drafted/generated card into the enriched shape. Accepts either
 // {spanish, english} (draft) or the fully enriched object. The legacy
 // example_es/example_en/example_sentence columns mirror pair 0 mechanically —
@@ -74,9 +83,7 @@ export function normCard(card, deckTitle) {
     example_en: first ? first.en : optText(card.example_en),
     mnemonic_en: optText(card.mnemonic_en),
     cloze_distractors_en: normList(card.cloze_distractors_en),
-    _audits: card._audits && typeof card._audits === 'object' && !Array.isArray(card._audits)
-      ? card._audits
-      : null,
+    _audits: normAudits(card._audits, card.generation_metadata),
   };
 }
 
