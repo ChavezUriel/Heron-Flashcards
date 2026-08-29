@@ -16,11 +16,7 @@ function ProposeChangeRow({ change, checked, onToggle }) {
         <span className="sync-row__title">
           {kind === 'add' ? <span className="sync-chip sync-chip--add">New card</span> : null}
           {kind === 'remove' ? (
-            (change.is_deleted || change.user_card?.is_deleted) ? (
-              <span className="sync-chip sync-chip--warn">Deleted</span>
-            ) : (
-              <span className="sync-chip sync-chip--warn">Hidden</span>
-            )
+            <span className="sync-chip sync-chip--warn">Deleted</span>
           ) : null}
           {cardTitle(change.user_card)}
           {change.already_proposed ? (
@@ -178,7 +174,7 @@ function ProposeChangesModal({ deckId, onClose, onSubmitted }) {
           changes.length === 0 ? (
             <div className="sync-modal__done">
               <p>Your cards match the market deck — nothing to propose.</p>
-              <p className="sync-modal__done-note">Edit, add, or hide cards in your copy first, then propose the changes here.</p>
+              <p className="sync-modal__done-note">Edit, add, or delete cards in your copy first, then propose the changes here.</p>
             </div>
           ) : (
             <>
@@ -204,7 +200,7 @@ function ProposeChangesModal({ deckId, onClose, onSubmitted }) {
                 />
                 <ProposeSection
                   title="Card removals"
-                  hint="Cards you deleted or hid in your copy. Approving a removal deletes them for all subscribers of the market deck."
+                  hint="Cards you deleted in your copy. Approving a removal deletes them for all subscribers of the market deck."
                   changes={removeChanges}
                   selectedIds={selectedIds}
                   onToggle={toggleCard}

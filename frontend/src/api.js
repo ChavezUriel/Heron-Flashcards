@@ -201,11 +201,23 @@ export function updateDeckSmartPracticeInclusion(deckId, isEnabledInSmartPractic
   });
 }
 
-export function updateDeckHomeSelection(deckId, isSelectedOnHome) {
-  return rpc('update_deck_home_selection', {
-    p_deck_id: deckId,
-    p_is_selected_on_home: isSelectedOnHome,
-  });
+export async function updateDeckHomeSelection(deckId, isSelectedOnHome) {
+  try {
+    return await rpc('update_deck_home_selection', {
+      p_deck_id: deckId,
+      p_is_selected_on_home: isSelectedOnHome,
+    });
+  } catch (rpcError) {
+    // Defense-in-depth fallback
+    const me = await fetchMe();
+    const { error } = await supabase
+      .from('decks')
+      .update({ is_selected_on_home: isSelectedOnHome })
+      .eq('id', deckId)
+      .eq('user_id', me.id);
+    if (error) throw new Error(error.message || rpcError.message);
+    return { deck_id: deckId, is_selected_on_home: isSelectedOnHome };
+  }
 }
 
 export function fetchReviewCard(deckId) {

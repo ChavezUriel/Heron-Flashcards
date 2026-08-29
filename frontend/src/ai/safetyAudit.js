@@ -58,7 +58,7 @@ const PLACEHOLDER_EMAILS = new Set([
 // ---------------------------------------------------------------------------
 export function runDeterministicPreScan(deckMeta, cards) {
   const issues = [];
-  const activeCards = (cards || []).filter((c) => !c.is_deleted && (c.is_enabled ?? true));
+  const activeCards = (cards || []).filter((c) => !c.is_deleted);
 
   if (!deckMeta?.title || deckMeta.title.trim().length === 0) {
     issues.push({
@@ -222,7 +222,7 @@ export async function auditDeckForPublishing(
   cards,
   { runPrompt, onProgress, signal, skipLLM = false } = {}
 ) {
-  const activeCards = (cards || []).filter((c) => !c.is_deleted && (c.is_enabled ?? true));
+  const activeCards = (cards || []).filter((c) => !c.is_deleted);
   const totalCards = activeCards.length;
 
   onProgress?.({

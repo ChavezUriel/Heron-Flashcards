@@ -59,7 +59,7 @@ export default function DeckPublishModal({
   const abortControllerRef = useRef(null);
 
   const activeCards = useMemo(() => {
-    return (deckPreview?.cards || []).filter((c) => !c.is_deleted && (c.is_enabled ?? true));
+    return (deckPreview?.cards || []).filter((c) => !c.is_deleted);
   }, [deckPreview]);
 
   const credential = credentials[providerId];

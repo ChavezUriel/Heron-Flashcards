@@ -7,8 +7,9 @@ import {
   deletePersonalDeck,
   fetchDeckPreview,
   updateCard,
-  updateCardVisibility,
   updateCardsVisibility,
+  updateCardVisibility,
+  updateDeckHomeSelection,
 } from '../api';
 import CardDetailsModal from '../components/CardDetailsModal';
 import DeckDeleteModal from '../components/DeckDeleteModal';
@@ -283,6 +284,7 @@ function DeckWordsPage() {
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [isDeleteDeckModalOpen, setIsDeleteDeckModalOpen] = useState(false);
   const [isDeleteDeckPending, setIsDeleteDeckPending] = useState(false);
+  const [isHomeSelectionPending, setIsHomeSelectionPending] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sort, setSort] = useState({ key: null, dir: 1 });
@@ -299,6 +301,26 @@ function DeckWordsPage() {
     } catch (err) {
       setActionError(err.message || 'Failed to delete deck');
       setIsDeleteDeckPending(false);
+    }
+  }
+
+  async function handleToggleHomeSelection(isSelectedOnHome) {
+    if (!preview) return;
+    setActionError('');
+    setIsHomeSelectionPending(true);
+    try {
+      await updateDeckHomeSelection(preview.deck_id, isSelectedOnHome);
+      setPreview((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          is_selected_on_home: isSelectedOnHome,
+        };
+      });
+    } catch (err) {
+      setActionError(err.message || (isSelectedOnHome ? 'Failed to add deck to home' : 'Failed to remove deck from home'));
+    } finally {
+      setIsHomeSelectionPending(false);
     }
   }
 
@@ -495,6 +517,25 @@ function DeckWordsPage() {
       onSelect: handleClaimDeck,
     });
   }
+  const isSelectedOnHome = preview.is_selected_on_home !== undefined
+    ? Boolean(preview.is_selected_on_home)
+    : !isMarket;
+
+  if (isSelectedOnHome) {
+    deckActions.push({
+      key: 'remove-from-home',
+      label: isHomeSelectionPending ? 'Removing from home…' : 'Remove from home',
+      isDisabled: isHomeSelectionPending,
+      onSelect: () => handleToggleHomeSelection(false),
+    });
+  } else {
+    deckActions.push({
+      key: 'add-to-home',
+      label: isHomeSelectionPending ? 'Adding to home…' : 'Add to home',
+      isDisabled: isHomeSelectionPending,
+      onSelect: () => handleToggleHomeSelection(true),
+    });
+  }
   // Kept last: the market items above are about the deck as a whole, these two
   // reach only as far as the rows the table is currently showing. An empty deck
   // has nothing to hide, and a read-only one nothing to change.
@@ -545,7 +586,6 @@ function DeckWordsPage() {
 
     const targetCard = preview?.cards?.find((card) => card.card_id === cardId);
     const wasLinked = targetCard && targetCard.base_card_id != null;
-    const wasEnabled = targetCard?.is_enabled;
 
     try {
       await deleteCard(cardId);
@@ -554,7 +594,7 @@ function DeckWordsPage() {
           return current;
         }
 
-        const outgoingDelta = (wasLinked && wasEnabled) ? 1 : 0;
+        const outgoingDelta = wasLinked ? 1 : 0;
 
         return {
           ...current,
@@ -580,7 +620,7 @@ function DeckWordsPage() {
 
     const deletedSet = new Set(cardIds);
     const newlyOutgoingCount = preview?.cards
-      ? preview.cards.filter((card) => deletedSet.has(card.card_id) && card.base_card_id != null && card.is_enabled).length
+      ? preview.cards.filter((card) => deletedSet.has(card.card_id) && card.base_card_id != null).length
       : 0;
 
     try {
