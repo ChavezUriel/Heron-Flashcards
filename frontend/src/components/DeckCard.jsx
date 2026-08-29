@@ -1,7 +1,46 @@
 import { useNavigate } from 'react-router-dom';
+import { DECK_ORIGIN_CONFIG, DeckOriginIcon, getDeckOriginType } from './DeckOriginBadge';
 
 function percentage(value) {
   return Math.round(value * 100);
+}
+
+function renderTitleWithOriginIcon(title, originType, tooltip) {
+  if (!title) return null;
+  const words = title.trim().split(/\s+/);
+  if (words.length <= 1) {
+    return (
+      <span className="h-deck-card__title-end">
+        {title}
+        <span
+          className={`h-deck-card__origin-icon h-deck-card__origin-icon--${originType}`}
+          title={tooltip}
+          aria-label={tooltip}
+        >
+          <DeckOriginIcon type={originType} size={13} />
+        </span>
+      </span>
+    );
+  }
+
+  const leading = words.slice(0, -1).join(' ');
+  const lastWord = words[words.length - 1];
+
+  return (
+    <>
+      <span>{leading} </span>
+      <span className="h-deck-card__title-end">
+        {lastWord}
+        <span
+          className={`h-deck-card__origin-icon h-deck-card__origin-icon--${originType}`}
+          title={tooltip}
+          aria-label={tooltip}
+        >
+          <DeckOriginIcon type={originType} size={13} />
+        </span>
+      </span>
+    </>
+  );
 }
 
 function DeckCard({
@@ -18,6 +57,8 @@ function DeckCard({
   const navigate = useNavigate();
   const isPracticeEnabled = Boolean(deck.is_enabled_in_smart_practice);
   const isOnHome = Boolean(deck.is_selected_on_home);
+  const originType = getDeckOriginType(deck);
+  const originConfig = DECK_ORIGIN_CONFIG[originType] || DECK_ORIGIN_CONFIG.personal;
 
   function handleOpenDeck() {
     navigate(`/decks/${deck.id}/words`, { state: { from: variant } });
@@ -56,7 +97,9 @@ function DeckCard({
         onKeyDown={handleKeyDown}
       >
         <div className="h-deck-card__top">
-          <div className="h-deck-card__title">{deck.title}</div>
+          <div className="h-deck-card__title">
+            {renderTitleWithOriginIcon(deck.title, originType, originConfig.tooltip)}
+          </div>
           <div className="h-deck-card__top-actions">
             <button
               className="deck-card__explore-button"
@@ -146,7 +189,13 @@ function DeckCard({
 
       <div className="h-market-card__top">
         <div>
-          <div className="h-market-card__title">{deck.title}</div>
+          <div className="h-market-card__title">
+            {renderTitleWithOriginIcon(
+              deck.title,
+              deck.is_owner ? 'managing' : 'public',
+              deck.is_owner ? 'Deck you manage (maintainer)' : 'Public community deck'
+            )}
+          </div>
           <div className="h-market-card__meta">{deck.total_cards} CARDS</div>
         </div>
       </div>

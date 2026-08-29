@@ -242,6 +242,31 @@ export function applyCardAiPatches(patches) {
   return rpc('apply_card_ai_patches', { p_patches: patches });
 }
 
+// Publish a standalone personal deck to the public community Market
+export function publishUserDeck(deckId, safetyAudit = {}) {
+  return rpc('publish_user_deck', {
+    p_deck_id: deckId,
+    p_safety_audit: safetyAudit,
+  });
+}
+
+// Delete a personal deck (standalone personal deck or personal copy of a market deck)
+export async function deletePersonalDeck(deckId) {
+  try {
+    return await rpc('delete_personal_deck', { p_deck_id: deckId });
+  } catch (rpcError) {
+    // Defense-in-depth fallback if RPC is not yet loaded: direct delete on user-owned deck
+    const me = await fetchMe();
+    const { error } = await supabase
+      .from('decks')
+      .delete()
+      .eq('id', deckId)
+      .eq('user_id', me.id);
+    if (error) throw new Error(error.message || rpcError.message);
+    return { success: true, deck_id: deckId };
+  }
+}
+
 
 // ===========================================================================
 // Cards

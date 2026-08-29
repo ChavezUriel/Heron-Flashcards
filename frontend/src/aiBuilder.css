@@ -1153,4 +1153,441 @@
   color: var(--muted);
 }
 
+/* ===========================================================================
+   Deck Publishing & Safety Filter Modal (DuoCards theme)
+   =========================================================================== */
+
+.publish-modal__panel {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(88vh, 760px);
+}
+
+.publish-modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 14px;
+  padding-right: 4px;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.publish-summary-card {
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: grid;
+  gap: 4px;
+}
+
+.publish-summary-title {
+  margin: 0;
+  font-family: var(--head-font);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.publish-summary-desc {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.publish-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.publish-meta-pill {
+  font-size: 0.76rem;
+  padding: 3px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.publish-info-box {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 4px;
+  font-size: 0.86rem;
+}
+
+.publish-info-box h4 {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.publish-info-box p {
+  margin: 0;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.publish-note {
+  margin-top: 4px !important;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.publish-provider-toggle {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.publish-provider-embed {
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.publish-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.publish-modal__footer--center {
+  justify-content: center;
+}
+
+/* --- Scanning progress state ---------------------------------------------- */
+.publish-scanning {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2.5rem 1rem;
+  gap: 12px;
+}
+
+.publish-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.publish-scanning h3 {
+  margin: 0;
+  font-family: var(--head-font);
+  font-size: 1.15rem;
+}
+
+.publish-scanning__msg {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.publish-progress-bar {
+  width: 100%;
+  max-width: 20rem;
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.publish-progress-bar__fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 300ms ease;
+}
+
+/* --- Verdict card --------------------------------------------------------- */
+.publish-verdict {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+}
+
+.publish-verdict--approved {
+  background: var(--success-soft);
+  border: 1px solid var(--success);
+}
+
+.publish-verdict--rejected {
+  background: rgba(166, 75, 60, 0.08);
+  border: 1px solid var(--danger);
+}
+
+.publish-icon {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+}
+
+.publish-icon--success {
+  color: var(--success);
+}
+
+.publish-icon--alert {
+  color: var(--danger);
+}
+
+.publish-verdict__content {
+  display: grid;
+  gap: 4px;
+}
+
+.publish-verdict__content h4 {
+  margin: 0;
+  font-family: var(--head-font);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.publish-verdict--approved h4 {
+  color: var(--success);
+}
+
+.publish-verdict--rejected h4 {
+  color: var(--danger);
+}
+
+.publish-verdict__content p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.publish-metrics {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--success);
+  margin-top: 4px;
+}
+
+.publish-breakdown-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.publish-breakdown-tag {
+  font-size: 0.74rem;
+  padding: 2px 8px;
+  background: rgba(166, 75, 60, 0.12);
+  color: var(--danger);
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* --- Conflicted cards section --------------------------------------------- */
+.publish-conflicted-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.publish-conflicted-header h4 {
+  margin: 0 0 2px 0;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.publish-conflicted-header p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.publish-conflicted-list {
+  display: grid;
+  gap: 10px;
+}
+
+.safety-conflicted-card {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--danger);
+  border-radius: 12px;
+  background: var(--surface);
+  display: grid;
+  gap: 6px;
+}
+
+.safety-conflicted-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.safety-card-pair {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+
+.safety-card-prompt {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.safety-card-arrow {
+  color: var(--muted);
+}
+
+.safety-card-answer {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.safety-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.safety-badge {
+  font-size: 0.68rem;
+  font-family: var(--mono-font);
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
+.safety-badge--critical {
+  background: rgba(166, 75, 60, 0.16);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.safety-badge--high {
+  background: var(--warning-soft);
+  color: var(--warning-ink);
+  border: 1px solid var(--warning);
+}
+
+.safety-badge--medium {
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.safety-badge--low {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.safety-category-chip {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.safety-issue-reason {
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--danger);
+}
+
+.safety-issue-excerpt {
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.safety-excerpt-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  font-family: var(--mono-font);
+}
+
+.safety-mark {
+  background: var(--warning-soft);
+  color: var(--warning-ink);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.safety-remediation {
+  font-size: 0.84rem;
+  line-height: 1.4;
+  padding: 8px 10px;
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  color: var(--ink);
+}
+
+.safety-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.publish-success {
+  text-align: center;
+  padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.publish-success h3 {
+  margin: 0;
+  font-family: var(--head-font);
+  font-size: 1.3rem;
+  color: var(--success);
+}
+
+.publish-success p {
+  margin: 0;
+  max-width: 26rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+
+
 

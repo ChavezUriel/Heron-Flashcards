@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   claimMarketDeck,
   deleteCard,
   deleteCards,
+  deletePersonalDeck,
   fetchDeckPreview,
   updateCard,
   updateCardVisibility,
   updateCardsVisibility,
 } from '../api';
 import CardDetailsModal from '../components/CardDetailsModal';
+import DeckDeleteModal from '../components/DeckDeleteModal';
+import { DeckOriginIcon, getDeckOriginType } from '../components/DeckOriginBadge';
+import DeckPublishModal from '../components/DeckPublishModal';
 import DeckSyncModal from '../components/DeckSyncModal';
 import ProposeChangesModal from '../components/ProposeChangesModal';
 import { buildHighlightSegments, normalizeSearchText, scoreFieldMatch } from '../textSearch';
@@ -144,7 +148,7 @@ function OverflowMenu({ label, items, triggerText = null, hasPending = false }) 
             return item.to ? (
               <Link
                 key={item.key}
-                className="deck-menu__item"
+                className={`deck-menu__item${item.isDanger ? ' deck-menu__item--danger' : ''}`}
                 role="menuitem"
                 to={item.to}
                 state={item.state}
@@ -155,7 +159,7 @@ function OverflowMenu({ label, items, triggerText = null, hasPending = false }) 
             ) : (
               <button
                 key={item.key}
-                className="deck-menu__item"
+                className={`deck-menu__item${item.isDanger ? ' deck-menu__item--danger' : ''}`}
                 type="button"
                 role="menuitem"
                 disabled={item.isDisabled}
@@ -265,21 +269,38 @@ function SortableHeader({ label, sortKey, sort, onSort, className = '' }) {
 function DeckWordsPage() {
   const { deckId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const [preview, setPreview] = useState(null);
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
   const [pendingCardIds, setPendingCardIds] = useState([]);
   const [actionError, setActionError] = useState('');
   const [detailsCardId, setDetailsCardId] = useState(null);
-  const [activeSyncModal, setActiveSyncModal] = useState(null); // 'sync' | 'propose' | null
+  const [activeSyncModal, setActiveSyncModal] = useState(null); // 'sync' | 'propose' | 'publish' | null
   const [previewRefreshToken, setPreviewRefreshToken] = useState(0);
   const [isClaimPending, setIsClaimPending] = useState(false);
   const [isBulkPending, setIsBulkPending] = useState(false);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [isDeleteDeckModalOpen, setIsDeleteDeckModalOpen] = useState(false);
+  const [isDeleteDeckPending, setIsDeleteDeckPending] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sort, setSort] = useState({ key: null, dir: 1 });
   const tableScrollRef = useRef(null);
+
+  async function handleConfirmDeletePersonalDeck() {
+    if (!preview) return;
+    setIsDeleteDeckPending(true);
+    setActionError('');
+    try {
+      await deletePersonalDeck(preview.deck_id);
+      setIsDeleteDeckModalOpen(false);
+      navigate('/', { replace: true });
+    } catch (err) {
+      setActionError(err.message || 'Failed to delete deck');
+      setIsDeleteDeckPending(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -459,6 +480,13 @@ function DeckWordsPage() {
       to: `/decks/complete?deck=${preview.deck_id}`,
     });
   }
+  if (canEdit && !isMarket && !isLinked && totalCards > 0) {
+    deckActions.push({
+      key: 'publish',
+      label: preview.publish_status === 'published' ? 'Republish to market' : 'Publish to market',
+      onSelect: () => setActiveSyncModal('publish'),
+    });
+  }
   if (isClaimable) {
     deckActions.push({
       key: 'claim',
@@ -488,6 +516,14 @@ function DeckWordsPage() {
       label: bulkActionLabel('Delete', tableRows.length, isFiltered),
       isDisabled: isBulkPending || tableRows.length === 0,
       onSelect: () => setBulkDeleteConfirm(true),
+    });
+  }
+  if (canEdit && !isMarket) {
+    deckActions.push({
+      key: 'delete-deck',
+      label: 'Delete deck',
+      isDanger: true,
+      onSelect: () => setIsDeleteDeckModalOpen(true),
     });
   }
 
@@ -680,6 +716,8 @@ function DeckWordsPage() {
     }
   }
 
+  const previewOriginType = preview ? getDeckOriginType(preview) : 'personal';
+
   return (
     <section className="panel deck-preview-page">
       <div className="deck-preview-page__toolbar">
@@ -696,8 +734,15 @@ function DeckWordsPage() {
         <p className="eyebrow">Deck explorer</p>
         <div className="deck-preview__title-row">
           <h2>{preview.deck_title}</h2>
-          <span className={`deck-scope-chip ${isMarket ? 'deck-scope-chip--market' : 'deck-scope-chip--personal'}`}>
-            {isMarket ? 'Public · Market deck' : isLinked ? 'Personal copy' : 'Personal deck'}
+          <span className={`deck-scope-chip deck-scope-chip--${previewOriginType}`}>
+            <DeckOriginIcon type={previewOriginType} size={12} />
+            <span>
+              {previewOriginType === 'personal'
+                ? 'Personal deck'
+                : previewOriginType === 'managing'
+                  ? 'Managing · Maintainer'
+                  : 'Public · Market deck'}
+            </span>
           </span>
           {!canEdit ? <span className="deck-scope-chip deck-scope-chip--readonly">Read-only</span> : null}
         </div>
@@ -911,6 +956,29 @@ function DeckWordsPage() {
           deckId={preview.deck_id}
           onClose={() => setActiveSyncModal(null)}
           onSubmitted={() => setPreviewRefreshToken((token) => token + 1)}
+        />
+      ) : null}
+
+      {activeSyncModal === 'publish' ? (
+        <DeckPublishModal
+          deckId={preview.deck_id}
+          deckPreview={preview}
+          onClose={() => setActiveSyncModal(null)}
+          onPublished={() => {
+            setPreviewRefreshToken((token) => token + 1);
+          }}
+          onEditCard={(cardId) => {
+            setDetailsCardId(cardId);
+          }}
+        />
+      ) : null}
+
+      {isDeleteDeckModalOpen && preview ? (
+        <DeckDeleteModal
+          deck={{ ...preview, title: preview.deck_title }}
+          isPending={isDeleteDeckPending}
+          onClose={() => setIsDeleteDeckModalOpen(false)}
+          onConfirm={handleConfirmDeletePersonalDeck}
         />
       ) : null}
     </section>

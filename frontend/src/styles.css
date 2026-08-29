@@ -272,6 +272,44 @@ html {
   }
 }
 
+/* Deck type badge (icon code) */
+.deck-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.deck-type-badge svg {
+  flex-shrink: 0;
+}
+
+.deck-type-badge--personal {
+  background: rgba(47, 93, 107, 0.12);
+  border: 1px solid rgba(47, 93, 107, 0.22);
+  color: var(--accent);
+}
+
+.deck-type-badge--public {
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  color: #2563eb;
+}
+
+.deck-type-badge--managing {
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.28);
+  color: #7c3aed;
+}
+
 .deck-grid__status {
   margin: 0 0 1rem;
 }
@@ -2573,11 +2611,12 @@ html {
   margin: 0.15rem 0 0.35rem;
 }
 
-/* Whose deck is this? Personal (teal) vs public market (amber) chips sit
-   right next to the title so the answer is never ambiguous. */
+/* Whose deck is this? Personal (teal), public market (blue), or managing (purple) chips sit
+   right next to the title so the origin is never ambiguous. */
 .deck-scope-chip {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   padding: 3px 10px;
   border-radius: 999px;
   border: 1px solid var(--line);
@@ -2590,16 +2629,35 @@ html {
   white-space: nowrap;
 }
 
+.deck-scope-chip svg {
+  flex-shrink: 0;
+}
+
 .deck-scope-chip--personal {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent);
 }
 
-.deck-scope-chip--market {
-  border-color: var(--warning);
-  background: var(--warning-soft);
-  color: var(--warning-ink);
+.deck-scope-chip--market,
+.deck-scope-chip--public {
+  border-color: rgba(37, 99, 235, 0.3);
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+}
+
+.deck-scope-chip--managing {
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+}
+
+.deck-menu__item--danger {
+  color: var(--danger, #dc2626) !important;
+}
+
+.deck-menu__item--danger:hover {
+  background: rgba(220, 38, 38, 0.08) !important;
 }
 
 .deck-preview__status {
@@ -4087,7 +4145,21 @@ html {
 
 .h-decks__header-left {
   display: grid;
+  gap: 8px;
+}
+
+.h-decks__title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.h-decks__type-legend {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .h-decks__title {
@@ -4216,7 +4288,43 @@ html {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: 1.28;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.h-deck-card__title-end {
+  display: inline;
+  white-space: nowrap;
+}
+
+.h-deck-card__origin-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -1px;
+  margin-left: 5px;
+  flex-shrink: 0;
+  color: var(--muted);
+  opacity: 0.5;
+  transition: opacity 160ms ease, color 160ms ease;
+}
+
+.h-deck-card:hover .h-deck-card__origin-icon,
+.h-market-card:hover .h-deck-card__origin-icon {
+  opacity: 0.85;
+}
+
+.h-deck-card__origin-icon--personal {
+  color: var(--accent);
+}
+
+.h-deck-card__origin-icon--public {
+  color: #2563eb;
+}
+
+.h-deck-card__origin-icon--managing {
+  color: #7c3aed;
 }
 
 .h-deck-card__bottom {
