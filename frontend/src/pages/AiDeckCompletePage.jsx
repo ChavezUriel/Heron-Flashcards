@@ -1,11 +1,12 @@
 // AI deck completion page (/decks/complete).
 //
 // Steps:
-//   1. Pick a deck (home decks + maintained market decks)
-//   2. Free gap scan (DeckGapReport: missing examples, distractors, lexical fields)
-//   3. Choose what to do (mode + per-group checkboxes)
-//   4. Deck context (topic, difficulty, notes; "Infer from the deck" button)
-//   5. Provider & launch (AiProviderPanel, concurrency slider, start fill run)
+//   1. Choose the provider (AiProviderPanel, concurrency slider)
+//   2. Pick a deck (home decks + maintained market decks)
+//   3. Free gap scan (DeckGapReport: missing examples, distractors, lexical fields)
+//   4. Choose what to do (mode + per-group checkboxes)
+//   5. Deck context (topic, difficulty, notes; "Infer from the deck" button)
+//   6. Launch (ready to complete, start fill/audit run)
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
@@ -283,11 +284,41 @@ export default function AiDeckCompletePage() {
         </p>
       </header>
 
-      {/* --- Step 1: Pick a Deck --- */}
+      {/* --- Step 1: Choose the Provider --- */}
       <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-1">
         <StepHeader
           index="1"
-          title={<span id="ai-complete-step-1">Pick a deck to scan</span>}
+          title={<span id="ai-complete-step-1">Choose the provider</span>}
+          hint="Set up your AI key to infer context and complete your deck. Your key stays in this browser."
+        />
+
+        <AiProviderPanel
+          providerId={prefs.providerId}
+          onProviderChange={(providerId) => updatePrefs({ providerId })}
+          onCredentialChange={handleCredentialChange}
+        />
+
+        <label className="st-field">
+          <span className="st-field__label">Cards in parallel — {prefs.concurrency}</span>
+          <input
+            className="ai-range"
+            type="range"
+            min={CONCURRENCY_RANGE.min}
+            max={CONCURRENCY_RANGE.max}
+            value={prefs.concurrency}
+            onChange={(event) => updatePrefs({ concurrency: Number(event.target.value) })}
+          />
+          <span className="ai-provider__hint">
+            Higher is faster but more likely to hit your provider's rate limit. 3–4 is a safe start.
+          </span>
+        </label>
+      </section>
+
+      {/* --- Step 2: Pick a Deck --- */}
+      <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-2">
+        <StepHeader
+          index="2"
+          title={<span id="ai-complete-step-2">Pick a deck to scan</span>}
           hint="Select any personal deck or maintained market deck to inspect for missing fields."
         />
 
@@ -319,12 +350,12 @@ export default function AiDeckCompletePage() {
         )}
       </section>
 
-      {/* --- Step 2: Gap Report --- */}
+      {/* --- Step 3: Gap Report --- */}
       {selectedDeck ? (
-        <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-2">
+        <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-3">
           <StepHeader
-            index="2"
-            title={<span id="ai-complete-step-2">Deck Gap Report</span>}
+            index="3"
+            title={<span id="ai-complete-step-3">Deck Gap Report</span>}
             hint="Free, instant analysis of missing or incomplete cards — zero LLM calls."
           />
 
@@ -338,12 +369,12 @@ export default function AiDeckCompletePage() {
         </section>
       ) : null}
 
-      {/* --- Step 3: Choose What to Do --- */}
+      {/* --- Step 4: Choose What to Do --- */}
       {selectedDeck && scanResult ? (
-        <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-3">
+        <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-4">
           <StepHeader
-            index="3"
-            title={<span id="ai-complete-step-3">Choose what to do</span>}
+            index="4"
+            title={<span id="ai-complete-step-4">Choose what to do</span>}
             hint="Fill in blanks only (never touch existing values) or Audit and improve (re-evaluate and rewrite failing fields)."
           />
 
@@ -432,12 +463,12 @@ export default function AiDeckCompletePage() {
         </section>
       ) : null}
 
-      {/* --- Step 4: Deck Context --- */}
+      {/* --- Step 5: Deck Context --- */}
       {selectedDeck && scanResult ? (
-        <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-4">
+        <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-5">
           <StepHeader
-            index="4"
-            title={<span id="ai-complete-step-4">Deck context</span>}
+            index="5"
+            title={<span id="ai-complete-step-5">Deck context</span>}
             hint="Guiding context fed into every model prompt to keep examples and definitions cohesive."
           />
 
@@ -497,7 +528,7 @@ export default function AiDeckCompletePage() {
                 {inferring ? 'Inferring from deck…' : 'Infer from the deck'}
               </button>
               {!hasKey ? (
-                <span className="st-section__hint">Add a provider key in step 5 first.</span>
+                <span className="st-section__hint">Add a provider key in step 1 first.</span>
               ) : null}
               {inferError ? <span className="st-error">{inferError}</span> : null}
             </div>
@@ -505,64 +536,35 @@ export default function AiDeckCompletePage() {
         </section>
       ) : null}
 
-      {/* --- Step 5: Provider & Launch --- */}
+      {/* --- Launch Section --- */}
       {selectedDeck && scanResult ? (
-        <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-5">
-          <StepHeader
-            index="5"
-            title={<span id="ai-complete-step-5">Provider &amp; launch</span>}
-            hint="Run the fill job with your chosen LLM provider key, review the proposed diffs, and apply."
-          />
+        <section className="panel st-section ai-launch" aria-labelledby="ai-complete-step-launch">
+          <div>
+            <h2 className="st-section__title" id="ai-complete-step-launch">Ready to complete</h2>
+            <p className="st-section__hint">
+              {estimate.cards} card(s) · roughly {estimate.calls} model calls · {estimate.label}.
+              You will review all proposed diffs before anything is written to your deck.
+            </p>
+          </div>
 
-          <AiProviderPanel
-            providerId={prefs.providerId}
-            onProviderChange={(providerId) => updatePrefs({ providerId })}
-            onCredentialChange={handleCredentialChange}
-          />
+          {!hasKey ? (
+            <p className="st-error">Add an API key for {prefs.providerId} in step 1 to start.</p>
+          ) : null}
+          {selectedGroups.length === 0 ? (
+            <p className="st-error">Select at least one feature group to fill.</p>
+          ) : null}
+          {launchError ? <p className="st-error">{launchError}</p> : null}
 
-          <label className="st-field">
-            <span className="st-field__label">Cards in parallel — {prefs.concurrency}</span>
-            <input
-              className="ai-range"
-              type="range"
-              min={CONCURRENCY_RANGE.min}
-              max={CONCURRENCY_RANGE.max}
-              value={prefs.concurrency}
-              onChange={(event) => updatePrefs({ concurrency: Number(event.target.value) })}
-            />
-            <span className="ai-provider__hint">
-              Higher is faster but more likely to hit your provider's rate limit. 3–4 is a safe start.
-            </span>
-          </label>
-
-          <div className="ai-launch-box">
-            <div>
-              <h3 className="st-section__title">Ready to complete</h3>
-              <p className="st-section__hint">
-                {estimate.cards} card(s) · roughly {estimate.calls} model calls · {estimate.label}.
-                You will review all proposed diffs before anything is written to your deck.
-              </p>
-            </div>
-
-            {!hasKey ? (
-              <p className="st-error">Add an API key for {prefs.providerId} to start.</p>
-            ) : null}
-            {selectedGroups.length === 0 ? (
-              <p className="st-error">Select at least one feature group to fill.</p>
-            ) : null}
-            {launchError ? <p className="st-error">{launchError}</p> : null}
-
-            <div className="st-actions">
-              <button
-                type="button"
-                className="button button--primary"
-                disabled={!hasKey || selectedGroups.length === 0 || estimate.cards === 0}
-                onClick={handleStart}
-              >
-                Start {mode === 'audit' ? 'audit run' : 'fill run'} ({estimate.cards} cards)
-              </button>
-              <Link className="button button--secondary" to="/">Back to home</Link>
-            </div>
+          <div className="st-actions">
+            <button
+              type="button"
+              className="button button--primary"
+              disabled={!hasKey || selectedGroups.length === 0 || estimate.cards === 0}
+              onClick={handleStart}
+            >
+              Start {mode === 'audit' ? 'audit run' : 'fill run'} ({estimate.cards} cards)
+            </button>
+            <Link className="button button--secondary" to="/">Back to home</Link>
           </div>
         </section>
       ) : null}

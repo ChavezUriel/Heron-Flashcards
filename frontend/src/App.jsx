@@ -81,9 +81,10 @@ function App() {
         <nav className="app-header__links" aria-label="Account">
           <AiRunIndicator />
           <InstallButton />
-          {location.pathname === '/settings' ? (
+          {location.pathname !== '/' && (
             <Link to="/" className="back-link">Home</Link>
-          ) : (
+          )}
+          {location.pathname !== '/settings' && (
             <Link to="/settings" className="back-link">Settings</Link>
           )}
           <button onClick={handleLogout} className="back-link">

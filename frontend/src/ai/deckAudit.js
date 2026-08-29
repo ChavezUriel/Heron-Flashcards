@@ -109,6 +109,7 @@ export function fieldPresence(card) {
 export const FEATURE_GROUPS = [
   {
     id: 'fields',
+    type: 'structural',
     title: 'Core fields: lexical metadata, equivalents, synonyms',
     reasons: (card) => {
       const v = validateCard(card);
@@ -117,29 +118,34 @@ export const FEATURE_GROUPS = [
   },
   {
     id: 'examples',
+    type: 'structural',
     title: '3+ blankable example sentence pairs (fill-in-the-blank variety, migration 0019)',
     reasons: (card) => validateCard(card).examples,
   },
   {
     id: 'cloze-options',
+    type: 'structural',
     title: 'Curated cloze distractors for the word-bank cloze (migration 0018)',
     reasons: (card) => validateCard(card).clozeDistractors,
   },
   {
     id: 'field-audit',
-    title: 'LLM audit: part of speech, definition, translations, collocations, and synonyms are accurate for this sense',
+    type: 'audit',
+    title: 'AI field verification: part of speech, definition, and translations fit this sense',
     reasons: (card, deckCtx) =>
       cardStatus(card, deckCtx, { auditFields: true, auditExamples: false, auditCloze: false, wantCloze: false }).audits,
   },
   {
     id: 'example-audit',
-    title: 'LLM audit: examples fit the deck theme and imply the blanked answer',
+    type: 'audit',
+    title: 'AI example verification: examples fit deck context and imply the blank',
     reasons: (card, deckCtx) =>
       cardStatus(card, deckCtx, { auditFields: false, auditExamples: true, auditCloze: false, wantCloze: false }).audits,
   },
   {
     id: 'cloze-audit',
-    title: 'LLM audit: only the real answer fits the blank among the options',
+    type: 'audit',
+    title: 'AI cloze verification: only the intended answer fits the blank',
     reasons: (card, deckCtx) =>
       cardStatus(card, deckCtx, { auditFields: false, auditExamples: false, auditCloze: true, wantCloze: true }).audits,
   },
@@ -186,9 +192,11 @@ export function scanDeck(rawCards = [], deckCtx = {}, quality = true) {
 
     const reasons = {};
     const failingFeatures = [];
+    const structuralFails = [];
+    const auditFails = [];
 
     for (const feature of FEATURE_GROUPS) {
-      if (!quality && (feature.id === 'field-audit' || feature.id === 'example-audit' || feature.id === 'cloze-audit')) {
+      if (!quality && feature.type === 'audit') {
         reasons[feature.id] = [];
         continue;
       }
@@ -197,18 +205,26 @@ export function scanDeck(rawCards = [], deckCtx = {}, quality = true) {
       if (featureReasons.length > 0) {
         featureCounts[feature.id] = (featureCounts[feature.id] || 0) + 1;
         failingFeatures.push(feature.id);
+        if (feature.type === 'structural') {
+          structuralFails.push(feature.id);
+        } else {
+          auditFails.push(feature.id);
+        }
       }
     }
 
-    const needsWork = failingFeatures.length > 0;
+    // A card only "needs work" if it is missing essential structural data or has invalid syntax
+    const hasStructuralGap = structuralFails.length > 0;
+    const isUnaudited = auditFails.length > 0;
+    const needsWork = hasStructuralGap;
     if (needsWork) {
       cardsNeedingWork += 1;
     }
 
-    if (presence.examples === 'empty') {
+    if (presence.examples === 'empty' || presence.examples === 'partial') {
       missingExamples += 1;
     }
-    if (presence.clozeDistractors === 'empty') {
+    if (presence.clozeDistractors === 'empty' || presence.clozeDistractors === 'partial') {
       missingClozeDistractors += 1;
     }
 
@@ -246,12 +262,17 @@ export function scanDeck(rawCards = [], deckCtx = {}, quality = true) {
       audits: status.audits || [],
       reasons,
       failingFeatures,
+      structuralFails,
+      auditFails,
+      hasStructuralGap,
+      isUnaudited,
       needsWork,
     };
   });
 
   const perFeature = FEATURE_GROUPS.map((f) => ({
     id: f.id,
+    type: f.type,
     title: f.title,
     count: featureCounts[f.id] || 0,
   }));

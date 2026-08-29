@@ -124,11 +124,38 @@ function AiDeckBuilderPage() {
         </p>
       </header>
 
-      <section className="panel st-section ai-step" aria-labelledby="ai-step-idea">
+      <section className="panel st-section ai-step" aria-labelledby="ai-step-provider">
         <StepHeader
           index="1"
+          title={<span id="ai-step-provider">Choose the provider</span>}
+          hint="You pay your provider directly. Set up your AI key to populate specifications and generate cards. Your key stays in this browser."
+        />
+        <AiProviderPanel
+          providerId={prefs.providerId}
+          onProviderChange={(providerId) => updatePrefs({ providerId })}
+          onCredentialChange={handleCredentialChange}
+        />
+        <label className="st-field">
+          <span className="st-field__label">Cards in parallel — {prefs.concurrency}</span>
+          <input
+            className="ai-range"
+            type="range"
+            min={CONCURRENCY_RANGE.min}
+            max={CONCURRENCY_RANGE.max}
+            value={prefs.concurrency}
+            onChange={(event) => updatePrefs({ concurrency: Number(event.target.value) })}
+          />
+          <span className="ai-provider__hint">
+            Higher is faster but more likely to hit your provider's rate limit. 3–4 is a safe start.
+          </span>
+        </label>
+      </section>
+
+      <section className="panel st-section ai-step" aria-labelledby="ai-step-idea">
+        <StepHeader
+          index="2"
           title={<span id="ai-step-idea">Describe the deck</span>}
-          hint="One or two sentences is enough. The assistant turns it into a full specification you can edit."
+          hint="One or two sentences is enough. The assistant uses your AI key to turn it into a full specification you can edit."
         />
         <label className="st-field">
           <span className="st-field__label">What should this deck teach?</span>
@@ -149,14 +176,14 @@ function AiDeckBuilderPage() {
           >
             {assistant.status === 'working' ? 'Drafting…' : 'Draft the specification'}
           </button>
-          {!hasKey ? <span className="st-section__hint">Add a provider key in step 3 first.</span> : null}
+          {!hasKey ? <span className="st-section__hint">Add a provider key in step 1 first.</span> : null}
           {assistant.status === 'error' ? <span className="st-error">{assistant.error}</span> : null}
         </div>
       </section>
 
       <section className="panel st-section ai-step" aria-labelledby="ai-step-spec">
         <StepHeader
-          index="2"
+          index="3"
           title={<span id="ai-step-spec">Review the specification</span>}
           hint="Every field below is fed to the model as deck context. Edit it as a form or as YAML you can save and re-run."
         />
@@ -201,33 +228,6 @@ function AiDeckBuilderPage() {
             </div>
           ) : null}
         </div>
-      </section>
-
-      <section className="panel st-section ai-step" aria-labelledby="ai-step-provider">
-        <StepHeader
-          index="3"
-          title={<span id="ai-step-provider">Choose the provider</span>}
-          hint="You pay your provider directly. Nothing is billed by this app, and no key is sent to its database."
-        />
-        <AiProviderPanel
-          providerId={prefs.providerId}
-          onProviderChange={(providerId) => updatePrefs({ providerId })}
-          onCredentialChange={handleCredentialChange}
-        />
-        <label className="st-field">
-          <span className="st-field__label">Cards in parallel — {prefs.concurrency}</span>
-          <input
-            className="ai-range"
-            type="range"
-            min={CONCURRENCY_RANGE.min}
-            max={CONCURRENCY_RANGE.max}
-            value={prefs.concurrency}
-            onChange={(event) => updatePrefs({ concurrency: Number(event.target.value) })}
-          />
-          <span className="ai-provider__hint">
-            Higher is faster but more likely to hit your provider's rate limit. 3–4 is a safe start.
-          </span>
-        </label>
       </section>
 
       <section className="panel st-section ai-launch" aria-labelledby="ai-step-launch">
