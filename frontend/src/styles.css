@@ -227,20 +227,27 @@ html {
   flex-shrink: 0;
 }
 
-.deck-card__explore-button {
+.deck-card__explore-button,
+.deck-card__check-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.15rem;
-  height: 2.15rem;
+  width: 1.85rem;
+  height: 1.85rem;
   padding: 0;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--surface);
-  color: var(--accent);
+  color: transparent;
   cursor: pointer;
   text-decoration: none;
-  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.deck-card__explore-button {
+  width: 2.15rem;
+  height: 2.15rem;
+  color: var(--accent);
 }
 
 .deck-card__explore-button:hover {
@@ -249,14 +256,51 @@ html {
   border-color: var(--accent);
 }
 
-.deck-card__explore-button:focus-visible {
-  outline: 3px solid rgba(47, 93, 107, 0.22);
+.deck-card__check-button {
+  border-color: rgba(34, 42, 45, 0.16);
+  background: transparent;
+}
+
+.deck-card__check-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(47, 93, 107, 0.36);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.deck-card__check-button--checked {
+  background: rgba(47, 93, 107, 0.12);
+  border-color: rgba(47, 93, 107, 0.28);
+  color: var(--accent);
+}
+
+.deck-card__check-button--checked:hover {
+  background: rgba(47, 93, 107, 0.2);
+  border-color: var(--accent);
+  color: var(--primary-dark);
+}
+
+.deck-card__explore-button:focus-visible,
+.deck-card__check-button:focus-visible {
+  outline: 2px solid rgba(47, 93, 107, 0.28);
   outline-offset: 2px;
 }
 
 .deck-card__explore-button svg {
   width: 1.1rem;
   height: 1.1rem;
+  flex-shrink: 0;
+}
+
+.deck-card__check-button svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+  transition: transform 140ms ease;
+}
+
+.deck-card__check-button--checked svg {
+  transform: scale(1);
 }
 
 @media (max-width: 720px) {
@@ -269,6 +313,16 @@ html {
   .deck-card__explore-button svg {
     width: 1.25rem;
     height: 1.25rem;
+  }
+
+  .deck-card__check-button {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+
+  .deck-card__check-button svg {
+    width: 1.15rem;
+    height: 1.15rem;
   }
 }
 

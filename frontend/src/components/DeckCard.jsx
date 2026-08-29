@@ -64,16 +64,19 @@ function DeckCard({
     navigate(`/decks/${deck.id}/words`, { state: { from: variant } });
   }
 
-  function handleTogglePractice() {
+  function handleTogglePractice(event) {
+    if (event) {
+      event.stopPropagation();
+    }
     if (variant !== 'home') return;
     onToggleSmartPractice?.(deck.id, !isPracticeEnabled);
   }
 
-  function handleKeyDown(event) {
+  function handleCardKeyDown(event) {
     if (variant !== 'home') return;
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      handleTogglePractice();
+      handleOpenDeck();
     }
   }
 
@@ -91,10 +94,10 @@ function DeckCard({
         ].filter(Boolean).join(' ')}
         role="button"
         tabIndex={0}
-        aria-pressed={isPracticeEnabled}
+        aria-label={`Open ${deck.title} deck explorer`}
         aria-busy={isPending}
-        onClick={handleTogglePractice}
-        onKeyDown={handleKeyDown}
+        onClick={handleOpenDeck}
+        onKeyDown={handleCardKeyDown}
       >
         <div className="h-deck-card__top">
           <div className="h-deck-card__title">
@@ -102,18 +105,31 @@ function DeckCard({
           </div>
           <div className="h-deck-card__top-actions">
             <button
-              className="deck-card__explore-button"
+              className={`deck-card__check-button ${isPracticeEnabled ? 'deck-card__check-button--checked' : ''}`}
               type="button"
-              aria-label={`Open ${deck.title} deck explorer`}
-              title="Open your copy in the deck explorer"
-              onClick={(e) => { e.stopPropagation(); handleOpenDeck(); }}
-              onKeyDown={(e) => e.stopPropagation()}
+              role="checkbox"
+              aria-checked={isPracticeEnabled}
+              aria-label={isPracticeEnabled ? `Exclude ${deck.title} from practice session` : `Include ${deck.title} in practice session`}
+              title={isPracticeEnabled ? 'Active in practice — click to pause' : 'Paused — click to include in practice'}
+              disabled={isPending}
+              onClick={handleTogglePractice}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  handleTogglePractice(e);
+                }
+              }}
             >
-              <svg fill="currentColor" viewBox="0 0 36 36" aria-hidden="true">
-                <path d="M15,17H4a2,2,0,0,1-2-2V8A2,2,0,0,1,4,6H15a2,2,0,0,1,2,2v7A2,2,0,0,1,15,17ZM4,8v7H15V8Z" />
-                <path d="M32,17H21a2,2,0,0,1-2-2V8a2,2,0,0,1,2-2H32a2,2,0,0,1,2,2v7A2,2,0,0,1,32,17ZM21,8v7H32V8Z" />
-                <path d="M15,30H4a2,2,0,0,1-2-2V21a2,2,0,0,1,2-2H15a2,2,0,0,1,2,2v7A2,2,0,0,1,15,30ZM4,21v7H15V21Z" />
-                <path d="M32,30H21a2,2,0,0,1-2-2V21a2,2,0,0,1,2-2H32a2,2,0,0,1,2,2v7A2,2,0,0,1,32,30ZM21,21v7H32V21Z" />
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  d="M20 6.5L9 17.5l-5-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.1"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </button>
           </div>
