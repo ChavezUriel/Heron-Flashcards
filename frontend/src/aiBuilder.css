@@ -1588,6 +1588,390 @@
   line-height: 1.45;
 }
 
+/* ==========================================================================
+   Single Card AI Review & Fixes (.card-ai-panel)
+   ========================================================================== */
+
+.details-modal__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.details-modal__header-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.details-modal__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.button--ai-review {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  transition: all 160ms ease;
+}
+
+.button--ai-review:hover:not(:disabled) {
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+}
+
+.button--ai-review:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.button--ai-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+}
+
+.card-ai-panel {
+  margin: 0.85rem 0 1rem;
+  padding: 1rem 1.15rem;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  display: grid;
+  gap: 0.85rem;
+  animation: cardAiFadeIn 200ms ease;
+}
+
+@keyframes cardAiFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-ai-panel--loading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--accent-soft);
+  border-color: rgba(var(--accent-rgb, 46, 125, 90), 0.25);
+}
+
+.card-ai-panel--loading h4 {
+  margin: 0 0 0.2rem;
+  font-size: 0.94rem;
+  color: var(--ink);
+}
+
+.card-ai-panel--loading p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.card-ai-spinner {
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 2.5px solid rgba(var(--accent-rgb, 46, 125, 90), 0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: cardAiSpin 700ms linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes cardAiSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.card-ai-panel--passed {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  background: rgba(46, 125, 90, 0.08);
+  border-color: rgba(46, 125, 90, 0.3);
+}
+
+.card-ai-panel__icon--passed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: rgba(46, 125, 90, 0.15);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.card-ai-panel--passed h4 {
+  margin: 0 0 0.15rem;
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+
+.card-ai-panel--passed p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.card-ai-panel--issues {
+  background: rgba(220, 150, 40, 0.07);
+  border-color: rgba(220, 150, 40, 0.35);
+}
+
+.card-ai-panel--fixes {
+  background: rgba(46, 125, 90, 0.06);
+  border-color: rgba(46, 125, 90, 0.3);
+}
+
+.card-ai-panel--warning {
+  background: rgba(220, 150, 40, 0.08);
+  border-color: rgba(220, 150, 40, 0.3);
+}
+
+.card-ai-panel--error {
+  background: rgba(166, 75, 60, 0.08);
+  border-color: rgba(166, 75, 60, 0.3);
+}
+
+.card-ai-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.card-ai-panel__head-title {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.card-ai-panel__summary {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.card-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.card-ai-badge--warning {
+  background: rgba(220, 150, 40, 0.18);
+  color: var(--warning-ink, #945800);
+}
+
+.card-ai-badge--success {
+  background: rgba(46, 125, 90, 0.16);
+  color: var(--accent);
+}
+
+.card-ai-issues-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.card-ai-issue-item {
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 0.3rem;
+}
+
+.card-ai-issue-item--high,
+.card-ai-issue-item--critical {
+  border-left: 3px solid var(--danger);
+}
+
+.card-ai-issue-item--medium {
+  border-left: 3px solid var(--warning, #d97706);
+}
+
+.card-ai-issue-item--low {
+  border-left: 3px solid var(--muted);
+}
+
+.card-ai-issue-item__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.card-ai-field-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.card-ai-severity-tag {
+  font-size: 0.68rem;
+  font-family: var(--mono-font);
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.card-ai-issue-item__msg {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.card-ai-issue-item__hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--accent);
+  line-height: 1.35;
+}
+
+.card-ai-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.card-ai-diff-container {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.card-ai-diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.card-ai-diff-table th {
+  padding: 0.5rem 0.65rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  font-family: var(--mono-font);
+  font-weight: 600;
+}
+
+.card-ai-diff-table td {
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  line-height: 1.4;
+}
+
+.card-ai-diff-table tr:last-child td {
+  border-bottom: none;
+}
+
+.card-ai-diff-col-field {
+  width: 26%;
+  color: var(--ink);
+}
+
+.card-ai-diff-col-from {
+  width: 37%;
+}
+
+.card-ai-diff-col-to {
+  width: 37%;
+}
+
+.card-ai-diff-row--changed {
+  background: rgba(46, 125, 90, 0.05);
+}
+
+.card-ai-change-pill {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-family: var(--mono-font);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.card-ai-diff-text--from {
+  color: var(--muted);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.card-ai-diff-text--to {
+  color: var(--ink);
+  font-weight: 500;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.card-ai-diff-empty {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.78rem;
+}
+
+.card-ai-toast {
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(46, 125, 90, 0.12);
+  border: 1px solid rgba(46, 125, 90, 0.3);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: cardAiFadeIn 180ms ease;
+}
+
+
 
 
 

@@ -32,6 +32,8 @@ export const PROMPT_VERSIONS = {
   fieldAudit: 'audit-fields-v2',
   safetyAudit: 'audit-safety-v1',
   deckSafetyAudit: 'audit-deck-safety-v1',
+  singleCardReview: 'review-single-card-v1',
+  singleCardFix: 'fix-single-card-v1',
 };
 
 // How many example sentence pairs a card carries.
@@ -450,5 +452,111 @@ export function deckSafetyAuditPrompt(deckMeta, sampleCards = []) {
 
   return { system, user, temperature: 0 };
 }
+
+// ---- Single card AI Review & Fix --------------------------------------------
+export function cardSingleReviewPrompt(card, deck) {
+  const system =
+    'You are an expert bilingual Spanish-English linguistic and educational quality auditor for flashcards. ' +
+    'Evaluate the card for translation accuracy, parts of speech, definition quality, collocations, synonyms, example sentences, and policy/safety guidelines. Return JSON only.';
+  const user = JSON.stringify({
+    task: 'Review this Spanish-to-English flashcard for quality, accuracy, and completeness.',
+    deck: deck ? deckContext(deck) : undefined,
+    card: {
+      prompt_es: card.prompt_es ?? card.spanish_text,
+      answer_en: card.answer_en ?? card.english_text,
+      section_name: card.section_name || undefined,
+      part_of_speech: card.part_of_speech || undefined,
+      definition_en: card.definition_en || undefined,
+      main_translations_es: Array.isArray(card.main_translations_es) ? card.main_translations_es : [],
+      collocations: Array.isArray(card.collocations) ? card.collocations : [],
+      synonyms_en: Array.isArray(card.synonyms_en) ? card.synonyms_en : [],
+      examples: (Array.isArray(card.examples) ? card.examples : [])
+        .map((p) => ({ es: p?.es ?? p?.example_es ?? '', en: p?.en ?? p?.example_en ?? '' }))
+        .filter((p) => p.es || p.en),
+    },
+    required_output: {
+      has_issues: 'boolean (true if any errors, inaccuracies, missing essential metadata, or quality issues are found; false if the card is completely high quality and accurate)',
+      overall_status: 'pass | needs_fix',
+      summary: '1-2 sentence overall review verdict in English',
+      issues: [
+        {
+          field: 'prompt_es | answer_en | part_of_speech | definition_en | main_translations_es | collocations | synonyms_en | examples | general',
+          severity: 'low | medium | high',
+          message: 'Clear, concise English explanation of what is wrong or needs improvement',
+          suggestion: 'Actionable suggestion on how it should be fixed',
+        },
+      ],
+    },
+    rules: [
+      'Evaluate whether the Spanish prompt and English answer are correct, natural translations of each other in a language learning context.',
+      'Evaluate whether part_of_speech accurately describes the English answer (noun, verb, adjective, phrase, etc.).',
+      'Evaluate whether definition_en is concise, natural English, and in English only (not Spanish).',
+      'Evaluate whether main_translations_es are natural Spanish translations of the prompt (in Spanish only).',
+      'Evaluate whether collocations are natural English collocations of the English answer (in English only).',
+      'Evaluate whether synonyms_en are genuine English synonyms for the English answer in this sense (in English only, NOT translations).',
+      'Evaluate whether example sentences provide at least 3 natural bilingual pairs where the English sentence contains the answer verbatim in natural context.',
+      'Flag any missing or incomplete fields as issues if they should be populated.',
+      'Flag any false friends (e.g. "embarazada" vs "embarrassed"), severe typos, or mistranslations as high severity issues.',
+      'If the card is completely accurate, well-formatted, and high-quality, set has_issues to false, overall_status to "pass", and issues to [].',
+      'Return JSON only, no markdown or commentary.',
+    ],
+  });
+  return { system, user, temperature: 0 };
+}
+
+export function cardSingleFixPrompt(card, issues, deck) {
+  const system =
+    'You are an expert bilingual Spanish-English lexicographer and curriculum designer. ' +
+    'Generate complete, high-quality, corrected fields for a Spanish to English flashcard, resolving all identified issues. Return JSON only.';
+  const user = JSON.stringify({
+    task: 'Generate corrected and complete flashcard fields fixing all reported issues.',
+    deck: deck ? deckContext(deck) : undefined,
+    original_card: {
+      prompt_es: card.prompt_es ?? card.spanish_text,
+      answer_en: card.answer_en ?? card.english_text,
+      section_name: card.section_name || undefined,
+      part_of_speech: card.part_of_speech || undefined,
+      definition_en: card.definition_en || undefined,
+      main_translations_es: Array.isArray(card.main_translations_es) ? card.main_translations_es : [],
+      collocations: Array.isArray(card.collocations) ? card.collocations : [],
+      synonyms_en: Array.isArray(card.synonyms_en) ? card.synonyms_en : [],
+      examples: (Array.isArray(card.examples) ? card.examples : [])
+        .map((p) => ({ es: p?.es ?? p?.example_es ?? '', en: p?.en ?? p?.example_en ?? '' }))
+        .filter((p) => p.es || p.en),
+    },
+    issues_to_fix: (issues || []).map((i) => typeof i === 'string' ? i : `${i.field ? `[${i.field}] ` : ''}${i.message || i.suggestion || ''}`),
+    required_output: {
+      prompt_es: 'string (corrected Spanish prompt)',
+      answer_en: 'string (corrected English answer)',
+      section_name: 'string or null',
+      part_of_speech: 'string (e.g. noun, verb, adjective, phrase, etc.)',
+      definition_en: 'string (concise, natural English definition in English only)',
+      main_translations_es: ['string (1 to 3 natural Spanish translations of the prompt)'],
+      collocations: ['string (2 to 4 common English collocations for the answer)'],
+      synonyms_en: ['string (1 to 3 English synonyms in English only)'],
+      examples: [
+        {
+          es: 'string (natural Spanish example sentence)',
+          en: 'string (natural English example sentence containing the English answer verbatim)',
+        },
+      ],
+      explanation: 'Short 1-2 sentence explanation of the fixes applied',
+    },
+    rules: [
+      'Preserve any fields from the original card that are already correct and accurate.',
+      'Fix all problems specified in issues_to_fix.',
+      'Ensure prompt_es and answer_en are exact, high-quality counterparts.',
+      'definition_en must be in English only.',
+      'main_translations_es must be 1 to 3 Spanish translations in Spanish only.',
+      'collocations must be 2 to 4 English collocations in English only.',
+      'synonyms_en must be 1 to 3 English synonyms in English only.',
+      'Provide exactly 3 high-quality example sentence pairs in examples.',
+      'Every English example must contain the English answer VERBATIM (uninflected and uninterrupted).',
+      'Return JSON only, no markdown or commentary.',
+    ],
+  });
+  return { system, user, temperature: 0.2 };
+}
+
 
 

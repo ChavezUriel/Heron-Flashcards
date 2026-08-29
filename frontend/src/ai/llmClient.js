@@ -6,14 +6,14 @@
 // (`chatJson({ system, user, temperature }) -> object`) so the ported pipeline
 // works unchanged.
 
-import { getProvider } from './providers';
+import { getProvider } from './providers.js';
 import {
   buildLlmRequest,
   parseLlmResponse,
   buildModelsRequest,
   parseModelsResponse,
   describeUpstreamError,
-} from './transport';
+} from './transport.js';
 
 const PROXY_PATH = '/api/llm';
 const REQUEST_TIMEOUT_MS = 180_000;

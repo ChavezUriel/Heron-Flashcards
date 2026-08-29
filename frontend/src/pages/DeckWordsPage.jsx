@@ -911,6 +911,7 @@ function DeckWordsPage() {
       {detailsCard ? (
         <CardDetailsModal
           card={detailsCard}
+          deck={preview ? { title: preview.deck_title, description: preview.deck_description } : undefined}
           isPending={pendingCardIds.includes(detailsCard.card_id)}
           onClose={() => setDetailsCardId(null)}
           onSave={canEdit ? (values) => handleSaveCard(detailsCard.card_id, values) : undefined}

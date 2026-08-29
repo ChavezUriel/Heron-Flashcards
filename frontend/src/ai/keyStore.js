@@ -9,7 +9,7 @@
 // The generator reads the key once when a run starts and keeps it in memory for
 // the duration of that run.
 
-import { DEFAULT_PROVIDER_ID, getProvider, PROVIDER_IDS } from './providers';
+import { DEFAULT_PROVIDER_ID, getProvider, PROVIDER_IDS } from './providers.js';
 
 const STORAGE_KEY = 'duocards.aiCredentials';
 const PREFS_KEY = 'duocards.aiBuilderPrefs';
