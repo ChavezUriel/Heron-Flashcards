@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { claimMarketDeck, fetchMarketDecks, updateDeckHomeSelection } from '../api';
 import DeckCard from '../components/DeckCard';
+import { normalizeSearchText } from '../textSearch';
 
 function HomeIcon() {
   return (
@@ -11,16 +12,6 @@ function HomeIcon() {
       <path d="M10 20v-5.25h4V20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
-}
-
-function normalizeSearchText(value) {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, ' ')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 function sortDecks(decks) {

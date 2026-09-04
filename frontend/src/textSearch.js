@@ -3,11 +3,12 @@
 // diacritics stripped, punctuation collapsed to single spaces.
 
 export function normalizeSearchText(value) {
-  return value
+  if (value == null) return '';
+  return String(value)
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -32,14 +33,14 @@ export function scoreFieldMatch(fieldValue, query) {
 // that would break the index map — so multi-term queries are matched term by
 // term instead of as a whole phrase.
 function normalizeWithIndexMap(text) {
-  const lower = text.toLowerCase();
+  const lower = (text ?? '').toLowerCase();
   const chars = [];
   const map = [];
   for (let index = 0; index < lower.length; index += 1) {
     const decomposed = lower[index].normalize('NFD').replace(/[̀-ͯ]/g, '');
     for (const char of decomposed) {
-      chars.push(/[a-z0-9]/.test(char) ? char : ' ');
-      map.push(Math.min(index, text.length - 1));
+      chars.push(/[\p{L}\p{N}]/u.test(char) ? char : ' ');
+      map.push(Math.min(index, (text ?? '').length - 1));
     }
   }
   return { normalized: chars.join(''), map };

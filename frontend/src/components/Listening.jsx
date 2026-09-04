@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { cancelSpeech, canUseSpeechSynthesis, speak } from '../speech';
+import { cancelSpeech, canUseSpeechSynthesis, speak, speechLangFor } from '../speech';
 import { pickCardExample } from '../minigameText';
 
 // Tier-C encoding aid (docs/minigames.md §3.1, §4 #11) shown on a NEW card's very
@@ -13,7 +13,7 @@ import { pickCardExample } from '../minigameText';
 // Audio does NOT autoplay on mount (browsers block it and it's jarring); the Play
 // button is focused instead, and the flow still completes with speech unavailable —
 // reveal + Continue never depend on audio.
-function Listening({ card, onResolve, onOpenDetails }) {
+function Listening({ card, onResolve, onOpenDetails, languageTo }) {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const activeExample = pickCardExample(card);
@@ -22,6 +22,7 @@ function Listening({ card, onResolve, onOpenDetails }) {
   const hasResolvedRef = useRef(false);
   const speakTokenRef = useRef(0);
 
+  const targetLang = speechLangFor(languageTo ?? card?.language_to ?? card?.deck?.language_to ?? 'en');
   const hasSpeech = canUseSpeechSynthesis() && Boolean((card.answer_en ?? '').trim());
 
   // Focus the primary control for the current stage so Enter/Space always has a
@@ -46,7 +47,7 @@ function Listening({ card, onResolve, onOpenDetails }) {
     }
     const token = (speakTokenRef.current += 1);
     const utterance = speak(card.answer_en, {
-      lang: 'en-US',
+      lang: targetLang,
       onEnd: () => {
         if (speakTokenRef.current === token) {
           setIsSpeaking(false);

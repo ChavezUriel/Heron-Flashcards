@@ -1,5 +1,6 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { pickCardExample } from '../minigameText';
+import { speechLangFor } from '../speech';
 
 const AUTO_SPEECH_DEDUPE_WINDOW_MS = 750;
 const TAP_REVEAL_TOLERANCE_PX = 12;
@@ -162,6 +163,8 @@ function Flashcard({
   hideRevealButtonOnMobile = false,
   isIdleHintVisible = false,
   actionsRef,
+  languageTo,
+  languageFrom,
   onReveal,
   onToggleReveal,
   onOpenDetails,
@@ -193,6 +196,8 @@ function Flashcard({
   const [enterGeneration, setEnterGeneration] = useState(0);
 
   const displayCard = exitCardRef.current ?? card;
+  const targetLang = speechLangFor(languageTo ?? displayCard?.language_to ?? card?.language_to ?? card?.deck?.language_to ?? 'en');
+  const sourceLang = speechLangFor(languageFrom ?? displayCard?.language_from ?? card?.language_from ?? card?.deck?.language_from ?? 'es');
   const activeExample = pickCardExample(displayCard);
   const isBackVisible = exitDirection ? true : isAnswerVisible;
   const hasAnswerSpeech = canUseSpeechSynthesis() && Boolean(normalizeSpeechText(displayCard.answer_en));
@@ -277,7 +282,7 @@ function Flashcard({
     stopSpeech();
 
     const utterance = new window.SpeechSynthesisUtterance(speechText);
-    utterance.lang = lang;
+    utterance.lang = speechLangFor(lang);
     utterance.rate = 0.92;
     utterance.onend = () => {
       if (activeUtteranceRef.current === utterance) {
@@ -300,8 +305,8 @@ function Flashcard({
   }, [card.card_id]);
 
   useEffect(() => {
-    speakText(card.prompt_es, 'es-ES', `prompt:${card.card_id}:${card.prompt_es}`);
-  }, [card.card_id, card.prompt_es]);
+    speakText(card.prompt_es, sourceLang, `prompt:${card.card_id}:${card.prompt_es}`);
+  }, [card.card_id, card.prompt_es, sourceLang]);
 
   useEffect(() => {
     const wasAnswerVisible = previousAnswerVisibleRef.current;
@@ -312,8 +317,8 @@ function Flashcard({
     }
 
     hasAutoSpokenAnswerRef.current = true;
-    speakText(card.answer_en, 'en-US', `answer:${card.card_id}:${card.answer_en}`);
-  }, [card.answer_en, card.card_id, isAnswerVisible]);
+    speakText(card.answer_en, targetLang, `answer:${card.card_id}:${card.answer_en}`);
+  }, [card.answer_en, card.card_id, isAnswerVisible, targetLang]);
 
   useEffect(() => () => {
     stopSpeech();
@@ -329,7 +334,7 @@ function Flashcard({
       return;
     }
 
-    speakText(displayCard.answer_en, 'en-US', `manual-answer:${displayCard.card_id}:${Date.now()}`);
+    speakText(displayCard.answer_en, targetLang, `manual-answer:${displayCard.card_id}:${Date.now()}`);
   }
 
   function handlePointerDown(event) {
