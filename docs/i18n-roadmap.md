@@ -286,3 +286,61 @@ every other. Once pairs exist that produces incoherent collaboration —
 
 **Acceptance:** a `fr→en` learner sees `fr→en` decks by default and cannot
 propose edits to an `es→en` deck.
+
+---
+
+## Status — resume here
+
+P0 through P5 are complete and committed on `feat/language-agnostic`.
+P6 is partially complete. P7 has not started.
+
+**P6 done:** `src/i18n.js` (react-i18next + ICU plugin),
+`src/context/LocaleContext.jsx` backed by `profiles.ui_locale`, locale files
+for all six Tier 1 UI locales under `src/locales/`, and the shared components
+(modals, badges, tabs, run indicator, minigame feedback and hints, auth panel,
+install button).
+
+**P6 remaining** — 31 files still carry literal UI strings. Follow the key
+structure and ICU plural style already established in `src/locales/en.json`
+and the extracted components; add every new key to all six locale files
+together so none drifts. Ordered by density:
+
+| File | Literals |
+|---|---|
+| `pages/SettingsPage.jsx` | 68 |
+| `components/CardDetailsModal.jsx` | 37 |
+| `pages/AiDeckCompletePage.jsx` | 35 |
+| `pages/DeckWordsPage.jsx` | 34 |
+| `pages/HomePage.jsx` | 25 |
+| `pages/DeckRunPage.jsx` | 17 |
+| `components/DeckSpecEditor.jsx` | 16 |
+| `pages/PracticePage.jsx` | 15 |
+| `pages/ProposalsPage.jsx`, `pages/AiDeckBuilderPage.jsx` | 14 |
+| `pages/ResetPasswordPage.jsx`, `components/ProposeChangesModal.jsx`, `components/DeckGapReport.jsx` | 12 |
+| `components/ProposedChangeList.jsx` | 10 |
+| `pages/RegisterPage.jsx`, `components/AiProviderPanel.jsx` | 8 |
+| `pages/MarketPage.jsx`, `pages/LoginPage.jsx` | 7 |
+| `pages/ReviewPage.jsx`, `pages/ForgotPasswordPage.jsx`, `components/GeneratedCardList.jsx`, `components/Flashcard.jsx` | 6 |
+| `components/SynonymMatch.jsx`, `components/Listening.jsx` | 5 |
+| `components/MultipleChoice.jsx`, `components/DeckCard.jsx` | 4 |
+| `components/TypeTranslation.jsx`, `components/RecallFromDefinition.jsx`, `components/InterstitialHost.jsx`, `components/Hangman.jsx`, `components/ClozeType.jsx` | 3 |
+
+Still outstanding within P6: locale-aware dates and numbers, and the
+`localeCompare` call in `MarketPage.jsx` that takes no locale argument.
+
+### Notes for whoever picks this up
+
+- The CommonJS libs under `supabase/scripts/lib` are no longer hand-synced
+  copies. `prompts.cjs`, `validate.cjs`, `minigame_text.cjs`, `seed_decks.cjs`
+  and `enrich.cjs` each re-export the corresponding module in
+  `frontend/src/ai/`, so the CLI cannot drift from the app. Do not
+  reintroduce a parallel implementation.
+- `public.cards_legacy` is read-only (plain view, `select` grant, no
+  `INSTEAD OF` triggers). It is for readers during the transition. Anything
+  that writes must use the role-named columns.
+- Card objects still accept the legacy `*_es` / `*_en` field names on input
+  and RPC payloads still dual-emit `prompt_es` / `answer_en`, both
+  deliberately, for deploy ordering. Output is role-named.
+- `generator.js` `computeCardPatch`, the `DeckRunPage` update whitelist and
+  `generate_cards.cjs` seed serialization still read the legacy field names.
+  Retiring those is a separate change, not part of P6 or P7.
