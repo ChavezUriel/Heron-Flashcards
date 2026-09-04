@@ -16,6 +16,9 @@ import {
 import { validateCard, flatten, hasIssues, hasWarnings, flattenWarnings } from '../../../frontend/src/ai/validate.js';
 import * as esmValidate from '../../../frontend/src/ai/validate.js';
 import { locateAnswerInExample } from '../../../frontend/src/ai/cardText.js';
+import * as esmCardText from '../../../frontend/src/ai/cardText.js';
+import * as esmMinigameText from '../../../frontend/src/minigameText.js';
+import { getLanguage, getPair, isGameSupportedForLanguage } from '../../../frontend/src/languages.js';
 import * as esmPrompts from '../../../frontend/src/ai/prompts.js';
 import { validateModelTier } from '../../../frontend/src/ai/providers.js';
 
@@ -23,6 +26,7 @@ const require = createRequire(import.meta.url);
 const cjsEnrich = require('../../scripts/lib/enrich.cjs');
 const cjsPrompts = require('../../scripts/lib/prompts.cjs');
 const cjsValidate = require('../../scripts/lib/validate.cjs');
+const cjsMinigameText = require('../../scripts/lib/minigame_text.cjs');
 const { normCard } = require('../../scripts/lib/cards.cjs');
 
 const DECK = { slug: 'travel', title: 'Travel Phrases', description: 'Short phrases for transport, directions, and common travel moments.' };
@@ -855,6 +859,192 @@ async function test(name, fn) {
     const ineligibleIssues = esmValidate.validateCard(markedIneligible, { l1: 'es', l2: 'en' });
     assert.strictEqual(ineligibleIssues.examples.length, 0, 'marked cloze_ineligible does not fail examples');
     assert.ok(ineligibleIssues.warnings.length > 0, 'marked cloze_ineligible produces warning');
+  });
+
+  await test('T22 grading engine parameterization: Tier 1 regression, diacritics, function words, cloze seams, and games filtering', async () => {
+    // 1. Tier 1 regression contract: English baseline inputs produce byte-identical verdicts
+    const baselineClassify = [
+      { guess: 'receive', card: { answer_l2: 'receive', l2_synonyms: ['get', 'accept'] }, expected: 'correct' },
+      { guess: 'Receive', card: { answer_l2: 'receive', l2_synonyms: ['get', 'accept'] }, expected: 'correct' },
+      { guess: 'rèceive', card: { answer_l2: 'receive', l2_synonyms: ['get', 'accept'] }, expected: 'correct' },
+      { guess: '  receive  ', card: { answer_l2: 'receive', l2_synonyms: ['get', 'accept'] }, expected: 'correct' },
+      { guess: 'listen   to', card: { answer_l2: 'listen to', l2_synonyms: [] }, expected: 'correct' },
+      { guess: 'hold-up', card: { answer_l2: 'hold‑up', l2_synonyms: [] }, expected: 'correct' },
+      { guess: "don't", card: { answer_l2: "don’t", l2_synonyms: [] }, expected: 'correct' },
+      { guess: 'get', card: { answer_l2: 'receive', l2_synonyms: ['get', 'accept'] }, expected: 'correct' },
+      // Typo budget
+      { guess: 'cot', card: { answer_l2: 'cat' }, expected: 'wrong' },
+      { guess: 'cat', card: { answer_l2: 'cat' }, expected: 'correct' },
+      { guess: 'recieve', card: { answer_l2: 'receive' }, expected: 'almost' },
+      { guess: 'recxxve', card: { answer_l2: 'receive' }, expected: 'wrong' },
+      { guess: 'defenitely', card: { answer_l2: 'definitely' }, expected: 'almost' },
+      { guess: 'defenetely', card: { answer_l2: 'definitely' }, expected: 'almost' },
+      { guess: 'defenatily', card: { answer_l2: 'definitely' }, expected: 'wrong' },
+      // Function words
+      { guess: 'listen', card: { answer_l2: 'listen to' }, expected: 'almost' },
+      { guess: 'give up', card: { answer_l2: 'to give up' }, expected: 'almost' },
+      { guess: 'cat', card: { answer_l2: 'a cat' }, expected: 'almost' },
+      { guess: 'apple', card: { answer_l2: 'an apple' }, expected: 'almost' },
+      { guess: 'dog', card: { answer_l2: 'the dog' }, expected: 'almost' },
+      { guess: 'turn', card: { answer_l2: 'turn off' }, expected: 'almost' },
+      { guess: 'listen to', card: { answer_l2: 'listen' }, expected: 'almost' },
+      { guess: 'to run', card: { answer_l2: 'run' }, expected: 'almost' },
+      { guess: 'listen carefully', card: { answer_l2: 'listen' }, expected: 'wrong' },
+      { guess: 'big dog', card: { answer_l2: 'dog' }, expected: 'wrong' },
+      { guess: 'elephant', card: { answer_l2: 'cat' }, expected: 'wrong' },
+      { guess: '', card: { answer_l2: 'cat' }, expected: 'wrong' },
+    ];
+
+    for (const item of baselineClassify) {
+      assert.strictEqual(
+        esmMinigameText.classifyGuess(item.guess, item.card),
+        item.expected,
+        `classifyGuess baseline for "${item.guess}" against "${item.card.answer_l2}"`
+      );
+    }
+
+    // 2. Baseline locateAnswerInExample results
+    const baselineLocate = [
+      { example: 'The cat sat on the mat.', answer: 'cat', expected: { start: 4, end: 7 } },
+      { example: 'Cats are great.', answer: 'cats', expected: { start: 0, end: 4 } },
+      { example: 'Hello, cat!', answer: 'cat', expected: { start: 7, end: 10 } },
+      { example: 'Please listen to me.', answer: 'listen to', expected: { start: 7, end: 16 } },
+      { example: 'Never give up on your dreams.', answer: 'give up', expected: { start: 6, end: 13 } },
+      { example: 'The caterpillar crawled.', answer: 'cat', expected: null },
+      { example: 'Listen carefully.', answer: 'listen to', expected: null },
+      { example: 'I listened to music.', answer: 'listen to', expected: null },
+      { example: 'He gives it up.', answer: 'give up', expected: null },
+      { example: 'Ich rufe dich an.', answer: 'anrufen', expected: null },
+      { example: '', answer: 'cat', expected: null },
+      { example: null, answer: 'cat', expected: null },
+    ];
+
+    for (const item of baselineLocate) {
+      assert.deepStrictEqual(
+        esmMinigameText.locateAnswerInExample(item.example, item.answer),
+        item.expected,
+        `locateAnswerInExample baseline for "${item.answer}" in "${item.example}"`
+      );
+    }
+
+    // 3. Tier 1 diacritics stripping: en, es, fr strip unconditionally
+    assert.strictEqual(esmMinigameText.normalizeAnswer('café', 'en'), 'cafe');
+    assert.strictEqual(esmMinigameText.normalizeAnswer('café', 'es'), 'cafe');
+    assert.strictEqual(esmMinigameText.normalizeAnswer('café', 'fr'), 'cafe');
+    assert.strictEqual(esmMinigameText.normalizeAnswer('niño', 'es'), 'nino');
+
+    // 4. Phonemic diacritics preserved for languages where diacriticsSignificant: true (pl, tr)
+    assert.strictEqual(esmMinigameText.normalizeAnswer('Łódź', 'pl'), 'łódź');
+    assert.strictEqual(esmMinigameText.normalizeAnswer('Ağaç', 'tr'), 'ağaç');
+    assert.notStrictEqual(
+      esmMinigameText.normalizeAnswer('má', { diacriticsSignificant: true }),
+      esmMinigameText.normalizeAnswer('ma', { diacriticsSignificant: true })
+    );
+    assert.strictEqual(
+      esmMinigameText.classifyGuess('ma', { answer_l2: 'má', language_to: 'pl' }),
+      'wrong',
+      'diacritics matter when diacriticsSignificant is true'
+    );
+
+    // 5. Per-language function words (Spanish and French)
+    assert.strictEqual(
+      esmMinigameText.classifyGuess('perro', { answer_l2: 'el perro', language_to: 'es' }),
+      'almost',
+      'Spanish article "el" recognized as function word'
+    );
+    assert.strictEqual(
+      esmMinigameText.classifyGuess('el perro', { answer_l2: 'perro', language_to: 'es' }),
+      'almost',
+      'Spanish added article "el" recognized as near-miss'
+    );
+    assert.strictEqual(
+      esmMinigameText.classifyGuess('maison', { answer_l2: 'la maison', language_to: 'fr' }),
+      'almost',
+      'French article "la" recognized as function word'
+    );
+    assert.strictEqual(
+      esmMinigameText.classifyGuess('la maison', { answer_l2: 'maison', language_to: 'fr' }),
+      'almost',
+      'French added article "la" recognized as near-miss'
+    );
+
+    // 6. Typo budget parameterization
+    const enBudget = getLanguage('en').typoBudget;
+    assert.strictEqual(enBudget(3), 0);
+    assert.strictEqual(enBudget(5), 1);
+    assert.strictEqual(enBudget(9), 2);
+
+    const jaBudget = getLanguage('ja').typoBudget;
+    assert.strictEqual(jaBudget(10), 0, 'Japanese has zero typo budget');
+
+    // 7. Cloze strategy hook and seams
+    assert.strictEqual(typeof esmMinigameText.CLOZE_STRATEGIES.verbatim, 'function');
+    assert.strictEqual(typeof esmMinigameText.CLOZE_STRATEGIES.lemma, 'function');
+    assert.strictEqual(typeof esmMinigameText.CLOZE_STRATEGIES.segmenter, 'function');
+
+    // Verbatim strategy locates word
+    assert.deepStrictEqual(
+      esmMinigameText.locateAnswerInExample('A fast cat runs.', 'cat', 'verbatim'),
+      { start: 7, end: 10 }
+    );
+    // Lemma seam returns null (clearly stubbed for Tier 2)
+    assert.strictEqual(
+      esmMinigameText.locateAnswerInExample('A fast cat runs.', 'cat', 'lemma'),
+      null,
+      'lemma strategy seam returns null'
+    );
+    // Segmenter seam returns null (clearly stubbed for Tier 3b)
+    assert.strictEqual(
+      esmMinigameText.locateAnswerInExample('A fast cat runs.', 'cat', 'segmenter'),
+      null,
+      'segmenter strategy seam returns null'
+    );
+
+    // Default strategy resolution for Tier 1
+    assert.strictEqual(esmMinigameText.resolveClozeStrategy(), 'verbatim');
+    assert.strictEqual(esmMinigameText.resolveClozeStrategy({ l1: 'es', l2: 'en' }), 'verbatim');
+    assert.strictEqual(esmMinigameText.resolveClozeStrategy({ l1: 'en', l2: 'es' }), 'verbatim');
+    assert.strictEqual(esmMinigameText.resolveClozeStrategy({ strategy: 'lemma' }), 'lemma');
+    assert.strictEqual(esmMinigameText.resolveClozeStrategy({ strategy: 'segmenter' }), 'segmenter');
+
+    // 8. MinigameHost per-language games set filtering
+    assert.strictEqual(isGameSupportedForLanguage('scramble', 'en'), true);
+    assert.strictEqual(isGameSupportedForLanguage('hangman', 'es'), true);
+    assert.strictEqual(isGameSupportedForLanguage('scramble', 'fr'), true);
+    assert.strictEqual(isGameSupportedForLanguage('scramble', 'ja'), false, 'scramble withheld for Japanese');
+    assert.strictEqual(isGameSupportedForLanguage('hangman', 'zh'), false, 'hangman withheld for Chinese');
+    assert.strictEqual(isGameSupportedForLanguage('type_translation', 'ja'), true);
+
+    // 9. Cross-port parity: CJS re-export matches ESM exports exactly
+    const testCases = [
+      ['Excuse me, where is the station, please?', 'Where is the station?'],
+      ['Se dice: ¿dónde está la estación?', 'Dónde esta la estacion'],
+      ['I gave up quickly.', 'give up'],
+      ['The quick brown fox jumps.', 'fox'],
+    ];
+
+    for (const [ex, ans] of testCases) {
+      assert.deepStrictEqual(
+        esmCardText.locateAnswerInExample(ex, ans),
+        cjsMinigameText.locateAnswerInExample(ex, ans),
+        `ESM and CJS locateAnswerInExample parity for "${ans}"`
+      );
+      assert.strictEqual(
+        esmCardText.normalizeAnswer(ans),
+        cjsMinigameText.normalizeAnswer(ans),
+        `ESM and CJS normalizeAnswer parity for "${ans}"`
+      );
+      assert.strictEqual(
+        esmCardText.blankedExample(ex, ans),
+        cjsMinigameText.blankedExample(ex, ans),
+        `ESM and CJS blankedExample parity for "${ans}"`
+      );
+    }
+    assert.strictEqual(
+      esmCardText.contentHash('test content'),
+      cjsMinigameText.contentHash('test content'),
+      'ESM and CJS contentHash parity'
+    );
   });
 
   console.log(`\nALL ${passed} BROWSER ESM PIPELINE STUB TESTS PASSED`);

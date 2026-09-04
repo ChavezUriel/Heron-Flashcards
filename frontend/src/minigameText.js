@@ -1,5 +1,6 @@
 // Explicit .js extension is required by run_browser_pipeline_tests.mjs (Node ESM resolver)
 import { sentenceIndex } from './minigameFrequency.js';
+import { getLanguage, getPair, LANGUAGES, standardTypoBudget } from './languages.js';
 
 // Shared text helpers for the answer-matching minigames. Kept in one module so the
 // Tier-A free-type games (Type the translation, Recall from definition, Cloze) all
@@ -7,11 +8,47 @@ import { sentenceIndex } from './minigameFrequency.js';
 // and so the cloze games locate the blank the same way. See docs/minigames.md §4
 // (#1–#3, #6 + near-miss aside), Phase 1 & Phase 5.
 
-// Normalize an answer for comparison: trim + lowercase + strip diacritics, and
-// unify the Unicode hyphens/dashes and curly apostrophes that show up in real card
-// data, collapsing internal whitespace. So a plain keyboard answer still matches a
-// seeded synonym (e.g. "hold‑up" vs typed "hold-up").
-export function normalizeAnswer(value) {
+// Resolve whether diacritics are phonemic/significant for this evaluation.
+// Supports boolean flag, language tag string ('en', 'pl', 'tr', 'vi'), or
+// an object carrying { diacriticsSignificant, language_to, l2, tag }.
+function resolveDiacriticsOption(options) {
+  if (typeof options === 'boolean') {
+    return options;
+  }
+  if (typeof options === 'string') {
+    const lang = getLanguage(options);
+    return lang?.diacriticsSignificant ?? false;
+  }
+  if (options && typeof options === 'object') {
+    if (typeof options.diacriticsSignificant === 'boolean') {
+      return options.diacriticsSignificant;
+    }
+    const tag = options.language_to ?? options.l2 ?? options.tag;
+    if (tag) {
+      const lang = getLanguage(tag);
+      return lang?.diacriticsSignificant ?? false;
+    }
+  }
+  return false;
+}
+
+// Normalize an answer for comparison: trim + lowercase, and unify Unicode hyphens/dashes
+// and curly apostrophes that show up in real card data, collapsing internal whitespace.
+// Diacritic stripping is parameterised by language (P5): languages where diacritics are
+// phonemic (e.g. Polish, Turkish, Vietnamese) preserve them via NFC; Tier 1 languages
+// (English, Spanish, French) strip them unconditionally via NFD combining-mark removal
+// to preserve baseline grading behavior by construction.
+export function normalizeAnswer(value, options) {
+  const diacriticsSignificant = resolveDiacriticsOption(options);
+  if (diacriticsSignificant) {
+    return (value ?? '')
+      .normalize('NFC')
+      .replace(/[‐-―−]/g, '-') // hyphens/dashes/minus -> ASCII hyphen
+      .replace(/[‘’ʼ]/g, "'") // curly/modifier apostrophes -> ASCII '
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
   return (value ?? '')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '') // strip combining diacritical marks
@@ -47,32 +84,17 @@ function editDistance(a, b) {
   return d[a.length][b.length];
 }
 
-// How many typos still count as "almost" for an expected answer of this length
-// (normalized, spaces included). Short words get none — one edit away from "cat"
-// is usually a different word, not a typo.
-function typoBudget(length) {
-  if (length <= 3) {
-    return 0;
-  }
-  if (length <= 7) {
-    return 1;
-  }
-  return 2;
-}
+// Typo budget profile: re-exported from the registry for backwards compatibility.
+export { standardTypoBudget as typoBudget };
 
-// Function words a learner plausibly drops or adds without missing the word itself:
-// articles, the infinitive "to", and the prepositions/particles that ride along with
-// phrasal answers ("listen to", "give up"). Answers are English, so a fixed set works.
-const FUNCTION_WORDS = new Set([
-  'a', 'an', 'the', 'to', 'of', 'in', 'on', 'at', 'by', 'for', 'with', 'from',
-  'up', 'out', 'off', 'into', 'onto', 'over', 'under', 'down', 'away', 'back',
-  'about', 'around', 'through',
-]);
+// Default English function words from the registry (backwards compatibility).
+export const FUNCTION_WORDS = new Set(LANGUAGES.en.functionWords);
 
 // True when one side equals the other with exactly one function word removed —
 // "listen" for "listen to", "to give up" for "give up". Content words must all
 // match exactly; anything looser is a different answer, not a near miss.
-function oneFunctionWordApart(a, b) {
+// Parameterized by language function-word set (P5).
+function oneFunctionWordApart(a, b, functionWords = FUNCTION_WORDS) {
   const aTokens = a.split(' ');
   const bTokens = b.split(' ');
   const [longer, shorter] = aTokens.length >= bTokens.length ? [aTokens, bTokens] : [bTokens, aTokens];
@@ -80,7 +102,7 @@ function oneFunctionWordApart(a, b) {
     return false;
   }
   for (let i = 0; i < longer.length; i += 1) {
-    if (!FUNCTION_WORDS.has(longer[i])) {
+    if (!functionWords.has(longer[i])) {
       continue;
     }
     const spliced = longer.slice(0, i).concat(longer.slice(i + 1));
@@ -91,24 +113,35 @@ function oneFunctionWordApart(a, b) {
   return false;
 }
 
-// Grade a free-typed guess against the primary answer and every listed English
-// synonym: 'correct' on an exact normalized match, 'almost' on a near miss, else
-// 'wrong'. A near miss — within the typo budget of a candidate, or one dropped/added
+// Grade a free-typed guess against the primary answer and every listed synonym:
+// 'correct' on an exact normalized match, 'almost' on a near miss, else 'wrong'.
+// A near miss — within the typo budget of a candidate, or one dropped/added
 // function word ("listen" for "listen to") — is close enough that grading it as a
 // lapse would be unfair, but not exact enough to count as known. The typing games
 // resolve it as NEUTRAL: amber feedback + the exact answer, advancing via the skip
 // RPC so FSRS is never touched and the card recycles for a clean rep (§4 near-miss
 // aside, §5.3).
-export function classifyGuess(guess, card) {
-  const normalizedGuess = normalizeAnswer(guess);
+//
+// Parameterized by L2 via the registry (P5):
+//   - diacriticsSignificant from L2 metadata (phonemic diacritics preserved)
+//   - typoBudget profile from L2/script
+//   - functionWords from L2 registry list
+export function classifyGuess(guess, card, options) {
+  const langTag = options?.language_to ?? options?.l2 ?? card?.language_to ?? card?.l2 ?? 'en';
+  const lang = getLanguage(langTag) || LANGUAGES.en;
+  const diacritics = lang.diacriticsSignificant ?? false;
+  const budgetFn = lang.typoBudget ?? standardTypoBudget;
+  const functionWords = new Set(lang.functionWords ?? []);
+
+  const normalizedGuess = normalizeAnswer(guess, diacritics);
   if (!normalizedGuess) {
     return 'wrong';
   }
 
-  const answer = card.answer_l2;
-  const synonyms = card.l2_synonyms ?? [];
+  const answer = card?.answer_l2 ?? card?.answer_en;
+  const synonyms = card?.l2_synonyms ?? card?.synonyms_en ?? [];
   const candidates = [answer, ...synonyms]
-    .map(normalizeAnswer)
+    .map((c) => normalizeAnswer(c, diacritics))
     .filter(Boolean);
 
   if (candidates.some((candidate) => candidate === normalizedGuess)) {
@@ -116,7 +149,7 @@ export function classifyGuess(guess, card) {
   }
 
   for (const candidate of candidates) {
-    const budget = typoBudget(candidate.length);
+    const budget = budgetFn(candidate.length);
     if (
       budget > 0 &&
       Math.abs(candidate.length - normalizedGuess.length) <= budget &&
@@ -124,7 +157,7 @@ export function classifyGuess(guess, card) {
     ) {
       return 'almost';
     }
-    if (oneFunctionWordApart(normalizedGuess, candidate)) {
+    if (oneFunctionWordApart(normalizedGuess, candidate, functionWords)) {
       return 'almost';
     }
   }
@@ -228,7 +261,7 @@ export function clozeCandidates(card) {
       continue;
     }
     seen.add(key);
-    const span = locateAnswerInExample(l2, answer);
+    const span = locateAnswerInExample(l2, answer, card);
     if (!span) {
       continue;
     }
@@ -244,16 +277,56 @@ export function clozeCandidates(card) {
   return out;
 }
 
-// Find `answer` as a whole word (or whole multi-word run) inside `example`, matching
-// case/diacritic-insensitively at word boundaries, and return the { start, end } span
-// into the RAW example string so a cloze game can blank exactly that slice.
-//
-// Returns null when the answer can't be located (inflected form, multi-word split,
-// or simply absent) — the caller then drops the cloze modality rather than render a
-// broken blank (docs/minigames.md §4 #3, Phase 5 cloze-robustness decision).
-export function locateAnswerInExample(example, answer) {
+// Resolve the cloze strategy identifier ('verbatim' | 'lemma' | 'segmenter')
+// from options, a pair descriptor, a card payload, or a language tag.
+export function resolveClozeStrategy(options) {
+  if (typeof options === 'string') {
+    if (options === 'verbatim' || options === 'lemma' || options === 'segmenter') {
+      return options;
+    }
+    const lang = getLanguage(options);
+    if (lang) {
+      if (lang.tierL2 === '3b' || lang.tier === '3b' || lang.script === 'Jpan' || lang.script === 'Hans' || lang.script === 'Kore') {
+        return 'segmenter';
+      }
+      if (lang.tierL2 === 2 || lang.tier === 2) {
+        return 'lemma';
+      }
+    }
+    return 'verbatim';
+  }
+  if (options && typeof options === 'object') {
+    if (options.strategy) return options.strategy;
+    if (options.clozeStrategy) return options.clozeStrategy;
+    if (options.pair?.clozeStrategy) return options.pair.clozeStrategy;
+    const l1 = options.l1 ?? options.language_from;
+    const l2 = options.l2 ?? options.language_to;
+    if (l1 && l2) {
+      const pair = getPair(l1, l2);
+      if (pair?.clozeStrategy) return pair.clozeStrategy;
+    }
+    if (l2) {
+      const lang = getLanguage(l2);
+      if (lang) {
+        if (lang.tierL2 === '3b' || lang.tier === '3b' || lang.script === 'Jpan' || lang.script === 'Hans' || lang.script === 'Kore') {
+          return 'segmenter';
+        }
+        if (lang.tierL2 === 2 || lang.tier === 2) {
+          return 'lemma';
+        }
+      }
+    }
+  }
+  return 'verbatim';
+}
+
+// Tier 1 strategy: verbatim whole-word (or multi-word run) match inside example,
+// matching case-insensitively (and diacritic-insensitively for Tier 1 languages).
+// Returns { start, end } raw string slice or null.
+export function locateAnswerVerbatim(example, answer, options) {
+  const diacritics = resolveDiacriticsOption(options);
   const text = typeof example === 'string' ? example : '';
-  const target = normalizeAnswer(answer);
+  const target = normalizeAnswer(answer, diacritics);
   if (!text || !target) {
     return null;
   }
@@ -263,7 +336,7 @@ export function locateAnswerInExample(example, answer) {
   const tokens = [];
   for (const match of text.matchAll(WORD_RE)) {
     tokens.push({
-      norm: normalizeAnswer(match[0]),
+      norm: normalizeAnswer(match[0], diacritics),
       start: match.index,
       end: match.index + match[0].length,
     });
@@ -296,4 +369,36 @@ export function locateAnswerInExample(example, answer) {
     }
   }
   return null;
+}
+
+// Seam for Tier 2 lemma-aware blank locator (pt, it, de, nl).
+// Deferred to Tier 2: requires morphological analysis / lemmatization
+// (e.g. German separable verbs like "anrufen" -> "Ich rufe dich an").
+export function locateAnswerLemma(_example, _answer, _options) {
+  return null;
+}
+
+// Seam for Tier 3b segmenter blank locator (ja, zh, ko).
+// Deferred to Tier 3b: requires script-aware word segmentation
+// for non-space-delimited scripts (e.g. Intl.Segmenter / CJK boundary analysis).
+export function locateAnswerSegmenter(_example, _answer, _options) {
+  return null;
+}
+
+// Cloze blank locator strategy dispatch map (P5).
+export const CLOZE_STRATEGIES = {
+  verbatim: locateAnswerVerbatim,
+  lemma: locateAnswerLemma,
+  segmenter: locateAnswerSegmenter,
+};
+
+// Find `answer` inside `example` according to the active cloze strategy:
+// 'verbatim' for Tier 1, with seams for 'lemma' (Tier 2) and 'segmenter' (Tier 3b).
+//
+// Returns the { start, end } span into the RAW example string so a cloze game can
+// blank exactly that slice. Returns null when the answer cannot be located.
+export function locateAnswerInExample(example, answer, options) {
+  const strategyKey = resolveClozeStrategy(options);
+  const strategy = CLOZE_STRATEGIES[strategyKey] || CLOZE_STRATEGIES.verbatim;
+  return strategy(example, answer, options);
 }

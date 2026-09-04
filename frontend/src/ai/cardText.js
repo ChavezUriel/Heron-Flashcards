@@ -7,15 +7,33 @@
 // new (it lives in supabase/scripts/lib/minigame_text.cjs on the CLI side).
 
 // Explicit .js extension is required by run_browser_pipeline_tests.mjs (Node ESM resolver)
-import { locateAnswerInExample, normalizeAnswer } from '../minigameText.js';
+import {
+  locateAnswerInExample,
+  normalizeAnswer,
+  classifyGuess,
+  clozeCandidates,
+  getCardExamplePairs,
+  pickCardExample,
+  CLOZE_STRATEGIES,
+  resolveClozeStrategy,
+} from '../minigameText.js';
 
-export { locateAnswerInExample, normalizeAnswer };
+export {
+  locateAnswerInExample,
+  normalizeAnswer,
+  classifyGuess,
+  clozeCandidates,
+  getCardExamplePairs,
+  pickCardExample,
+  CLOZE_STRATEGIES,
+  resolveClozeStrategy,
+};
 
-// The blanked English example ("I need to renew my ____ before traveling.") —
+// The blanked example ("I need to renew my ____ before traveling.") —
 // what the word-bank cloze shows, and what the audit/distractor prompts reason
 // about. Null when the answer isn't locatable in the sentence.
-export function blankedExample(example, answer) {
-  const span = locateAnswerInExample(example, answer);
+export function blankedExample(example, answer, options) {
+  const span = locateAnswerInExample(example, answer, options);
   if (!span) return null;
   return example.slice(0, span.start) + '____' + example.slice(span.end);
 }

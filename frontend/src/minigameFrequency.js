@@ -1,3 +1,6 @@
+// Explicit .js extension is required by run_browser_pipeline_tests.mjs (Node ESM resolver)
+import { getLanguage } from './languages.js';
+
 // Frequency dosing & interstitial selection for minigames.
 // See docs/minigames.md §6.3 (dosing), §7.1 (settings), §9 Phase 3.
 //
@@ -255,8 +258,13 @@ function chooseDepthRound(cards) {
 export function chooseInterstitialGame(placement, cards, settings, seed = 0) {
   const enabled = settings?.minigames?.games ?? {};
   const pool = usableBoundaryCards(cards);
+  const lang = getLanguage(cards?.[0]?.language_to ?? cards?.[0]?.l2 ?? 'en');
+  const allowedGames = lang?.games;
   for (const game of preferenceFor(placement, seed)) {
     if (!BOUNDARY_GAMES.includes(game) || !enabled[game]) {
+      continue;
+    }
+    if (allowedGames && !allowedGames.has(game)) {
       continue;
     }
     // The depth game has its own material rule (an anchor with synonyms + distractor

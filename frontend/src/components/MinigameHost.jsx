@@ -8,6 +8,9 @@ import WordBankCloze from './WordBankCloze';
 import Listening from './Listening';
 import { presentationIndex, sentenceIndex, shouldPlayPerCardGame } from '../minigameFrequency';
 import { clozeCandidates } from '../minigameText';
+import { getLanguage, isGameSupportedForLanguage } from '../languages';
+
+export { isGameSupportedForLanguage };
 
 // Recall-from-definition needs a definition to prompt with (§4 #2).
 function hasDefinition(card) {
@@ -94,6 +97,9 @@ export function selectModality(card, settings) {
   const timesPresented = card?.times_presented ?? 0;
   const lastResult = card?.last_result ?? null;
 
+  // Consult the registry's per-language games set (P5)
+  const isGameAllowed = (game) => isGameSupportedForLanguage(game, card);
+
   // Slot — new card's very first exposure (times_presented === 0): Tier-C encoding
   // aid only (§4 #11, §6.1). Pure exposure / a different skill, so it NEVER
   // grades — it resolves via skip, re-queuing the card so its first *graded* rep
@@ -101,7 +107,7 @@ export function selectModality(card, settings) {
   // encoding, not measurement. Listening when enabled; otherwise today's classic
   // graded swipe.
   if (kind === 'new' && timesPresented === 0) {
-    if (games.listening) {
+    if (games.listening && isGameAllowed('listening')) {
       return 'listening';
     }
     return 'classic';
@@ -141,7 +147,7 @@ export function selectModality(card, settings) {
   }
 
   const eligible = candidates
-    .filter(([game, fieldOk]) => games[game] && fieldOk)
+    .filter(([game, fieldOk]) => games[game] && fieldOk && isGameAllowed(game))
     .map(([game]) => game);
 
   if (eligible.length === 0) {

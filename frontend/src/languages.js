@@ -440,6 +440,15 @@ export function defaultPair() {
   return { l1: 'es', l2: 'en' };
 }
 
+// Check whether a minigame is supported for a given language tag or card/deck object (P5)
+export function isGameSupportedForLanguage(game, langOrCard) {
+  const tag = typeof langOrCard === 'string'
+    ? langOrCard
+    : (langOrCard?.language_to ?? langOrCard?.l2 ?? 'en');
+  const lang = getLanguage(tag);
+  return !lang?.games || lang.games.has(game);
+}
+
 // ===========================================================================
 // Language-aware validation rules and script/n-gram heuristics (P4)
 // ===========================================================================
