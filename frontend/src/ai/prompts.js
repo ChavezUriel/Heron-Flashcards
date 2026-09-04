@@ -1,6 +1,5 @@
-// Prompt builders for the card generator — browser port of
-// supabase/scripts/lib/prompts.cjs, kept text-for-text identical so the in-app
-// builder produces cards indistinguishable from the CLI's.
-// Shared rules and implementations live in ./promptRules.js (P3).
+// Prompt builders for the card generator.
+// Re-exports the shared prompt rules from ./promptRules.js (P3)
+// to guarantee zero divergence between the web app and the CLI.
 
 export * from './promptRules.js';

@@ -377,6 +377,7 @@ export function synonymsPrompt(card, issues, pair) {
   const l1Name = l1Lang.name;
   const l2Name = l2Lang.name;
   const punctRule = getPunctuationRule(resolved.l1, resolved.l2);
+  const punctClause = punctRule ? `, ${punctRule.trim().replace(/^\(|\)$/g, '').trim()}` : '';
 
   const promptText = card.l1_text ?? card.prompt_l1 ?? card.spanish_text ?? card.spanish;
   const answerText = card.l2_text ?? card.answer_l2 ?? card.english_text ?? card.english;
@@ -389,7 +390,7 @@ export function synonymsPrompt(card, issues, pair) {
     required_output: { l2_synonyms: ['string'] },
     rules: [
       `l2_synonyms: 1 to 3 ${l2Name} words or short phrases that mean the same as the ${l2Name} answer (synonyms, NOT translations).`,
-      `Each item must be in ${l2Name} only (no ${l1Name}${punctRule}).`,
+      `Each item must be in ${l2Name} only (no ${l1Name}${punctClause}).`,
       `Do not repeat the ${l2Name} answer itself as a synonym.`,
       'No duplicates within the list. Keep each item short and natural.',
       'Return JSON only, no commentary or markdown.',
