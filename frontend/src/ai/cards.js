@@ -36,14 +36,18 @@ export function normExamplePairs(value, legacyEs, legacyEn) {
     const key = en.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ l1: es, l2: en });
+    // l1/l2 are the real names. The es/en mirror stays until P3 renames the
+    // prompt schema: ai/prompts.js and ai/enrich.js still read pair.es / pair.en
+    // when they build and audit example sets, and a pair without them silently
+    // drops every example the model returns.
+    out.push({ l1: es, l2: en, es, en });
   };
   if (Array.isArray(value)) {
     for (const pair of value) {
       if (!pair || typeof pair !== 'object') continue;
       push(
-        pair.l1 ?? pair.example_l1,
-        pair.l2 ?? pair.example_l2
+        pair.l1 ?? pair.example_l1 ?? pair.es,
+        pair.l2 ?? pair.example_l2 ?? pair.en
       );
     }
   }
@@ -65,25 +69,29 @@ function normAudits(v, genMeta) {
 // example_es/example_en/example_sentence columns mirror pair 0 mechanically —
 // the pairs are the source of truth and the mirror is what pre-0019 consumers
 // (and the 0017 sync hash) read.
+// The legacy `*_es` / `*_en` names are still accepted on the way IN because the
+// model still answers in them: the prompt schema in ai/prompts.js is renamed by
+// P3, not P2. Dropping the input aliases silently discards every enriched field
+// the LLM returns. Output is role-named only — one name per field.
 export function normCard(card, deckTitle) {
-  const prompt = optText(card.l1_text ?? card.prompt_l1 ?? card.spanish);
-  const answer = optText(card.l2_text ?? card.answer_l2 ?? card.english);
+  const prompt = optText(card.l1_text ?? card.prompt_l1 ?? card.spanish ?? card.spanish_text ?? card.prompt_es);
+  const answer = optText(card.l2_text ?? card.answer_l2 ?? card.english ?? card.english_text ?? card.answer_en);
   if (!prompt || !answer) return null;
   const examples = normExamplePairs(
     card.examples,
-    card.example_l1,
-    card.example_l2
+    card.example_l1 ?? card.example_es,
+    card.example_l2 ?? card.example_en
   );
   const first = examples[0] ?? null;
-  const l2Definition = optText(card.l2_definition);
-  const l1Translations = normList(card.l1_translations);
-  const l2Synonyms = normList(card.l2_synonyms);
+  const l2Definition = optText(card.l2_definition ?? card.definition_en);
+  const l1Translations = normList(card.l1_translations ?? card.main_translations_es);
+  const l2Synonyms = normList(card.l2_synonyms ?? card.synonyms_en);
   const collocations = normList(card.collocations);
   const exampleSentence = first ? first.l2 : optText(card.example_sentence);
-  const exampleL1 = first ? first.l1 : optText(card.example_l1);
-  const exampleL2 = first ? first.l2 : optText(card.example_l2);
-  const l2Mnemonic = optText(card.l2_mnemonic);
-  const l2ClozeDistractors = normList(card.l2_cloze_distractors);
+  const exampleL1 = first ? first.l1 : optText(card.example_l1 ?? card.example_es);
+  const exampleL2 = first ? first.l2 : optText(card.example_l2 ?? card.example_en);
+  const l2Mnemonic = optText(card.l2_mnemonic ?? card.mnemonic_en);
+  const l2ClozeDistractors = normList(card.l2_cloze_distractors ?? card.cloze_distractors_en);
 
   return {
     l1_text: prompt,
