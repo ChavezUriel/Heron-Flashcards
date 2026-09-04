@@ -171,10 +171,7 @@ function normPair(pair) {
   const l1 = optText(pair.l1 ?? pair.example_l1 ?? pair.es ?? pair.example_es);
   const l2 = optText(pair.l2 ?? pair.example_l2 ?? pair.en ?? pair.example_en);
   if (!l1 || !l2) return null;
-  const out = { l1, l2 };
-  Object.defineProperty(out, 'es', { get() { return this.l1; }, configurable: true, enumerable: false });
-  Object.defineProperty(out, 'en', { get() { return this.l2; }, configurable: true, enumerable: false });
-  return out;
+  return { l1, l2 };
 }
 
 function applyExamples(card, response) {

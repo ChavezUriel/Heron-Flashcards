@@ -227,8 +227,8 @@ async function test(name, fn) {
     assert.strictEqual(norm.prompt_es, 'la manzana');
     assert.strictEqual(norm.answer_en, 'apple');
     assert.strictEqual(norm.examples.length, 1);
-    assert.strictEqual(norm.examples[0].es, 'Como una manzana.');
-    assert.strictEqual(norm.examples[0].en, 'I eat an apple.');
+    assert.strictEqual(norm.examples[0].l1, 'Como una manzana.');
+    assert.strictEqual(norm.examples[0].l2, 'I eat an apple.');
   });
 
   console.log(`\nALL ${passed} SINGLE CARD REVIEW TESTS PASSED\n`);

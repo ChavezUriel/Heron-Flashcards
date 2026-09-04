@@ -217,7 +217,7 @@ export function diffSingleCard(originalCard, fixedCard) {
   const formatList = (arr) => (Array.isArray(arr) && arr.length > 0 ? arr.join(', ') : '');
   const formatExamples = (arr) => {
     if (!Array.isArray(arr) || arr.length === 0) return '';
-    return arr.map((p, idx) => `${idx + 1}. [ES] ${p.es} — [EN] ${p.en}`).join('\n');
+    return arr.map((p, idx) => `${idx + 1}. [ES] ${p.l1 ?? p.es} — [EN] ${p.l2 ?? p.en}`).join('\n');
   };
 
   const fields = [

@@ -38,7 +38,7 @@ for (const src of sources) {
   }
   for (const c of src.cards) {
     const nc = normCard(c, entry.title);
-    const key = pairKey(nc.spanish_text, nc.english_text);
+    const key = pairKey(nc.l1_text, nc.l2_text);
     if (entry.seen.has(key)) continue;
     entry.seen.add(key);
     entry.cards.push(nc);
@@ -66,35 +66,35 @@ for (const deck of decks.values()) {
   sql += `on conflict (slug) do nothing;\n\n`;
 
   const cardsJson = deck.cards.map(c => ({
-    spanish_text: c.spanish_text,
-    english_text: c.english_text,
+    l1_text: c.l1_text,
+    l2_text: c.l2_text,
     section_name: c.section_name,
     part_of_speech: c.part_of_speech,
-    definition_en: c.definition_en,
-    main_translations_es: c.main_translations_es,
+    l2_definition: c.l2_definition,
+    l1_translations: c.l1_translations,
     collocations: c.collocations,
-    synonyms_en: c.synonyms_en,
+    l2_synonyms: c.l2_synonyms,
     example_sentence: c.example_sentence,
-    example_es: c.example_es,
-    example_en: c.example_en,
-    mnemonic_en: c.mnemonic_en,
-    cloze_distractors_en: c.cloze_distractors_en,
+    example_l1: c.example_l1,
+    example_l2: c.example_l2,
+    l2_mnemonic: c.l2_mnemonic,
+    l2_cloze_distractors: c.l2_cloze_distractors,
     examples: c.examples,
   }));
 
-  sql += `insert into public.cards (deck_id, spanish_text, english_text, is_enabled, generation_phase, generation_metadata, section_name, part_of_speech, definition_en, main_translations_es, collocations, synonyms_en, example_sentence, example_es, example_en, mnemonic_en, cloze_distractors_en, examples)\n`;
-  sql += `select dk.id, x.spanish_text, x.english_text, true, 'refined', '{}'::jsonb, x.section_name, x.part_of_speech, x.definition_en,\n`;
-  sql += `       coalesce(x.main_translations_es, '[]'::jsonb), coalesce(x.collocations, '[]'::jsonb), coalesce(x.synonyms_en, '[]'::jsonb), x.example_sentence, x.example_es, x.example_en, x.mnemonic_en, coalesce(x.cloze_distractors_en, '[]'::jsonb), coalesce(x.examples, '[]'::jsonb)\n`;
+  sql += `insert into public.cards (deck_id, l1_text, l2_text, is_enabled, generation_phase, generation_metadata, section_name, part_of_speech, l2_definition, l1_translations, collocations, l2_synonyms, example_sentence, example_l1, example_l2, l2_mnemonic, l2_cloze_distractors, examples)\n`;
+  sql += `select dk.id, x.l1_text, x.l2_text, true, 'refined', '{}'::jsonb, x.section_name, x.part_of_speech, x.l2_definition,\n`;
+  sql += `       coalesce(x.l1_translations, '[]'::jsonb), coalesce(x.collocations, '[]'::jsonb), coalesce(x.l2_synonyms, '[]'::jsonb), x.example_sentence, x.example_l1, x.example_l2, x.l2_mnemonic, coalesce(x.l2_cloze_distractors, '[]'::jsonb), coalesce(x.examples, '[]'::jsonb)\n`;
   sql += `from (select id from public.decks where slug = ${sq(deck.slug)}) dk\n`;
   sql += `cross join jsonb_to_recordset(${jsonLit(cardsJson)}::jsonb) as x(\n`;
-  sql += `  spanish_text text, english_text text, section_name text, part_of_speech text, definition_en text,\n`;
-  sql += `  main_translations_es jsonb, collocations jsonb, synonyms_en jsonb, example_sentence text, example_es text, example_en text, mnemonic_en text, cloze_distractors_en jsonb, examples jsonb\n`;
+  sql += `  l1_text text, l2_text text, section_name text, part_of_speech text, l2_definition text,\n`;
+  sql += `  l1_translations jsonb, collocations jsonb, l2_synonyms jsonb, example_sentence text, example_l1 text, example_l2 text, l2_mnemonic text, l2_cloze_distractors jsonb, examples jsonb\n`;
   sql += `)\n`;
   sql += `where not exists (\n`;
   sql += `  select 1 from public.cards c2\n`;
   sql += `  where c2.deck_id = dk.id\n`;
-  sql += `    and lower(c2.spanish_text) = lower(x.spanish_text)\n`;
-  sql += `    and lower(c2.english_text) = lower(x.english_text)\n`;
+  sql += `    and lower(c2.l1_text) = lower(x.l1_text)\n`;
+  sql += `    and lower(c2.l2_text) = lower(x.l2_text)\n`;
   sql += `);\n\n`;
 }
 

@@ -128,9 +128,9 @@ async function test(name, fn) {
     assert.deepStrictEqual(flatten(issues), [], flatten(issues).join('; '));
     assert.strictEqual(calls.filter((c) => c === 'examples').length, 1, 'full set generated once');
     assert.strictEqual(calls.filter((c) => c === 'rewrite').length, 1, 'exactly one pair rewritten');
-    assert.strictEqual(card.examples[0].en, fixedPair.example_en, 'rejected pair replaced');
+    assert.strictEqual(card.examples[0].l2, fixedPair.example_en, 'rejected pair replaced');
     assert.strictEqual(card.example_en, fixedPair.example_en, 'legacy mirror follows pair 0');
-    assert.strictEqual(card.examples[1].en, PAIRS[1].example_en, 'good pairs untouched');
+    assert.strictEqual(card.examples[1].l2, PAIRS[1].example_en, 'good pairs untouched');
     assert.ok(card._audits.example_quality?.status === 'pass');
   });
 
@@ -190,7 +190,7 @@ async function test(name, fn) {
     const { card, issues } = await processCard({ ...DRAFT }, { deck: DECK, runPrompt: makeStub(script, calls) });
     assert.deepStrictEqual(flatten(issues), [], flatten(issues).join('; '));
     assert.strictEqual(calls.filter((c) => c === 'rewrite').length, 1);
-    assert.strictEqual(card.examples[2].en, fixedPair.example_en, 'offending sentence replaced');
+    assert.strictEqual(card.examples[2].l2, fixedPair.example_en, 'offending sentence replaced');
   });
 
   await test('T6 finished card: re-run makes zero LLM calls (fingerprint skip)', async () => {
@@ -208,12 +208,13 @@ async function test(name, fn) {
     const { card } = await processCard({ ...DRAFT }, { deck: DECK, runPrompt: makeStub(BASE_SCRIPT, calls) });
     const edited = {
       ...card,
-      examples: [{ es: card.examples[0].es, en: 'I must renew my passport before my trip to Paris.' }, ...card.examples.slice(1)],
+      examples: [{ l1: card.examples[0].l1, l2: 'I must renew my passport before my trip to Paris.' }, ...card.examples.slice(1)],
     };
-    edited.example_en = edited.examples[0].en;
-    edited.example_sentence = edited.examples[0].en;
+    edited.example_l2 = edited.examples[0].l2;
+    edited.example_en = edited.examples[0].l2;
+    edited.example_sentence = edited.examples[0].l2;
     assert.ok(cardStatus(edited, DECK).audits.length >= 1, 'edited sentence must re-flag audits');
-    const broken = { ...card, examples: [{ es: 'x', en: 'She renewed her passports yesterday.' }, ...card.examples.slice(1)] };
+    const broken = { ...card, examples: [{ l1: 'x', l2: 'She renewed her passports yesterday.' }, ...card.examples.slice(1)] };
     assert.ok(validateCard(broken).examples.some((m) => m.includes('verbatim')), 'inflected answer must flag');
   });
 

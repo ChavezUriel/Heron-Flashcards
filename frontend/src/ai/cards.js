@@ -36,11 +36,8 @@ export function normExamplePairs(value, legacyEs, legacyEn) {
     const key = l2.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    // Role-named keys only: each pair carries only l1 and l2 (P3).
-    // Non-enumerable getters preserve backward-compatibility for any legacy readers.
+    // Role-named keys only: each pair carries only l1 and l2.
     const pair = { l1, l2 };
-    Object.defineProperty(pair, 'es', { get() { return this.l1; }, configurable: true, enumerable: false });
-    Object.defineProperty(pair, 'en', { get() { return this.l2; }, configurable: true, enumerable: false });
     out.push(pair);
   };
   if (Array.isArray(value)) {

@@ -1,6 +1,6 @@
 // Node mirror of the cloze-locating helpers in frontend/src/minigameText.js.
 // The generator pipeline validates that a card's English answer can be blanked
-// out of example_en with EXACTLY the same rule the app uses to gate the cloze
+// out of example_l2 (legacy example_en) with EXACTLY the same rule the app uses to gate the cloze
 // minigames (locateAnswerInExample), so "cloze-eligible" means the same thing
 // on both sides. Keep normalizeAnswer/locateAnswerInExample in sync with the
 // frontend module; only the pieces the pipeline needs are mirrored here.

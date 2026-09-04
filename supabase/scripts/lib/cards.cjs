@@ -36,22 +36,20 @@ function normAudits(v, genMeta) {
   return null;
 }
 
-// Example sentence pairs (migration 0019): [{ es, en }], deduped by normalized
-// English sentence. Accepts the storage keys ({es, en}) and the LLM output keys
-// ({example_es, example_en}). When a card predates the multi-example feature,
-// its single legacy pair seeds the list so the pipeline only has to ADD pairs.
+// Example sentence pairs (migration 0019 & 0034): [{ l1, l2 }], deduped by L2
+// sentence. Accepts the storage keys ({l1, l2}, {es, en}) and the LLM output keys
+// ({example_l1, example_l2}, {example_es, example_en}). When a card predates the
+// multi-example feature, its single legacy pair seeds the list so the pipeline only
+// has to ADD pairs.
 function normExamplePairs(v, legacyEs, legacyEn) {
   const out = [], seen = new Set();
-  const push = (esRaw, enRaw) => {
-    const es = optText(esRaw), en = optText(enRaw);
-    if (!es || !en) return;
-    const k = en.toLowerCase();
+  const push = (l1Raw, l2Raw) => {
+    const l1 = optText(l1Raw), l2 = optText(l2Raw);
+    if (!l1 || !l2) return;
+    const k = l2.toLowerCase();
     if (seen.has(k)) return;
     seen.add(k);
-    const pair = { l1: es, l2: en };
-    Object.defineProperty(pair, 'es', { get() { return this.l1; }, configurable: true, enumerable: false });
-    Object.defineProperty(pair, 'en', { get() { return this.l2; }, configurable: true, enumerable: false });
-    out.push(pair);
+    out.push({ l1, l2 });
   };
   if (Array.isArray(v)) {
     for (const p of v) {
@@ -64,42 +62,53 @@ function normExamplePairs(v, legacyEs, legacyEn) {
 }
 
 // Normalize one authored/generated card into the enriched seed shape.
-// Accepts either {spanish, english} (draft) or the fully enriched object.
-// When the card has example pairs, the legacy example_es/example_en/
-// example_sentence columns are mirrored from pair 0 mechanically — the pairs
-// are the source of truth and the mirror is what pre-0019 consumers (and the
-// 0017 sync hash) read.
+// Accepts either {l1_text, l2_text} / {spanish, english} (draft) or the fully enriched object.
+// When the card has example pairs, the legacy example_l1/example_l2/
+// example_sentence columns are mirrored from pair 0 mechanically.
 function normCard(card, deckTitle) {
-  const spanish = optText(card.spanish ?? card.spanish_text ?? card.prompt_es);
-  const english = optText(card.english ?? card.english_text ?? card.answer_en);
-  if (!spanish || !english) throw new Error('card missing spanish/english: ' + JSON.stringify(card));
-  const examples = normExamplePairs(card.examples, card.example_es, card.example_en);
+  const prompt = optText(card.l1_text ?? card.prompt_l1 ?? card.spanish ?? card.spanish_text ?? card.prompt_es);
+  const answer = optText(card.l2_text ?? card.answer_l2 ?? card.english ?? card.english_text ?? card.answer_en);
+  if (!prompt || !answer) throw new Error('card missing l1_text/l2_text: ' + JSON.stringify(card));
+  const examples = normExamplePairs(
+    card.examples,
+    card.example_l1 ?? card.example_es,
+    card.example_l2 ?? card.example_en
+  );
   const first = examples[0] || null;
+  const l2Definition = optText(card.l2_definition ?? card.definition_en);
+  const l1Translations = normList(card.l1_translations ?? card.main_translations_es);
+  const l2Synonyms = normList(card.l2_synonyms ?? card.synonyms_en);
+  const collocations = normList(card.collocations);
+  const exampleSentence = first ? first.l2 : optText(card.example_sentence);
+  const exampleL1 = first ? first.l1 : optText(card.example_l1 ?? card.example_es);
+  const exampleL2 = first ? first.l2 : optText(card.example_l2 ?? card.example_en);
+  const l2Mnemonic = optText(card.l2_mnemonic ?? card.mnemonic_en);
+  const l2ClozeDistractors = normList(card.l2_cloze_distractors ?? card.cloze_distractors_en);
+
   return {
-    spanish_text: spanish,
-    english_text: english,
-    section_name: optText(card.section_name) ?? deckTitle,
+    l1_text: prompt,
+    l2_text: answer,
+    prompt_l1: prompt,
+    answer_l2: answer,
+    section_name: optText(card.section_name) ?? deckTitle ?? null,
     part_of_speech: optText(card.part_of_speech),
-    definition_en: optText(card.definition_en),
-    main_translations_es: normList(card.main_translations_es),
-    collocations: normList(card.collocations),
-    synonyms_en: normList(card.synonyms_en),
-    // Example pairs (migration 0019) + the legacy pair-0 mirror.
+    l2_definition: l2Definition,
+    l1_translations: l1Translations,
+    collocations,
+    l2_synonyms: l2Synonyms,
     examples,
-    example_sentence: first ? first.en : optText(card.example_sentence),
-    example_es: first ? first.es : optText(card.example_es),
-    example_en: first ? first.en : optText(card.example_en),
-    // Kept as data (and in seed SQL) even though the app no longer shows it.
-    mnemonic_en: optText(card.mnemonic_en),
-    // Curated word-bank cloze options (migration 0018).
-    cloze_distractors_en: normList(card.cloze_distractors_en),
+    example_sentence: exampleSentence,
+    example_l1: exampleL1,
+    example_l2: exampleL2,
+    l2_mnemonic: l2Mnemonic,
+    l2_cloze_distractors: l2ClozeDistractors,
     _audits: normAudits(card._audits, card.generation_metadata),
   };
 }
 
-// Case-insensitive dedup key for a (spanish, english) pair.
-function pairKey(spanish, english) {
-  return String(spanish).toLowerCase() + ' ' + String(english).toLowerCase();
+// Case-insensitive dedup key for an (l1, l2) pair.
+function pairKey(l1, l2) {
+  return String(l1).toLowerCase() + ' ' + String(l2).toLowerCase();
 }
 
 module.exports = { optText, normList, normCard, pairKey };

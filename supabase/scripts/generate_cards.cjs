@@ -143,26 +143,37 @@ function flushResolved(resolved) {
   fs.renameSync(tmp, resolved.file);
 }
 
-// Enriched working card (spanish_text/...) -> seed-JSON card (spanish/english/...).
+// Enriched working card (l1_text/...) -> seed-JSON card (spanish/english/...).
 function toSeedCard(card) {
-  const out = { spanish: card.spanish_text, english: card.english_text };
+  const spanish = card.l1_text ?? card.spanish_text ?? card.spanish;
+  const english = card.l2_text ?? card.english_text ?? card.english;
+  const out = { spanish, english };
   if (optText(card.section_name)) out.section_name = card.section_name;
   if (optText(card.part_of_speech)) out.part_of_speech = card.part_of_speech;
-  if (optText(card.definition_en)) out.definition_en = card.definition_en;
-  out.main_translations_es = normList(card.main_translations_es);
+  const def = card.l2_definition ?? card.definition_en;
+  if (optText(def)) out.definition_en = def;
+  out.main_translations_es = normList(card.l1_translations ?? card.main_translations_es);
   out.collocations = normList(card.collocations);
-  out.synonyms_en = normList(card.synonyms_en);
+  out.synonyms_en = normList(card.l2_synonyms ?? card.synonyms_en);
   // Example pairs (migration 0019); the legacy example_* fields mirror pair 0.
   out.examples = (Array.isArray(card.examples) ? card.examples : [])
-    .filter((p) => p && p.es && p.en)
-    .map((p) => ({ es: p.es, en: p.en }));
+    .map((p) => {
+      if (!p) return null;
+      const es = optText(p.l1 ?? p.es ?? p.example_l1 ?? p.example_es);
+      const en = optText(p.l2 ?? p.en ?? p.example_l2 ?? p.example_en);
+      return (es && en) ? { es, en } : null;
+    })
+    .filter(Boolean);
   // example_sentence mirrors the English example (the column the app reads).
-  if (optText(card.example_en)) out.example_sentence = card.example_en;
-  if (optText(card.example_es)) out.example_es = card.example_es;
-  if (optText(card.example_en)) out.example_en = card.example_en;
+  const exL2 = card.example_l2 ?? card.example_en ?? card.example_sentence;
+  const exL1 = card.example_l1 ?? card.example_es;
+  if (optText(exL2)) out.example_sentence = exL2;
+  if (optText(exL1)) out.example_es = exL1;
+  if (optText(exL2)) out.example_en = exL2;
   // Kept as data even though the app no longer shows mnemonics.
-  if (optText(card.mnemonic_en)) out.mnemonic_en = card.mnemonic_en;
-  out.cloze_distractors_en = normList(card.cloze_distractors_en);
+  const mnemonic = card.l2_mnemonic ?? card.mnemonic_en;
+  if (optText(mnemonic)) out.mnemonic_en = mnemonic;
+  out.cloze_distractors_en = normList(card.l2_cloze_distractors ?? card.cloze_distractors_en);
   // LLM-audit bookkeeping (JSON only; the seed SQL compilers ignore it).
   if (card._audits && Object.keys(card._audits).length) out._audits = card._audits;
   return out;
@@ -195,7 +206,7 @@ async function generateWordSet(spec, sections, totalTarget) {
     const remaining = totalTarget - cards.length;
     const want = Math.min(remaining, Number(section.target_card_count) || remaining);
     if (want <= 0) continue;
-    const mustAvoid = cards.map((c) => `${c.spanish_text} -> ${c.english_text}`);
+    const mustAvoid = cards.map((c) => `${c.l1_text ?? c.spanish_text} -> ${c.l2_text ?? c.english_text}`);
     log(`  Word set: section "${section.name}" requesting ${want} card(s)...`);
     const { system, user, temperature } = wordSetPrompt(spec, section, want, mustAvoid);
     const resp = await chatJson({ system, user, temperature });
@@ -207,7 +218,7 @@ async function generateWordSet(spec, sections, totalTarget) {
       const key = pairKey(spanish, english);
       if (seen.has(key)) continue;
       seen.add(key);
-      cards.push({ spanish_text: spanish, english_text: english, section_name: optText(section.name) || spec.title });
+      cards.push({ l1_text: spanish, l2_text: english, section_name: optText(section.name) || spec.title });
       if (cards.length >= totalTarget) break;
     }
   }
@@ -250,8 +261,8 @@ async function cmdGenerate(flags) {
   }
 
   // Map each draft by pairKey; remove ones already enriched so we don't redo them.
-  const seenKeys = new Set(enriched.map((c) => pairKey(c.spanish_text, c.english_text)));
-  const todo = drafts.filter((d) => !seenKeys.has(pairKey(d.spanish_text, d.english_text)));
+  const seenKeys = new Set(enriched.map((c) => pairKey(c.l1_text ?? c.spanish_text, c.l2_text ?? c.english_text)));
+  const todo = drafts.filter((d) => !seenKeys.has(pairKey(d.l1_text ?? d.spanish_text, d.l2_text ?? d.english_text)));
 
   const rejected = [];
   let sinceFlush = 0;
@@ -277,7 +288,7 @@ async function cmdGenerate(flags) {
   }
 
   for (let i = 0; i < todo.length; i++) {
-    log(`  [${i + 1}/${todo.length}] ${todo[i].spanish_text} -> ${todo[i].english_text}`);
+    log(`  [${i + 1}/${todo.length}] ${todo[i].l1_text ?? todo[i].spanish_text} -> ${todo[i].l2_text ?? todo[i].english_text}`);
     const t0 = Date.now();
     // The topic spec is the richest deck context (topic/difficulty/notes).
     const { card, issues } = await processCard(todo[i], { deck: spec, maxRepairs, log });
@@ -352,7 +363,7 @@ async function cmdEnrich(flags) {
   let sinceFlush = 0;
   for (let t = 0; t < targets.length; t++) {
     const { c, idx } = targets[t];
-    log(`  [${t + 1}/${targets.length}] ${c.spanish_text} -> ${c.english_text}`);
+    log(`  [${t + 1}/${targets.length}] ${c.l1_text ?? c.spanish_text} -> ${c.l2_text ?? c.english_text}`);
     const t0 = Date.now();
     const { card, issues } = await processCard(c, { deck: deckCtx, maxRepairs, log });
     log(`    done in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
@@ -400,7 +411,7 @@ async function cmdReview(flags) {
     if (hasIssues(issues)) {
       bad++;
       failing.push(i);
-      log(`  ✗ [${i + 1}] ${card.spanish_text} -> ${card.english_text}`);
+      log(`  ✗ [${i + 1}] ${card.l1_text ?? card.spanish_text} -> ${card.l2_text ?? card.english_text}`);
       flatten(issues).forEach((m) => log(`      - ${m}`));
     }
   });
@@ -414,7 +425,7 @@ async function cmdReview(flags) {
     const maxRepairs = flags['max-repairs'] !== undefined ? Number(flags['max-repairs']) : 2;
     log(`\nRepairing ${failing.length} card(s)...`);
     for (const i of failing) {
-      log(`  ${working[i].spanish_text} -> ${working[i].english_text}`);
+      log(`  ${working[i].l1_text ?? working[i].spanish_text} -> ${working[i].l2_text ?? working[i].english_text}`);
       const t0 = Date.now();
       const { card } = await processCard(working[i], { deck: deckCtx, maxRepairs, log });
       log(`    done in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
@@ -431,7 +442,7 @@ function reportRejected(rejected) {
   if (!rejected.length) return;
   log(`\n${rejected.length} card(s) still have issues after repair:`);
   for (const r of rejected) {
-    log(`  ✗ ${r.card.spanish_text} -> ${r.card.english_text}: ${r.issues.join('; ')}`);
+    log(`  ✗ ${r.card.l1_text ?? r.card.spanish_text} -> ${r.card.l2_text ?? r.card.english_text}: ${r.issues.join('; ')}`);
   }
 }
 

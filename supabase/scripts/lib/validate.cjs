@@ -36,26 +36,31 @@ function isBlank(v) {
 function validateCard(card) {
   const issues = { lexical: [], equivalents: [], examples: [], synonyms: [], clozeDistractors: [], card: [] };
 
+  const l1 = card.l1_text ?? card.prompt_l1 ?? card.spanish_text ?? card.spanish;
+  const l2 = card.l2_text ?? card.answer_l2 ?? card.english_text ?? card.english;
+
   // --- card-level ---
-  if (isBlank(card.spanish_text)) issues.card.push('spanish_text is empty');
-  if (isBlank(card.english_text)) issues.card.push('english_text is empty');
-  if (!isBlank(card.spanish_text) && !isBlank(card.english_text) &&
-      card.spanish_text.trim().toLowerCase() === card.english_text.trim().toLowerCase()) {
-    issues.card.push('spanish_text and english_text must differ');
+  if (isBlank(l1)) issues.card.push('l1_text is empty');
+  if (isBlank(l2)) issues.card.push('l2_text is empty');
+  if (!isBlank(l1) && !isBlank(l2) &&
+      String(l1).trim().toLowerCase() === String(l2).trim().toLowerCase()) {
+    issues.card.push('l1_text and l2_text must differ');
   }
 
-  // --- lexical (part_of_speech + definition_en) ---
+  // --- lexical (part_of_speech + l2_definition) ---
+  const def = card.l2_definition ?? card.definition_en;
   if (isBlank(card.part_of_speech)) issues.lexical.push('part_of_speech is required');
-  if (isBlank(card.definition_en)) {
-    issues.lexical.push('definition_en is required');
-  } else if (INVERTED_PUNCT.test(card.definition_en)) {
-    issues.lexical.push('definition_en must be English (no ¿ or ¡)');
+  if (isBlank(def)) {
+    issues.lexical.push('l2_definition is required');
+  } else if (INVERTED_PUNCT.test(def)) {
+    issues.lexical.push('l2_definition must be English (no ¿ or ¡)');
   }
 
-  // --- equivalents (main_translations_es + collocations) ---
-  const mts = Array.isArray(card.main_translations_es) ? card.main_translations_es : [];
+  // --- equivalents (l1_translations + collocations) ---
+  const mtsRaw = card.l1_translations ?? card.main_translations_es;
+  const mts = Array.isArray(mtsRaw) ? mtsRaw : [];
   if (mts.length < 1 || mts.length > 3) {
-    issues.equivalents.push('main_translations_es must contain 1 to 3 items');
+    issues.equivalents.push('l1_translations must contain 1 to 3 items');
   }
   const cols = Array.isArray(card.collocations) ? card.collocations : [];
   if (cols.length < 2 || cols.length > 4) {
@@ -65,90 +70,100 @@ function validateCard(card) {
     issues.equivalents.push('collocations must be English phrases (no ¿ or ¡)');
   }
 
-  // --- examples (examples: [{es, en}] + legacy mirror) ---
+  // --- examples (examples: [{l1, l2}] + legacy mirror) ---
   const pairs = Array.isArray(card.examples) ? card.examples : [];
   if (pairs.length < EXAMPLES_MIN || pairs.length > EXAMPLES_MAX) {
     issues.examples.push(`examples must contain ${EXAMPLES_MIN} to ${EXAMPLES_MAX} sentence pairs`);
   }
   pairs.forEach((p, i) => {
-    const es = p && p.es;
-    const en = p && p.en;
-    if (isBlank(es) || isBlank(en)) {
-      issues.examples.push(`examples[${i}] needs both es and en sentences`);
+    const pairL1 = p && (p.l1 ?? p.example_l1 ?? p.es ?? p.example_es);
+    const pairL2 = p && (p.l2 ?? p.example_l2 ?? p.en ?? p.example_en);
+    if (isBlank(pairL1) || isBlank(pairL2)) {
+      issues.examples.push(`examples[${i}] needs both l1 and l2 sentences`);
       return;
     }
-    if (INVERTED_PUNCT.test(en)) {
-      issues.examples.push(`examples[${i}].en must be English (no ¿ or ¡)`);
+    if (INVERTED_PUNCT.test(pairL2)) {
+      issues.examples.push(`examples[${i}].l2 must be English (no ¿ or ¡)`);
     }
-    if (es.trim().toLowerCase() === en.trim().toLowerCase()) {
-      issues.examples.push(`examples[${i}] es and en must be different sentences`);
+    if (String(pairL1).trim().toLowerCase() === String(pairL2).trim().toLowerCase()) {
+      issues.examples.push(`examples[${i}] l1 and l2 must be different sentences`);
     }
     // Cloze eligibility: the app can only blank the answer out of a sentence
     // when it appears verbatim at word boundaries (same rule as the frontend's
     // locateAnswerInExample). Every stored pair must be blankable, so any of
     // them can back the fill-in-the-blank games.
-    if (!isBlank(card.english_text) && locateAnswerInExample(en, card.english_text) === null) {
-      issues.examples.push(`examples[${i}].en must contain the English answer verbatim (word for word) so it can be blanked`);
+    if (!isBlank(l2) && locateAnswerInExample(pairL2, l2) === null) {
+      issues.examples.push(`examples[${i}].l2 must contain the English answer verbatim (word for word) so it can be blanked`);
     }
   });
-  const enNorms = pairs.map((p) => normalizeAnswer(String((p && p.en) ?? '')));
-  if (new Set(enNorms.filter(Boolean)).size !== enNorms.length) {
+  const l2Norms = pairs.map((p) => normalizeAnswer(String((p && (p.l2 ?? p.example_l2 ?? p.en ?? p.example_en)) ?? '')));
+  if (new Set(l2Norms.filter(Boolean)).size !== l2Norms.length) {
     issues.examples.push('examples must not repeat the same English sentence');
   }
-  // Legacy mirror: example_es/example_en/example_sentence must equal pair 0
+  // Legacy mirror: example_l1/example_l2/example_sentence must equal pair 0
   // (normCard repairs this mechanically; flagging covers hand-edited data that
   // bypassed normCard).
-  if (pairs.length && pairs[0] && !isBlank(pairs[0].en)) {
-    if (card.example_en !== pairs[0].en || card.example_es !== pairs[0].es ||
-        card.example_sentence !== pairs[0].en) {
-      issues.examples.push('example_es/example_en/example_sentence must mirror examples[0]');
+  if (pairs.length && pairs[0]) {
+    const pair0L1 = pairs[0].l1 ?? pairs[0].example_l1 ?? pairs[0].es ?? pairs[0].example_es;
+    const pair0L2 = pairs[0].l2 ?? pairs[0].example_l2 ?? pairs[0].en ?? pairs[0].example_en;
+    if (!isBlank(pair0L2)) {
+      const exL1 = card.example_l1 ?? card.example_es;
+      const exL2 = card.example_l2 ?? card.example_en;
+      const exSentence = card.example_sentence ?? card.example_l2 ?? card.example_en;
+      if (exL2 !== pair0L2 || exL1 !== pair0L1 || exSentence !== pair0L2) {
+        issues.examples.push('example_l1/example_l2/example_sentence must mirror examples[0]');
+      }
     }
   } else if (pairs.length === 0) {
     // No pair set at all: keep the legacy fields' own sanity checks so partially
     // migrated data still reports something actionable.
-    if (isBlank(card.example_es)) issues.examples.push('example_es is required');
-    if (isBlank(card.example_en)) issues.examples.push('example_en is required');
+    const exL1 = card.example_l1 ?? card.example_es;
+    const exL2 = card.example_l2 ?? card.example_en;
+    if (isBlank(exL1)) issues.examples.push('example_l1 is required');
+    if (isBlank(exL2)) issues.examples.push('example_l2 is required');
   }
 
-  // --- synonyms (synonyms_en) ---
-  const syn = Array.isArray(card.synonyms_en) ? card.synonyms_en : [];
+  // --- synonyms (l2_synonyms) ---
+  const synRaw = card.l2_synonyms ?? card.synonyms_en;
+  const syn = Array.isArray(synRaw) ? synRaw : [];
   if (syn.length < 1 || syn.length > 3) {
-    issues.synonyms.push('synonyms_en must contain 1 to 3 items');
+    issues.synonyms.push('l2_synonyms must contain 1 to 3 items');
   }
   if (syn.some((s) => INVERTED_PUNCT.test(String(s)))) {
-    issues.synonyms.push('synonyms_en must be English (no ¿ or ¡)');
+    issues.synonyms.push('l2_synonyms must be English (no ¿ or ¡)');
   }
 
-  // --- cloze distractors (cloze_distractors_en, migration 0018) ---
+  // --- cloze distractors (l2_cloze_distractors, migration 0018) ---
   // Deterministic shape checks only; whether a distractor secretly fits a
   // blank is judged by the clozeSolve audit in lib/enrich.cjs (per sentence).
-  const opts = Array.isArray(card.cloze_distractors_en) ? card.cloze_distractors_en : [];
+  const optsRaw = card.l2_cloze_distractors ?? card.cloze_distractors_en;
+  const opts = Array.isArray(optsRaw) ? optsRaw : [];
   if (opts.length < CLOZE_DISTRACTORS_MIN || opts.length > CLOZE_DISTRACTORS_MAX) {
-    issues.clozeDistractors.push(`cloze_distractors_en must contain ${CLOZE_DISTRACTORS_MIN} to ${CLOZE_DISTRACTORS_MAX} items`);
+    issues.clozeDistractors.push(`l2_cloze_distractors must contain ${CLOZE_DISTRACTORS_MIN} to ${CLOZE_DISTRACTORS_MAX} items`);
   }
   if (opts.some((o) => INVERTED_PUNCT.test(String(o)))) {
-    issues.clozeDistractors.push('cloze_distractors_en must be English (no ¿ or ¡)');
+    issues.clozeDistractors.push('l2_cloze_distractors must be English (no ¿ or ¡)');
   }
   if (opts.some((o) => String(o).length > 60)) {
     issues.clozeDistractors.push('each cloze distractor must stay short (max 60 chars)');
   }
   const normOpts = opts.map((o) => normalizeAnswer(String(o)));
   if (new Set(normOpts.filter(Boolean)).size !== normOpts.length) {
-    issues.clozeDistractors.push('cloze_distractors_en must not contain blanks or duplicates');
+    issues.clozeDistractors.push('l2_cloze_distractors must not contain blanks or duplicates');
   }
   // A distractor restating the answer or a synonym would make two options
   // "correct"; one already present in any example sentence reads as broken.
   const answerForms = new Set(
-    [card.english_text, ...syn].map((s) => normalizeAnswer(String(s ?? ''))).filter(Boolean),
+    [l2, ...syn].map((s) => normalizeAnswer(String(s ?? ''))).filter(Boolean),
   );
   if (normOpts.some((o) => answerForms.has(o))) {
-    issues.clozeDistractors.push('cloze_distractors_en must not restate the answer or its synonyms');
+    issues.clozeDistractors.push('l2_cloze_distractors must not restate the answer or its synonyms');
   }
   const sentences = pairs.length
-    ? pairs.map((p) => (p && p.en) || '')
-    : [card.example_en].filter((s) => !isBlank(s));
+    ? pairs.map((p) => (p && (p.l2 ?? p.example_l2 ?? p.en ?? p.example_en)) || '')
+    : [card.example_l2 ?? card.example_en].filter((s) => !isBlank(s));
   if (opts.some((o) => sentences.some((en) => !isBlank(en) && locateAnswerInExample(en, String(o)) !== null))) {
-    issues.clozeDistractors.push('cloze_distractors_en must not reuse a word already present in an example sentence');
+    issues.clozeDistractors.push('l2_cloze_distractors must not reuse a word already present in an example sentence');
   }
 
   return issues;

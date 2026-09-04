@@ -180,10 +180,7 @@ function normPair(p) {
   const l1 = optText(p.l1 ?? p.example_l1 ?? p.es ?? p.example_es);
   const l2 = optText(p.l2 ?? p.example_l2 ?? p.en ?? p.example_en);
   if (!l1 || !l2) return null;
-  const out = { l1, l2 };
-  Object.defineProperty(out, 'es', { get() { return this.l1; }, configurable: true, enumerable: false });
-  Object.defineProperty(out, 'en', { get() { return this.l2; }, configurable: true, enumerable: false });
-  return out;
+  return { l1, l2 };
 }
 
 // Full-set response ({ examples: [{example_l1, example_l2}] }).
