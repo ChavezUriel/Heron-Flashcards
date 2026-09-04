@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getLanguage } from '../languages';
 
 // Fisher–Yates so each column lands in a fresh order every round.
@@ -21,8 +22,9 @@ function shuffle(items) {
 // carry the same card_id. Every tile is a real <button>, so Tab + Enter/Space
 // drives it with no pointer required (§8.4); the host owns Escape-to-dismiss.
 function MemoryGrid({ cards, onDone }) {
-  const sourceLabel = getLanguage(cards?.[0]?.language_from ?? 'es')?.name ?? 'Prompt';
-  const targetLabel = getLanguage(cards?.[0]?.language_to ?? 'en')?.name ?? 'Answer';
+  const { t } = useTranslation();
+  const sourceLabel = getLanguage(cards?.[0]?.language_from ?? 'es')?.name ?? t('deck.source_prompt_fallback');
+  const targetLabel = getLanguage(cards?.[0]?.language_to ?? 'en')?.name ?? t('deck.target_answer_fallback');
 
   const { l1Tiles, l2Tiles } = useMemo(
     () => ({
@@ -115,7 +117,7 @@ function MemoryGrid({ cards, onDone }) {
             className={tileClassName(side, tile)}
             disabled={matched.has(tile.id)}
             aria-pressed={pick?.side === side && pick.id === tile.id}
-            aria-label={`${label}: ${tile.text}`}
+            aria-label={t('games.memory_grid.tile_aria', { label, text: tile.text })}
             onClick={() => handlePick(side, tile.id)}
           >
             {tile.text}
@@ -127,9 +129,9 @@ function MemoryGrid({ cards, onDone }) {
 
   return (
     <section className="panel matchgame">
-      <p className="flashcard__label">Match the pairs</p>
+      <p className="flashcard__label">{t('games.memory_grid.label')}</p>
       <p className="matchgame__hint" role="status" aria-live="polite">
-        {allMatched ? 'All matched — nice work!' : `${matched.size} of ${total} matched`}
+        {allMatched ? t('games.memory_grid.hint_all_matched') : t('games.memory_grid.hint_matched', { matched: matched.size, total })}
       </p>
 
       <div className="matchgame__columns">
@@ -138,7 +140,7 @@ function MemoryGrid({ cards, onDone }) {
       </div>
 
       <button type="button" className="button button--primary matchgame__done" onClick={finish}>
-        {allMatched ? 'Continue' : 'Skip'}
+        {allMatched ? t('common.continue') : t('common.skip')}
       </button>
     </section>
   );

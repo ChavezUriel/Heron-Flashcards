@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PROVIDERS, PROVIDER_IDS, getProvider, maskKey } from '../ai/providers';
 import { loadCredentials, saveCredential, clearCredential } from '../ai/keyStore';
 import { listProviderModels, testLlmConnection } from '../ai/llmClient';
@@ -11,6 +12,7 @@ import { listProviderModels, testLlmConnection } from '../ai/llmClient';
 // hiding the key behind a Save button — a half-typed key is never usable
 // anyway, and this way a run started tomorrow still has it.
 function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
+  const { t } = useTranslation();
   const [credentials, setCredentials] = useState(() => loadCredentials());
   const [showKey, setShowKey] = useState(false);
   const [testState, setTestState] = useState({ status: 'idle', message: '' });
@@ -63,7 +65,7 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
       setModels(list);
       setModelsState({
         status: list.length ? 'ok' : 'error',
-        message: list.length ? `${list.length} models available.` : 'The provider returned no models.',
+        message: list.length ? t('provider.models_available', { count: list.length }) : t('provider.no_models_returned'),
       });
     } catch (error) {
       setModelsState({ status: 'error', message: error.message });
@@ -79,7 +81,7 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
 
   return (
     <div className="ai-provider">
-      <div className="ai-provider__grid" role="radiogroup" aria-label="AI provider">
+      <div className="ai-provider__grid" role="radiogroup" aria-label={t('provider.title')}>
         {PROVIDER_IDS.map((id) => {
           const option = PROVIDERS[id];
           const stored = credentials[id];
@@ -96,9 +98,9 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
               <span className="ai-provider__option-head">
                 <span className="ai-provider__option-name">{option.label}</span>
                 {stored.apiKey ? (
-                  <span className="st-chip">Key saved</span>
+                  <span className="st-chip">{t('provider.key_saved')}</span>
                 ) : (
-                  <span className="st-chip st-chip--muted">No key</span>
+                  <span className="st-chip st-chip--muted">{t('provider.no_key')}</span>
                 )}
               </span>
               <span className="ai-provider__option-blurb">{option.blurb}</span>
@@ -109,7 +111,7 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
 
       <div className="st-form__grid">
         <label className="st-field">
-          <span className="st-field__label">{provider.label} API key</span>
+          <span className="st-field__label">{t('provider.api_key_for_provider', { label: provider.label })}</span>
           <div className="ai-provider__key">
             <input
               className="st-input"
@@ -126,27 +128,29 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
               onClick={() => setShowKey((current) => !current)}
               disabled={!hasKey}
             >
-              {showKey ? 'Hide' : 'Show'}
+              {showKey ? t('provider.hide_key') : t('provider.show_key')}
             </button>
           </div>
           <span className="ai-provider__hint">
             {hasKey ? (
               <>
-                Stored {credential.scope === 'session' ? 'for this tab only' : 'in this browser'} as{' '}
-                <code>{maskKey(credential.apiKey)}</code>.{' '}
-                <button type="button" className="ai-link" onClick={handleForget}>Forget it</button>
+                {t('provider.stored_key_hint', {
+                  scope: credential.scope === 'session' ? t('provider.scope_session') : t('provider.scope_device'),
+                  masked: maskKey(credential.apiKey),
+                })}{' '}
+                <button type="button" className="ai-link" onClick={handleForget}>{t('provider.forget_key')}</button>
               </>
             ) : (
               <>
-                Paste your own key.{' '}
-                <a href={provider.keysUrl} target="_blank" rel="noreferrer">Get a {provider.label} key ↗</a>
+                {t('provider.paste_key_hint')}{' '}
+                <a href={provider.keysUrl} target="_blank" rel="noreferrer">{t('provider.get_key_link', { label: provider.label })}</a>
               </>
             )}
           </span>
         </label>
 
         <label className="st-field">
-          <span className="st-field__label">Model</span>
+          <span className="st-field__label">{t('provider.model_label')}</span>
           <input
             className="st-input"
             list={`ai-models-${providerId}`}
@@ -165,7 +169,7 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
               onClick={handleLoadModels}
               disabled={!hasKey || modelsState.status === 'working'}
             >
-              {modelsState.status === 'working' ? 'Loading models…' : 'Load the models this key can use'}
+              {modelsState.status === 'working' ? t('provider.loading_models') : t('provider.load_models')}
             </button>
             {modelsState.message ? <> — {modelsState.message}</> : null}
           </span>
@@ -179,21 +183,20 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
           onClick={handleTest}
           disabled={!hasKey || testState.status === 'working'}
         >
-          {testState.status === 'working' ? 'Testing…' : 'Test connection'}
+          {testState.status === 'working' ? t('provider.testing') : t('provider.test_connection')}
         </button>
         {testState.status === 'ok' ? <span className="st-success">{testState.message}</span> : null}
         {testState.status === 'error' ? <span className="st-error">{testState.message}</span> : null}
       </div>
 
       <details className="ai-details">
-        <summary>Advanced: storage, endpoint and routing</summary>
+        <summary>{t('provider.advanced_summary')}</summary>
         <div className="ai-details__body">
           <div className="st-row">
             <div className="st-row__info">
-              <span className="st-row__label">Keep this key after the tab closes</span>
+              <span className="st-row__label">{t('provider.keep_key_label')}</span>
               <span className="st-row__meta">
-                On: stored in this browser so a run can be resumed later. Off: kept only for this
-                tab — safer on a shared computer.
+                {t('provider.keep_key_meta')}
               </span>
             </div>
             <label className="st-switch">
@@ -201,7 +204,7 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
                 type="checkbox"
                 checked={credential.scope !== 'session'}
                 onChange={(event) => updateCredential({ scope: event.target.checked ? 'device' : 'session' })}
-                aria-label="Keep this key after the tab closes"
+                aria-label={t('provider.keep_key_label')}
               />
               <span className="st-switch__track" aria-hidden="true" />
             </label>
@@ -209,11 +212,11 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
 
           <div className="st-row">
             <div className="st-row__info">
-              <span className="st-row__label">Send requests through this app's relay</span>
+              <span className="st-row__label">{t('provider.proxy_label')}</span>
               <span className="st-row__meta">
                 {provider.direct
-                  ? 'Off (recommended): your browser calls the provider directly and the key never touches our server. Turn on only if your network blocks the provider.'
-                  : `${provider.label} does not accept browser requests, so every call goes through the relay. The key is used for the call and never stored there.`}
+                  ? t('provider.proxy_direct_meta')
+                  : t('provider.proxy_relay_meta', { label: provider.label })}
               </span>
             </div>
             <label className="st-switch">
@@ -222,14 +225,14 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
                 checked={credential.useProxy}
                 disabled={!provider.direct}
                 onChange={(event) => updateCredential({ useProxy: event.target.checked })}
-                aria-label="Send requests through this app's relay"
+                aria-label={t('provider.proxy_label')}
               />
               <span className="st-switch__track" aria-hidden="true" />
             </label>
           </div>
 
           <label className="st-field">
-            <span className="st-field__label">API base URL</span>
+            <span className="st-field__label">{t('provider.custom_url_label')}</span>
             <input
               className="st-input"
               value={credential.baseUrl}
@@ -238,7 +241,7 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
               spellCheck="false"
             />
             <span className="ai-provider__hint">
-              Override for a compatible gateway. Leave as-is unless you know you need something else.
+              {t('provider.base_url_hint')}
             </span>
           </label>
         </div>

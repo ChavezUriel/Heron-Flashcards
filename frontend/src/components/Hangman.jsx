@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getLanguage } from '../languages';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -10,10 +11,11 @@ const MAX_MISSES = 6;
 // pure arcade fun, so it NEVER grades: it only
 // ever calls onDone() to dismiss and never touches a session RPC (§5.2, §8.2).
 function Hangman({ card, onDone }) {
+  const { t } = useTranslation();
   const answer = (card.answer_l2 ?? '').trim();
   const prompt = card.prompt_l1;
   const sourceLang = getLanguage(card.language_from ?? 'es');
-  const sourceLabel = sourceLang?.name ?? 'Prompt';
+  const sourceLabel = sourceLang?.name ?? t('deck.source_prompt_fallback');
   const answerLetters = useMemo(() => {
     const set = new Set();
     for (const ch of answer.toUpperCase()) {
@@ -84,13 +86,13 @@ function Hangman({ card, onDone }) {
 
   return (
     <section className="panel hangmangame">
-      <p className="flashcard__label">Hangman</p>
+      <p className="flashcard__label">{t('games.hangman.label')}</p>
       <p className="hangmangame__prompt">
         <span className="hangmangame__prompt-label">{sourceLabel}</span>
         {prompt}
       </p>
 
-      <div className="hangmangame__word" role="status" aria-live="polite" aria-label={isOver ? answer : 'Word to guess'}>
+      <div className="hangmangame__word" role="status" aria-live="polite" aria-label={isOver ? answer : t('games.hangman.word_to_guess')}>
         {[...answer].map((ch, index) => {
           if (!/\p{L}/u.test(ch)) {
             return <span key={index} className="hangmangame__space">{ch === ' ' ? ' ' : ch}</span>;
@@ -108,7 +110,7 @@ function Hangman({ card, onDone }) {
         })}
       </div>
 
-      <p className="hangmangame__lives" aria-label={`${remaining} guesses left`}>
+      <p className="hangmangame__lives" aria-label={t('games.hangman.guesses_left', { count: remaining })}>
         {Array.from({ length: MAX_MISSES }, (_, index) => (
           <span
             key={index}
@@ -121,7 +123,7 @@ function Hangman({ card, onDone }) {
       </p>
 
       {!isOver ? (
-        <div className="hangmangame__keyboard" role="group" aria-label="Letters">
+        <div className="hangmangame__keyboard" role="group" aria-label={t('games.hangman.letters_group')}>
           {ALPHABET.map((letter) => {
             const isGuessed = guessed.has(letter);
             const isHit = isGuessed && answerLetters.has(letter);
@@ -133,7 +135,7 @@ function Hangman({ card, onDone }) {
                 className={`hangmangame__key${isHit ? ' hangmangame__key--hit' : ''}${isMiss ? ' hangmangame__key--miss' : ''}`}
                 onClick={() => guessLetter(letter)}
                 disabled={isGuessed}
-                aria-label={`Guess ${letter}`}
+                aria-label={t('games.hangman.guess_aria', { letter })}
               >
                 {letter}
               </button>
@@ -142,10 +144,10 @@ function Hangman({ card, onDone }) {
         </div>
       ) : (
         <div className={`hangmangame__feedback hangmangame__feedback--${isWin ? 'win' : 'loss'}`} role="status" aria-live="polite">
-          <p className="hangmangame__verdict">{isWin ? 'Solved it! 🎉' : 'Out of guesses'}</p>
+          <p className="hangmangame__verdict">{isWin ? t('games.hangman.solved') : t('games.hangman.out_of_guesses')}</p>
           <p className="hangmangame__answer">{answer}</p>
           <button ref={continueRef} type="button" className="button button--primary hangmangame__action" onClick={finish}>
-            Continue
+            {t('common.continue')}
           </button>
         </div>
       )}

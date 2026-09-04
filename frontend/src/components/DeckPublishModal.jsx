@@ -294,8 +294,8 @@ export default function DeckPublishModal({
                   <h4>{t('publish.verdict_approved')}</h4>
                   <p>{report.summary.verdict_summary}</p>
                   <div className="publish-metrics">
-                    <span>✓ {report.summary.clean_cards} cards clean</span>
-                    <span>✓ 0 policy conflicts</span>
+                    <span>{t('publish.cards_clean', { count: report.summary.clean_cards })}</span>
+                    <span>{t('publish.zero_policy_conflicts')}</span>
                   </div>
                 </div>
               </div>
@@ -332,7 +332,7 @@ export default function DeckPublishModal({
                     {t('publish.conflicted_cards_title', { count: report.conflicted_cards.length })}
                   </h4>
                   <p>
-                    Fix the highlighted issues below or exclude the card from the deck before publishing.
+                    {t('publish.fix_highlighted_hint')}
                   </p>
                 </div>
 
@@ -355,42 +355,40 @@ export default function DeckPublishModal({
 
                       {/* Why Rejected Explanation */}
                       <div className="safety-issue-reason">
-                        <strong>Why Rejected:</strong> {card.why_rejected}
+                        <strong>{t('publish.why_rejected_label')}</strong> {card.why_rejected}
                       </div>
 
                       {/* Flagged Excerpt */}
                       {card.flagged_excerpt && (
                         <div className="safety-issue-excerpt">
-                          <span className="safety-excerpt-label">Flagged text ({card.flagged_field}):</span>
+                          <span className="safety-excerpt-label">{t('publish.flagged_text_label', { field: card.flagged_field })}</span>
                           <mark className="safety-mark">{card.flagged_excerpt}</mark>
                         </div>
                       )}
 
                       {/* Actionable Remediation Advice */}
                       <div className="safety-remediation">
-                        <strong>💡 How to Fix:</strong> {card.remediation_advice}
+                        <strong>{t('publish.how_to_fix_label')}</strong> {card.remediation_advice}
                       </div>
 
                       {/* Actions per card */}
                       <div className="safety-card-actions">
-                        {onEditCard && (
-                          <button
-                            type="button"
-                            className="button button--secondary st-button--compact"
-                            onClick={() => {
-                              onEditCard(card.card_id);
-                            }}
-                          >
-                            ✏️ {t('common.edit')}
-                          </button>
-                        )}
                         <button
                           type="button"
-                          className="button button--danger-outline st-button--compact"
-                          disabled={actionPendingCardId === card.card_id}
-                          onClick={() => handleDisableCard(card.card_id)}
+                          className="button button--secondary st-button--compact"
+                          onClick={() => onEditCard && onEditCard(card.card_id)}
                         >
-                          {actionPendingCardId === card.card_id ? t('publish.disabling') : t('publish.disable_card_btn')}
+                          {t('common.edit')}
+                        </button>
+                        <button
+                          type="button"
+                          className="button button--secondary st-button--compact"
+                          onClick={() => handleDisableCard(card.card_id)}
+                          disabled={actionPendingCardId === card.card_id}
+                        >
+                          {actionPendingCardId === card.card_id
+                            ? t('publish.disabling')
+                            : t('publish.disable_card_btn')}
                         </button>
                       </div>
                     </div>
@@ -406,7 +404,7 @@ export default function DeckPublishModal({
               </button>
               {!report.eligible && (
                 <button type="button" className="button button--secondary" onClick={handleStartScan}>
-                  🔄 Re-run Safety Audit
+                  {t('publish.rerun_audit_btn')}
                 </button>
               )}
               {report.eligible && (

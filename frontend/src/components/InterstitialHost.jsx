@@ -1,17 +1,10 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import MemoryGrid from './MemoryGrid';
 import SpeedRound from './SpeedRound';
 import WordScramble from './WordScramble';
 import Hangman from './Hangman';
 import SynonymMatch from './SynonymMatch';
-
-// Framing copy per placement (docs/minigames.md §6.1). The game itself is chosen
-// upstream by chooseInterstitialGame so the host stays a thin shell.
-const PLACEMENT_COPY = {
-  warmup: { eyebrow: 'Warm-up' },
-  boundary: { eyebrow: 'Quick break' },
-  cooldown: { eyebrow: 'Cool-down' },
-};
 
 // Render the chosen game. Pool-based games (memory_grid / speed_round) take the
 // whole sampled pool; single-card cool-down puzzles (scramble / hangman, §4 #9–#10)
@@ -40,7 +33,13 @@ function renderGame(game, cards, onDone) {
 // arrow / idle-hint handlers inert (§8.4); the host owns Escape-to-dismiss and the
 // games own the rest of the keyboard.
 function InterstitialHost({ placement, game, cards, onDone }) {
-  const copy = PLACEMENT_COPY[placement] ?? PLACEMENT_COPY.cooldown;
+  const { t } = useTranslation();
+  const eyebrow =
+    placement === 'warmup'
+      ? t('games.interstitial.warmup')
+      : placement === 'boundary'
+        ? t('games.interstitial.break')
+        : t('games.interstitial.cooldown');
 
   useEffect(() => {
     function handleKeyDown(event) {
@@ -56,11 +55,11 @@ function InterstitialHost({ placement, game, cards, onDone }) {
     <div className="interstitial">
       <div className="interstitial__banner">
         <div className="interstitial__intro">
-          <p className="eyebrow">{copy.eyebrow}</p>
-          <p className="interstitial__note">Just for fun — this never changes your schedule.</p>
+          <p className="eyebrow">{eyebrow}</p>
+          <p className="interstitial__note">{t('games.interstitial.note')}</p>
         </div>
         <button type="button" className="st-link-button interstitial__skip" onClick={onDone}>
-          Skip
+          {t('games.interstitial.skip')}
         </button>
       </div>
 

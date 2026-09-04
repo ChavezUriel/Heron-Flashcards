@@ -87,7 +87,15 @@
     "brand_quote_register": "\"Beginne in der Stille. Ein paar Worte heute werden im Fluss der Zeit zu einer Sprache.\"",
     "brand_quote_forgot": "\"Ein Wort verloren, wiedergefunden. Der Fluss bringt immer zurück, was zählt.\"",
     "brand_quote_reset": "\"Ein Neuanfang ist nur ein weiterer stiller Morgen am Wasser.\"",
-    "brand_tagline": "EINE RUHIGE ART, SPRACHEN ZU LERNEN"
+    "brand_tagline": "EINE RUHIGE ART, SPRACHEN ZU LERNEN",
+    "login_failed": "Anmeldung fehlgeschlagen",
+    "google_signin_failed": "Google-Anmeldung fehlgeschlagen",
+    "registration_failed": "Registrierung fehlgeschlagen",
+    "reset_email_failed": "Die E-Mail zum Zurücksetzen konnte nicht gesendet werden",
+    "update_password_failed": "Ihr Passwort konnte nicht aktualisiert werden",
+    "password_min_placeholder": "Mindestens 6 Zeichen",
+    "create_account_cta": "Konto erstellen",
+    "new_password": "NEUES PASSWORT"
   },
   "install": {
     "title": "Heron auf deinem Gerät installieren",
@@ -123,7 +131,24 @@
     "deleting_deck": "Deck wird gelöscht…",
     "show_metadata": "Metadaten der Lernkarte anzeigen",
     "source_prompt_fallback": "Frage",
-    "target_answer_fallback": "Antwort"
+    "target_answer_fallback": "Antwort",
+    "tap_to_reveal": "Tippen zum Aufdecken",
+    "flashcard_answer_aria": "Antwort angezeigt. Auf Touchgeräten nach links wischen für unbekannt oder nach rechts für bekannt.",
+    "flashcard_prompt_aria": "Karteikarte. Tippen, um die Antwort auf Touchgeräten aufzudecken.",
+    "replay_audio_aria": "Audio für {label} wiederholen",
+    "audio_unavailable_aria": "Audio für {label} nicht verfügbar",
+    "didnt_know": "Wusste ich nicht",
+    "knew_it": "Wusste ich",
+    "hide_answer": "Antwort verbergen",
+    "reveal_answer": "Antwort aufdecken",
+    "exclude_practice_aria": "{title} von der Übungssitzung ausschließen",
+    "include_practice_aria": "{title} in die Übungssitzung aufnehmen",
+    "practice_active_title": "Aktiv beim Üben — klicken zum Pausieren",
+    "practice_paused_title": "Pausiert — klicken zum Aufnehmen",
+    "search_matches_aria": "Suchtreffer für {title}",
+    "review_updates_aria": "{count, plural, one {1 Markt-Aktualisierung für {title} prüfen} other {# Markt-Aktualisierungen für {title} prüfen}}",
+    "review_updates_title": "Die Marktquelle dieses Decks wurde geändert — Aktualisierungen prüfen und abrufen",
+    "market_updates_count": "{count, plural, one {1 Markt-Aktualisierung} other {# Markt-Aktualisierungen}}"
   },
   "home": {
     "search_placeholder": "Decks und Wörter suchen…",
@@ -289,7 +314,27 @@
     "load_error": "Vorschläge konnten nicht geladen werden: {error}",
     "maintained_decks_title": "Decks, die du verwaltest",
     "tabs_aria": "Vorschlagslisten",
-    "to_review_tab": "Zu prüfen"
+    "to_review_tab": "Zu prüfen",
+    "already_proposed_chip": "Bereits in einem offenen Vorschlag enthalten",
+    "modal_aria": "Änderungen für das Markt-Deck vorschlagen",
+    "close_dialog_aria": "Vorschlagsdialog schließen",
+    "modal_eyebrow": "Für den Markt vorschlagen",
+    "modal_default_title": "Änderungen vorschlagen",
+    "comparing_market": "Vergleiche Ihr Deck mit dem Markt…",
+    "proposal_sent_with_count": "✓ Vorschlag mit {count, plural, one {1 Änderung} other {# Änderungen}} gesendet.",
+    "maintainer_review_note": "Die verwaltende Person des Decks wird den Vorschlag prüfen. Verfolgen Sie ihn unter „Vorschläge“ auf dem Markt.",
+    "cards_match_market": "Ihre Karten stimmen mit dem Markt-Deck überein — nichts vorzuschlagen.",
+    "edit_first_note": "Bearbeiten, ergänzen oder löschen Sie zuerst Karten in Ihrer Kopie und schlagen Sie die Änderungen dann hier vor.",
+    "differences_intro": "Hier sehen Sie die Unterschiede zwischen Ihrer Kopie und dem Markt. Die ausgewählten Änderungen werden in einem Vorschlag gebündelt.",
+    "section_edited": "Bearbeitete Karten",
+    "new_cards_hint": "Karten, die Sie hinzugefügt haben und die das Markt-Deck noch nicht enthält.",
+    "section_removals": "Kartenentfernungen",
+    "removals_hint": "In Ihrer Kopie gelöschte Karten. Das Bestätigen einer Entfernung löscht diese für alle Abonnenten des Markt-Decks.",
+    "message_label": "Nachricht an die verwaltende Person (optional)",
+    "message_placeholder": "Was haben Sie verbessert und warum?",
+    "cards_selected": "{count, plural, one {1 Karte ausgewählt} other {# Karten ausgewählt}}",
+    "sending": "Senden…",
+    "send_proposal_btn": "Vorschlag senden"
   },
   "practice": {
     "mode_new": "Neuer Lernstoff",
@@ -364,7 +409,8 @@
     },
     "cloze_type": {
       "placeholder": "Fehlendes Wort eingeben",
-      "input_label": "Gib das Wort ein, das die Lücke füllt"
+      "input_label": "Gib das Wort ein, das die Lücke füllt",
+      "label": "Fehlendes Wort einsetzen"
     },
     "type_translation": {
       "placeholder": "Antwort eingeben",
@@ -397,14 +443,17 @@
     "speed_round": {
       "label": "Blitzrunde",
       "verdict": "Tolles Tempo! ⚡",
-      "score": "{correct} / {total} richtig · {elapsed}"
+      "score": "{correct} / {total} richtig · {elapsed}",
+      "question_count": "Frage {current} von {total}",
+      "timer_aria": "Verstrichene Zeit"
     },
     "word_scramble": {
       "label": "Buchstabensalat",
       "placeholder": "Wort entwirren",
       "input_label": "Entwirrtes Wort eingeben",
       "solved": "Gelöst! 🎉",
-      "here_it_is": "Hier ist es"
+      "here_it_is": "Hier ist es",
+      "reveal": "Aufdecken"
     },
     "hangman": {
       "label": "Galgenmännchen",
@@ -412,7 +461,8 @@
       "guesses_left": "{count, plural, one {Noch 1 Versuch} other {Noch # Versuche}}",
       "solved": "Gelöst! 🎉",
       "out_of_guesses": "Keine Versuche mehr übrig",
-      "guess_aria": "Buchstabe {letter} raten"
+      "guess_aria": "Buchstabe {letter} raten",
+      "letters_group": "Buchstaben"
     },
     "synonym_match": {
       "label": "Synonym-Zuordnung",
@@ -651,7 +701,17 @@
     "diff_reason": "Begründung",
     "all_populated_msg": "Alle Felder waren bereits ausgefüllt oder geschützt. Keine Änderungen vorgeschlagen.",
     "include_card_title": "Karte in Übernahme einbeziehen",
-    "pair_mismatch_fixes": "{count, plural, one {Paar-Diskrepanz (1 Korrektur)} other {Paar-Diskrepanz (# Korrekturen)}}"
+    "pair_mismatch_fixes": "{count, plural, one {Paar-Diskrepanz (1 Korrektur)} other {Paar-Diskrepanz (# Korrekturen)}}",
+    "filter_aria": "Vorgeschlagene Karten filtern",
+    "pair_mismatch_heading": "⚠️ Mögliche Übersetzungsabweichung",
+    "pair_fix_both_summary": "Korrektur Nr. 1 (Zielbegriff) aktualisiert diese Karte. Korrektur Nr. 2 wird als neue Karteikarte zu Ihrem Deck hinzugefügt.",
+    "pair_fix_single_summary": "Diese Karte wird auf „{pair}“ aktualisiert.",
+    "pair_fix_none_summary": "Keine Paarkorrekturen ausgewählt. Das ursprüngliche Wortpaar bleibt unverändert.",
+    "pair_not_rewritten": "Ausgangs- und Zieltexte wurden nicht umgeschrieben, um die Kartenidentität zu schützen.",
+    "empty": "(leer)",
+    "fill_gap_reason": "Lücke füllen",
+    "reject_field_title": "Klicken, um diese Feldänderung abzulehnen",
+    "accept_field_title": "Klicken, um diese Feldänderung zu übernehmen"
   },
   "cards_list": {
     "title": "Karten",
@@ -669,7 +729,8 @@
     "meta_collocations": "Kollokationen",
     "meta_word_bank": "Wortspeicher",
     "open_issues": "{count, plural, one {1 offenes Problem} other {# offene Probleme}}",
-    "no_cards_filter": "Keine Karten in diesem Filter."
+    "no_cards_filter": "Keine Karten in diesem Filter.",
+    "filter_cards_aria": "Karten filtern"
   },
   "provider": {
     "title": "KI-Anbieter",
@@ -688,7 +749,20 @@
     "loading_models": "Modelle werden geladen…",
     "forget_key": "Schlüssel entfernen",
     "models_available": "{count, plural, one {1 Modell verfügbar.} other {# Modelle verfügbar.}}",
-    "no_models_returned": "Der Anbieter hat keine Modelle zurückgegeben."
+    "no_models_returned": "Der Anbieter hat keine Modelle zurückgegeben.",
+    "api_key_for_provider": "{label}-API-Schlüssel",
+    "stored_key_hint": "{scope} gespeichert als {masked}.",
+    "scope_session": "nur für diesen Tab",
+    "scope_device": "in diesem Browser",
+    "paste_key_hint": "Fügen Sie Ihren eigenen Schlüssel ein.",
+    "get_key_link": "{label}-Schlüssel anfordern ↗",
+    "advanced_summary": "Erweitert: Speicherung, Endpunkt und Routing",
+    "keep_key_label": "Diesen Schlüssel nach dem Schließen des Tabs behalten",
+    "keep_key_meta": "Ein: In diesem Browser gespeichert, um die Ausführung später fortzusetzen. Aus: Nur für diesen Tab behalten — sicherer auf gemeinsam genutzten Computern.",
+    "proxy_label": "Anfragen über das Relay dieser App senden",
+    "proxy_direct_meta": "Aus (empfohlen): Ihr Browser ruft den Anbieter direkt auf und der Schlüssel berührt nie unseren Server. Nur aktivieren, wenn Ihr Netzwerk den Anbieter blockiert.",
+    "proxy_relay_meta": "{label} akzeptiert keine Browseranfragen, daher läuft jeder Aufruf über das Relay. Der Schlüssel wird für den Aufruf verwendet und dort nie gespeichert.",
+    "base_url_hint": "Für ein kompatibles Gateway anpassen. Unverändert lassen, außer Sie wissen, dass Sie etwas anderes benötigen."
   },
   "run_page": {
     "blueprint_stage": "Entwurf",
@@ -1106,7 +1180,14 @@
     "view_market_deck": "Auf dem Marktplatz anzeigen",
     "conflicted_cards_title": "Karten, die Aufmerksamkeit erfordern ({count})",
     "disable_card_btn": "Karte im Deck ausblenden",
-    "disabling": "Wird ausgeblendet…"
+    "disabling": "Wird ausgeblendet…",
+    "cards_clean": "✓ {count, plural, one {1 Karte fehlerfrei} other {# Karten fehlerfrei}}",
+    "zero_policy_conflicts": "✓ 0 Richtlinienkonflikte",
+    "fix_highlighted_hint": "Beheben Sie die unten hervorgehobenen Probleme oder schließen Sie die Karte vor der Veröffentlichung aus dem Deck aus.",
+    "why_rejected_label": "Warum abgelehnt:",
+    "flagged_text_label": "Markierter Text ({field}):",
+    "how_to_fix_label": "💡 Anleitung zur Behebung:",
+    "rerun_audit_btn": "🔄 Sicherheitsprüfung erneut ausführen"
   },
   "diff": {
     "prompt": "Frage",

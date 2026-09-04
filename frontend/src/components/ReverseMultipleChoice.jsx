@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import MultipleChoice from './MultipleChoice';
 import { getLanguage } from '../languages';
 
@@ -7,8 +8,9 @@ import { getLanguage } from '../languages';
 // only a clean wrong pick records a lapse; it reuses MultipleChoice's tile/keyboard
 // engine with the prompt and correct answer swapped to the prompt side.
 function ReverseMultipleChoice({ card, distractors, onResolve, onOpenDetails }) {
+  const { t } = useTranslation();
   const sourceLang = getLanguage(card?.language_from ?? 'es');
-  const sourceLabel = sourceLang?.name ?? 'Prompt';
+  const sourceLabel = sourceLang?.name ?? t('deck.source_prompt_fallback');
   return (
     <MultipleChoice
       card={card}
@@ -17,7 +19,7 @@ function ReverseMultipleChoice({ card, distractors, onResolve, onOpenDetails }) 
       onOpenDetails={onOpenDetails}
       answer={card.prompt_l1 ?? card.prompt_es}
       answerLabel={sourceLabel}
-      label={`Choose the ${sourceLabel} translation`}
+      label={t('games.reverse_mc.label')}
       promptNode={<h2 className="mcgame__prompt">{card.answer_l2 ?? card.answer_en}</h2>}
     />
   );

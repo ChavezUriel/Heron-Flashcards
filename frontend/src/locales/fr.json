@@ -87,7 +87,15 @@
     "brand_quote_register": "\"Commencez en douceur. Quelques mots aujourd'hui deviennent une langue au fil du temps.\"",
     "brand_quote_forgot": "\"Perdez un mot, retrouvez-le. La rivière rapporte toujours ce qui compte.\"",
     "brand_quote_reset": "\"Un nouveau départ n'est qu'un autre matin paisible au bord de l'eau.\"",
-    "brand_tagline": "UNE FAÇON PAISIBLE D'APPRENDRE LES LANGUES"
+    "brand_tagline": "UNE FAÇON PAISIBLE D'APPRENDRE LES LANGUES",
+    "login_failed": "Échec de la connexion",
+    "google_signin_failed": "Échec de la connexion avec Google",
+    "registration_failed": "Échec de l'inscription",
+    "reset_email_failed": "Impossible d'envoyer l'e-mail de réinitialisation",
+    "update_password_failed": "Impossible de mettre à jour votre mot de passe",
+    "password_min_placeholder": "6 caractères minimum",
+    "create_account_cta": "Créer un compte",
+    "new_password": "NOUVEAU MOT DE PASSE"
   },
   "install": {
     "title": "Installer Heron sur votre appareil",
@@ -123,7 +131,24 @@
     "deleting_deck": "Suppression du deck…",
     "show_metadata": "Afficher les détails de la carte",
     "source_prompt_fallback": "Question",
-    "target_answer_fallback": "Réponse"
+    "target_answer_fallback": "Réponse",
+    "tap_to_reveal": "Toucher pour révéler",
+    "flashcard_answer_aria": "Réponse affichée. Balayez vers la gauche pour inconnu ou vers la droite pour su sur écran tactile.",
+    "flashcard_prompt_aria": "Carte mémoire. Touchez pour révéler la réponse sur écran tactile.",
+    "replay_audio_aria": "Réécouter l'audio en {label}",
+    "audio_unavailable_aria": "Audio en {label} indisponible",
+    "didnt_know": "Je ne savais pas",
+    "knew_it": "Je savais",
+    "hide_answer": "Masquer la réponse",
+    "reveal_answer": "Révéler la réponse",
+    "exclude_practice_aria": "Exclure {title} de la session d'entraînement",
+    "include_practice_aria": "Inclure {title} dans la session d'entraînement",
+    "practice_active_title": "Actif dans l'entraînement — cliquer pour suspendre",
+    "practice_paused_title": "Suspendu — cliquer pour inclure dans l'entraînement",
+    "search_matches_aria": "Correspondances de recherche pour {title}",
+    "review_updates_aria": "{count, plural, one {Examiner 1 mise à jour du marché pour {title}} other {Examiner # mises à jour du marché pour {title}}}",
+    "review_updates_title": "La source de ce paquet sur le marché a changé — examinez et appliquez les mises à jour",
+    "market_updates_count": "{count, plural, one {1 mise à jour du marché} other {# mises à jour du marché}}"
   },
   "home": {
     "search_placeholder": "Rechercher des decks et des mots…",
@@ -289,7 +314,27 @@
     "load_error": "Impossible de charger les propositions : {error}",
     "maintained_decks_title": "Decks que vous gérez",
     "tabs_aria": "Listes de propositions",
-    "to_review_tab": "À réviser"
+    "to_review_tab": "À réviser",
+    "already_proposed_chip": "Déjà inclus dans une proposition ouverte",
+    "modal_aria": "Proposer des modifications au paquet du marché",
+    "close_dialog_aria": "Fermer la boîte de dialogue de proposition",
+    "modal_eyebrow": "Proposer au marché",
+    "modal_default_title": "Proposer des modifications",
+    "comparing_market": "Comparaison de votre paquet avec le marché…",
+    "proposal_sent_with_count": "✓ Proposition envoyée avec {count, plural, one {1 modification} other {# modifications}}.",
+    "maintainer_review_note": "Le gestionnaire du paquet va l'examiner. Suivez-la sous « Propositions » dans le marché.",
+    "cards_match_market": "Vos cartes correspondent au paquet du marché — rien à proposer.",
+    "edit_first_note": "Modifiez, ajoutez ou supprimez d'abord des cartes dans votre copie, puis proposez les modifications ici.",
+    "differences_intro": "Voici en quoi votre copie diffère du marché. Les modifications sélectionnées sont regroupées dans une proposition pour le gestionnaire du paquet.",
+    "section_edited": "Cartes modifiées",
+    "new_cards_hint": "Cartes ajoutées que le paquet du marché ne possède pas encore.",
+    "section_removals": "Cartes supprimées",
+    "removals_hint": "Cartes supprimées de votre copie. L'approbation d'une suppression les retirera pour tous les abonnés du paquet.",
+    "message_label": "Message pour le gestionnaire (facultatif)",
+    "message_placeholder": "Qu'avez-vous amélioré et pourquoi ?",
+    "cards_selected": "{count, plural, one {1 carte sélectionnée} other {# cartes sélectionnées}}",
+    "sending": "Envoi en cours…",
+    "send_proposal_btn": "Envoyer la proposition"
   },
   "practice": {
     "mode_new": "Nouveau contenu",
@@ -364,7 +409,8 @@
     },
     "cloze_type": {
       "placeholder": "Tapez le mot manquant",
-      "input_label": "Tapez le mot qui remplit le blanc"
+      "input_label": "Tapez le mot qui remplit le blanc",
+      "label": "Remplissez le mot manquant"
     },
     "type_translation": {
       "placeholder": "Tapez la réponse",
@@ -397,14 +443,17 @@
     "speed_round": {
       "label": "Tour rapide",
       "verdict": "Bon rythme ! ⚡",
-      "score": "{correct} / {total} correctes · {elapsed}"
+      "score": "{correct} / {total} correctes · {elapsed}",
+      "question_count": "Question {current} sur {total}",
+      "timer_aria": "Temps écoulé"
     },
     "word_scramble": {
       "label": "Méli-mélo",
       "placeholder": "Remettez le mot en ordre",
       "input_label": "Tapez le mot remis en ordre",
       "solved": "Résolu ! 🎉",
-      "here_it_is": "Voici la réponse"
+      "here_it_is": "Voici la réponse",
+      "reveal": "Révéler"
     },
     "hangman": {
       "label": "Pendu",
@@ -412,7 +461,8 @@
       "guesses_left": "{count, plural, one {# essai restant} other {# essais restants}}",
       "solved": "Résolu ! 🎉",
       "out_of_guesses": "Nombre maximal d'essais atteint",
-      "guess_aria": "Deviner la lettre {letter}"
+      "guess_aria": "Deviner la lettre {letter}",
+      "letters_group": "Lettres"
     },
     "synonym_match": {
       "label": "Chasse aux synonymes",
@@ -651,7 +701,17 @@
     "diff_reason": "Motif",
     "all_populated_msg": "Tous les champs étaient déjà renseignés ou protégés. Aucune modification proposée.",
     "include_card_title": "Inclure la carte lors de l'application",
-    "pair_mismatch_fixes": "{count, plural, one {Incohérence de paire (1 correction)} other {Incohérence de paire (# corrections)}}"
+    "pair_mismatch_fixes": "{count, plural, one {Incohérence de paire (1 correction)} other {Incohérence de paire (# corrections)}}",
+    "filter_aria": "Filtrer les cartes proposées",
+    "pair_mismatch_heading": "⚠️ Incohérence potentielle de traduction",
+    "pair_fix_both_summary": "La correction n° 1 (terme cible) mettra à jour cette carte. La correction n° 2 sera ajoutée comme nouvelle carte à votre paquet.",
+    "pair_fix_single_summary": "Cette carte sera mise à jour en « {pair} ».",
+    "pair_fix_none_summary": "Aucune correction de paire sélectionnée. La paire de mots d'origine restera inchangée.",
+    "pair_not_rewritten": "Les textes source et cible n'ont pas été réécrits pour préserver l'identité de la carte.",
+    "empty": "(vide)",
+    "fill_gap_reason": "Combler le manque",
+    "reject_field_title": "Cliquer pour rejeter cette modification",
+    "accept_field_title": "Cliquer pour accepter cette modification"
   },
   "cards_list": {
     "title": "Cartes",
@@ -669,7 +729,8 @@
     "meta_collocations": "Collocations",
     "meta_word_bank": "Banc de mots",
     "open_issues": "{count, plural, one {# problème en suspens} other {# problèmes en suspens}}",
-    "no_cards_filter": "Aucune carte dans ce filtre."
+    "no_cards_filter": "Aucune carte dans ce filtre.",
+    "filter_cards_aria": "Filtrer les cartes"
   },
   "provider": {
     "title": "Fournisseur d'IA",
@@ -688,7 +749,20 @@
     "loading_models": "Chargement des modèles…",
     "forget_key": "Oublier la clé",
     "models_available": "{count, plural, one {# modèle disponible.} other {# modèles disponibles.}}",
-    "no_models_returned": "Le fournisseur n'a renvoyé aucun modèle."
+    "no_models_returned": "Le fournisseur n'a renvoyé aucun modèle.",
+    "api_key_for_provider": "Clé API {label}",
+    "stored_key_hint": "Enregistrée {scope} sous {masked}.",
+    "scope_session": "pour cet onglet uniquement",
+    "scope_device": "dans ce navigateur",
+    "paste_key_hint": "Collez votre propre clé.",
+    "get_key_link": "Obtenir une clé {label} ↗",
+    "advanced_summary": "Avancé : stockage, point de terminaison et routage",
+    "keep_key_label": "Conserver cette clé après la fermeture de l'onglet",
+    "keep_key_meta": "Activé : stockée dans ce navigateur pour reprendre plus tard. Désactivé : conservée uniquement pour cet onglet — plus sûr sur un ordinateur partagé.",
+    "proxy_label": "Envoyer les requêtes via le relais de cette application",
+    "proxy_direct_meta": "Désactivé (recommandé) : votre navigateur appelle directement le fournisseur et la clé ne touche jamais notre serveur. Activez seulement si votre réseau bloque le fournisseur.",
+    "proxy_relay_meta": "{label} n'accepte pas les requêtes du navigateur, donc chaque appel passe par le relais. La clé est utilisée pour l'appel et n'y est jamais stockée.",
+    "base_url_hint": "Remplacer pour une passerelle compatible. Laissez tel quel à moins de savoir que vous avez besoin d'autre chose."
   },
   "run_page": {
     "blueprint_stage": "Structure",
@@ -1106,7 +1180,14 @@
     "view_market_deck": "Voir sur le marché",
     "conflicted_cards_title": "Cartes nécessitant une attention ({count})",
     "disable_card_btn": "Masquer la carte du deck",
-    "disabling": "Masquage en cours…"
+    "disabling": "Masquage en cours…",
+    "cards_clean": "✓ {count, plural, one {1 carte conforme} other {# cartes conformes}}",
+    "zero_policy_conflicts": "✓ 0 conflit de politique",
+    "fix_highlighted_hint": "Corrigez les problèmes signalés ci-dessous ou excluez la carte du paquet avant de publier.",
+    "why_rejected_label": "Motif du rejet :",
+    "flagged_text_label": "Texte signalé ({field}) :",
+    "how_to_fix_label": "💡 Comment corriger :",
+    "rerun_audit_btn": "🔄 Réexécuter l'audit de sécurité"
   },
   "diff": {
     "prompt": "Question",

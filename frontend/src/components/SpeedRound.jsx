@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import MultipleChoice from './MultipleChoice';
 
 // Fisher–Yates over a copy.
@@ -37,6 +38,7 @@ function formatElapsed(ms) {
 // onDone() when the run finishes. The elapsed clock is display-only, so a frozen
 // test clock can never trap the round; answering every question always ends it.
 function SpeedRound({ cards, onDone }) {
+  const { t } = useTranslation();
   const questions = useMemo(() => buildQuestions(cards), [cards]);
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
@@ -94,13 +96,13 @@ function SpeedRound({ cards, onDone }) {
   if (finished) {
     return (
       <section className="panel speedround speedround--done">
-        <p className="flashcard__label">Speed round</p>
-        <p className="speedround__verdict">Nice pace! ⚡</p>
+        <p className="flashcard__label">{t('games.speed_round.label')}</p>
+        <p className="speedround__verdict">{t('games.speed_round.verdict')}</p>
         <p className="speedround__score">
-          {correct} / {questions.length} correct · {formatElapsed(elapsed)}
+          {t('games.speed_round.score', { correct, total: questions.length, elapsed: formatElapsed(elapsed) })}
         </p>
         <button ref={continueRef} type="button" className="button button--primary" onClick={finish}>
-          Continue
+          {t('common.continue')}
         </button>
       </section>
     );
@@ -110,8 +112,10 @@ function SpeedRound({ cards, onDone }) {
   return (
     <div className="speedround">
       <div className="speedround__status">
-        <span className="speedround__count">Question {index + 1} of {questions.length}</span>
-        <span className="speedround__timer" aria-label="Elapsed time" role="timer">
+        <span className="speedround__count">
+          {t('games.speed_round.question_count', { current: index + 1, total: questions.length })}
+        </span>
+        <span className="speedround__timer" aria-label={t('games.speed_round.timer_aria')} role="timer">
           {formatElapsed(elapsed)}
         </span>
       </div>

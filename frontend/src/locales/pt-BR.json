@@ -87,7 +87,15 @@
     "brand_quote_register": "\"Comece aos poucos. Algumas palavras hoje se tornam um idioma inteiro com o tempo.\"",
     "brand_quote_forgot": "\"Esqueça uma palavra, encontre-a de novo. O rio sempre traz de volta o que importa.\"",
     "brand_quote_reset": "\"Um novo começo é apenas mais uma manhã tranquila à beira d'água.\"",
-    "brand_tagline": "UMA FORMA TRANQUILA DE APRENDER IDIOMAS"
+    "brand_tagline": "UMA FORMA TRANQUILA DE APRENDER IDIOMAS",
+    "login_failed": "Falha ao entrar",
+    "google_signin_failed": "Falha ao entrar com o Google",
+    "registration_failed": "Falha no cadastro",
+    "reset_email_failed": "Não foi possível enviar o e-mail de redefinição",
+    "update_password_failed": "Não foi possível atualizar sua senha",
+    "password_min_placeholder": "Mínimo de 6 caracteres",
+    "create_account_cta": "Criar conta",
+    "new_password": "NOVA SENHA"
   },
   "install": {
     "title": "Instale o Heron no seu dispositivo",
@@ -123,7 +131,24 @@
     "deleting_deck": "Excluindo baralho…",
     "show_metadata": "Mostrar metadados do cartão",
     "source_prompt_fallback": "Pergunta",
-    "target_answer_fallback": "Resposta"
+    "target_answer_fallback": "Resposta",
+    "tap_to_reveal": "Toque para revelar",
+    "flashcard_answer_aria": "Resposta exibida. Deslize para a esquerda para não sabida ou para a direita para sabida em telas sensíveis ao toque.",
+    "flashcard_prompt_aria": "Pergunta do cartão. Toque para revelar a resposta em telas sensíveis ao toque.",
+    "replay_audio_aria": "Reproduzir áudio em {label}",
+    "audio_unavailable_aria": "Áudio em {label} indisponível",
+    "didnt_know": "Não sabia",
+    "knew_it": "Sabia",
+    "hide_answer": "Ocultar resposta",
+    "reveal_answer": "Revelar resposta",
+    "exclude_practice_aria": "Excluir {title} da sessão de prática",
+    "include_practice_aria": "Incluir {title} na sessão de prática",
+    "practice_active_title": "Ativo na prática — clique para pausar",
+    "practice_paused_title": "Pausado — clique para incluir na prática",
+    "search_matches_aria": "Correspondências de busca para {title}",
+    "review_updates_aria": "{count, plural, one {Revisar 1 atualização do mercado para {title}} other {Revisar # atualizações do mercado para {title}}}",
+    "review_updates_title": "A fonte de mercado deste baralho mudou — revise e obtenha as atualizações",
+    "market_updates_count": "{count, plural, one {1 atualização do mercado} other {# atualizações do mercado}}"
   },
   "home": {
     "search_placeholder": "Buscar baralhos e palavras…",
@@ -289,7 +314,27 @@
     "load_error": "Não foi possível carregar as propostas: {error}",
     "maintained_decks_title": "Baralhos que você mantém",
     "tabs_aria": "Listas de propostas",
-    "to_review_tab": "Para revisar"
+    "to_review_tab": "Para revisar",
+    "already_proposed_chip": "Já incluído em uma proposta aberta",
+    "modal_aria": "Propor alterações ao baralho do mercado",
+    "close_dialog_aria": "Fechar caixa de diálogo de proposta",
+    "modal_eyebrow": "Propor ao mercado",
+    "modal_default_title": "Propor alterações",
+    "comparing_market": "Comparando seu baralho com o mercado…",
+    "proposal_sent_with_count": "✓ Proposta enviada com {count, plural, one {1 alteração} other {# alterações}}.",
+    "maintainer_review_note": "A pessoa responsável pelo baralho irá revisá-la. Acompanhe em “Propostas” no mercado.",
+    "cards_match_market": "Seus cartões correspondem ao baralho do mercado — nada a propor.",
+    "edit_first_note": "Edite, adicione ou exclua cartões na sua cópia primeiro, depois proponha as alterações aqui.",
+    "differences_intro": "Estas são as diferenças da sua cópia em relação ao mercado. As alterações selecionadas são agrupadas em uma proposta para revisão do mantenedor.",
+    "section_edited": "Cartões editados",
+    "new_cards_hint": "Cartões adicionados que o baralho do mercado ainda não possui.",
+    "section_removals": "Exclusões de cartões",
+    "removals_hint": "Cartões excluídos na sua cópia. A aprovação da exclusão os removerá para todas as pessoas inscritas no baralho.",
+    "message_label": "Mensagem para quem mantém o baralho (opcional)",
+    "message_placeholder": "O que você melhorou e por quê?",
+    "cards_selected": "{count, plural, one {1 cartão selecionado} other {# cartões selecionados}}",
+    "sending": "Enviando…",
+    "send_proposal_btn": "Enviar proposta"
   },
   "practice": {
     "mode_new": "Conteúdo novo",
@@ -364,7 +409,8 @@
     },
     "cloze_type": {
       "placeholder": "Digite a palavra que falta",
-      "input_label": "Digite a palavra que preenche a lacuna"
+      "input_label": "Digite a palavra que preenche a lacuna",
+      "label": "Preencha a palavra que falta"
     },
     "type_translation": {
       "placeholder": "Digite a resposta",
@@ -397,14 +443,17 @@
     "speed_round": {
       "label": "Rodada rápida",
       "verdict": "Ótimo ritmo! ⚡",
-      "score": "{correct} / {total} corretas · {elapsed}"
+      "score": "{correct} / {total} corretas · {elapsed}",
+      "question_count": "Pergunta {current} de {total}",
+      "timer_aria": "Tempo decorrido"
     },
     "word_scramble": {
       "label": "Palavra embaralhada",
       "placeholder": "Ordene a palavra",
       "input_label": "Digite a palavra ordenada",
       "solved": "Resolvido! 🎉",
-      "here_it_is": "Aqui está"
+      "here_it_is": "Aqui está",
+      "reveal": "Revelar"
     },
     "hangman": {
       "label": "Jogo da forca",
@@ -412,7 +461,8 @@
       "guesses_left": "{count, plural, one {1 tentativa restante} other {# tentativas restantes}}",
       "solved": "Resolvido! 🎉",
       "out_of_guesses": "Sem tentativas restantes",
-      "guess_aria": "Adivinhar letra {letter}"
+      "guess_aria": "Adivinhar letra {letter}",
+      "letters_group": "Letras"
     },
     "synonym_match": {
       "label": "Associação de sinônimos",
@@ -651,7 +701,17 @@
     "diff_reason": "Motivo",
     "all_populated_msg": "Todos os campos já estavam preenchidos ou protegidos. Nenhuma alteração proposta.",
     "include_card_title": "Incluir cartão ao aplicar",
-    "pair_mismatch_fixes": "{count, plural, one {Incompatibilidade de par (1 correção)} other {Incompatibilidade de par (# correções)}}"
+    "pair_mismatch_fixes": "{count, plural, one {Incompatibilidade de par (1 correção)} other {Incompatibilidade de par (# correções)}}",
+    "filter_aria": "Filtrar cartões propostos",
+    "pair_mismatch_heading": "⚠️ Possível incompatibilidade de tradução",
+    "pair_fix_both_summary": "A correção nº 1 (termo de destino) atualizará este cartão. A correção nº 2 será adicionada como um novo cartão ao seu baralho.",
+    "pair_fix_single_summary": "Este cartão será atualizado para “{pair}”.",
+    "pair_fix_none_summary": "Nenhuma correção de par selecionada. O par de palavras original permanecerá inalterado.",
+    "pair_not_rewritten": "Os textos de origem e destino não foram reescritos para proteger a identidade do cartão.",
+    "empty": "(vazio)",
+    "fill_gap_reason": "Preencher lacuna",
+    "reject_field_title": "Clique para rejeitar esta alteração de campo",
+    "accept_field_title": "Clique para aceitar esta alteração de campo"
   },
   "cards_list": {
     "title": "Cartões",
@@ -669,7 +729,8 @@
     "meta_collocations": "Colocações",
     "meta_word_bank": "Banco de palavras",
     "open_issues": "{count, plural, one {1 problema pendente} other {# problemas pendentes}}",
-    "no_cards_filter": "Nenhum cartão neste filtro."
+    "no_cards_filter": "Nenhum cartão neste filtro.",
+    "filter_cards_aria": "Filtrar cartões"
   },
   "provider": {
     "title": "Provedor de IA",
@@ -688,7 +749,20 @@
     "loading_models": "Carregando modelos…",
     "forget_key": "Esquecer chave",
     "models_available": "{count, plural, one {1 modelo disponível.} other {# modelos disponíveis.}}",
-    "no_models_returned": "O provedor não retornou modelos."
+    "no_models_returned": "O provedor não retornou modelos.",
+    "api_key_for_provider": "Chave de API do {label}",
+    "stored_key_hint": "Armazenada {scope} como {masked}.",
+    "scope_session": "apenas para esta aba",
+    "scope_device": "neste navegador",
+    "paste_key_hint": "Cole sua própria chave.",
+    "get_key_link": "Obter uma chave do {label} ↗",
+    "advanced_summary": "Avançado: armazenamento, endpoint e roteamento",
+    "keep_key_label": "Manter esta chave após fechar a aba",
+    "keep_key_meta": "Ativado: armazenada neste navegador para retomar mais tarde. Desativado: mantida apenas para esta aba — mais seguro em computador compartilhado.",
+    "proxy_label": "Enviar requisições pelo relay deste aplicativo",
+    "proxy_direct_meta": "Desativado (recomendado): seu navegador chama o provedor diretamente e a chave nunca passa pelo nosso servidor. Ative apenas se sua rede bloquear o provedor.",
+    "proxy_relay_meta": "{label} não aceita requisições do navegador, portanto cada chamada passa pelo relay. A chave é usada para a chamada e nunca é armazenada.",
+    "base_url_hint": "Substitua para um gateway compatível. Deixe como está a menos que você saiba que precisa de outro valor."
   },
   "run_page": {
     "blueprint_stage": "Esquema",
@@ -1106,7 +1180,14 @@
     "view_market_deck": "Ver no mercado",
     "conflicted_cards_title": "Cartões que precisam de atenção ({count})",
     "disable_card_btn": "Ocultar cartão do baralho",
-    "disabling": "Ocultando…"
+    "disabling": "Ocultando…",
+    "cards_clean": "✓ {count, plural, one {1 cartão limpo} other {# cartões limpos}}",
+    "zero_policy_conflicts": "✓ 0 conflitos com as diretrizes",
+    "fix_highlighted_hint": "Corrija os problemas destacados abaixo ou exclua o cartão do baralho antes de publicar.",
+    "why_rejected_label": "Por que foi rejeitado:",
+    "flagged_text_label": "Texto sinalizado ({field}):",
+    "how_to_fix_label": "💡 Como corrigir:",
+    "rerun_audit_btn": "🔄 Executar auditoria de segurança novamente"
   },
   "diff": {
     "prompt": "Pergunta",

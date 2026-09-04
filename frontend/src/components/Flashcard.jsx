@@ -1,4 +1,5 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { pickCardExample } from '../minigameText';
 import { speechLangFor } from '../speech';
 import { getLanguage } from '../languages';
@@ -172,6 +173,7 @@ function Flashcard({
   onReviewKnown,
   onReviewUnknown,
 }) {
+  const { t } = useTranslation();
   const activeUtteranceRef = useRef(null);
   const previousAnswerVisibleRef = useRef(isAnswerVisible);
   const hasAutoSpokenAnswerRef = useRef(false);
@@ -199,8 +201,8 @@ function Flashcard({
   const displayCard = exitCardRef.current ?? card;
   const targetLang = speechLangFor(languageTo ?? displayCard?.language_to ?? card?.language_to ?? card?.deck?.language_to ?? 'en');
   const sourceLang = speechLangFor(languageFrom ?? displayCard?.language_from ?? card?.language_from ?? card?.deck?.language_from ?? 'es');
-  const sourceLabel = getLanguage(languageFrom ?? displayCard?.language_from ?? card?.language_from ?? card?.deck?.language_from ?? 'es')?.name ?? 'Prompt';
-  const targetLabel = getLanguage(languageTo ?? displayCard?.language_to ?? card?.language_to ?? card?.deck?.language_to ?? 'en')?.name ?? 'Answer';
+  const sourceLabel = getLanguage(languageFrom ?? displayCard?.language_from ?? card?.language_from ?? card?.deck?.language_from ?? 'es')?.name ?? t('deck.source_prompt_fallback');
+  const targetLabel = getLanguage(languageTo ?? displayCard?.language_to ?? card?.language_to ?? card?.deck?.language_to ?? 'en')?.name ?? t('deck.target_answer_fallback');
   const displayPrompt = displayCard?.prompt_l1;
   const displayAnswer = displayCard?.answer_l2;
   const activeExample = pickCardExample(displayCard);
@@ -600,8 +602,8 @@ function Flashcard({
       <div
         aria-label={
           isBackVisible
-            ? 'Flashcard answer shown. Swipe left for unknown or right for known on touch devices.'
-            : 'Flashcard prompt. Tap to reveal the answer on touch devices.'
+            ? t('deck.flashcard_answer_aria')
+            : t('deck.flashcard_prompt_aria')
         }
         className={gestureSurfaceClassName}
         key={`${displayCard.card_id}:${enterGeneration}`}
@@ -643,7 +645,7 @@ function Flashcard({
               <div className="flashcard__reveal-hint" aria-hidden="true">
                 <span className="flashcard__reveal-pill">
                   <TapRevealIcon />
-                  <span>Tap to reveal</span>
+                  <span>{t('deck.tap_to_reveal')}</span>
                 </span>
               </div>
             ) : null}
@@ -660,12 +662,12 @@ function Flashcard({
               <h3 className="flashcard__inline-audio-heading flashcard__fit-heading flashcard__fit-heading--answer" ref={answerHeadingRef}>
                 <span>{displayAnswer}</span>
                 <button
-                  aria-label={hasAnswerSpeech ? `Replay ${targetLabel} audio` : `${targetLabel} audio unavailable`}
+                  aria-label={hasAnswerSpeech ? t('deck.replay_audio_aria', { label: targetLabel }) : t('deck.audio_unavailable_aria', { label: targetLabel })}
                   className="flashcard__audio-button"
                   type="button"
                   onClick={handlePlayAnswerSpeech}
                   disabled={!hasAnswerSpeech}
-                  title={hasAnswerSpeech ? `Replay ${targetLabel} audio` : `${targetLabel} audio unavailable`}
+                  title={hasAnswerSpeech ? t('deck.replay_audio_aria', { label: targetLabel }) : t('deck.audio_unavailable_aria', { label: targetLabel })}
                 >
                   <AudioIcon />
                 </button>
@@ -675,7 +677,7 @@ function Flashcard({
               <p className="flashcard__example flashcard__example--answer">{activeExample.example_l2 ?? activeExample.l2 ?? activeExample.example_en ?? activeExample.en}</p>
             ) : null}
             <button
-              aria-label="Show flashcard metadata"
+              aria-label={t('deck.show_metadata')}
               className="info-button"
               type="button"
               onClick={onOpenDetails}
@@ -686,10 +688,10 @@ function Flashcard({
             <div className={`flashcard__swipe-feedback${showSwipeHint ? ' flashcard__swipe-feedback--visible' : ''}`} aria-hidden="true">
               <span className="flashcard__swipe-pill flashcard__swipe-pill--unknown">
                 <SwipeDirectionIcon direction="left" />
-                <span>I didn't know it</span>
+                <span>{t('deck.didnt_know')}</span>
               </span>
               <span className="flashcard__swipe-pill flashcard__swipe-pill--known">
-                <span>I knew it</span>
+                <span>{t('deck.knew_it')}</span>
                 <SwipeDirectionIcon direction="right" />
               </span>
             </div>
@@ -704,7 +706,7 @@ function Flashcard({
           onClick={onToggleReveal}
           disabled={Boolean(exitDirection) || isSubmitting}
         >
-          {isAnswerVisible ? 'Hide answer' : 'Reveal answer'}
+          {isAnswerVisible ? t('deck.hide_answer') : t('deck.reveal_answer')}
         </button>
       ) : null}
     </section>

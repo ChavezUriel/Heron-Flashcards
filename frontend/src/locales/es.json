@@ -87,7 +87,15 @@
     "brand_quote_register": "\"Empieza con calma. Unas pocas palabras hoy se convierten en un idioma con el correr del tiempo.\"",
     "brand_quote_forgot": "\"Pierde una palabra, encuéntrala de nuevo. El río siempre devuelve lo que importa.\"",
     "brand_quote_reset": "\"Un nuevo comienzo es solo otra mañana serena junto al agua.\"",
-    "brand_tagline": "UNA FORMA TRANQUILA DE APRENDER IDIOMAS"
+    "brand_tagline": "UNA FORMA TRANQUILA DE APRENDER IDIOMAS",
+    "login_failed": "Error al iniciar sesión",
+    "google_signin_failed": "Error al iniciar sesión con Google",
+    "registration_failed": "Error al registrarse",
+    "reset_email_failed": "No se pudo enviar el correo de restablecimiento",
+    "update_password_failed": "No se pudo actualizar tu contraseña",
+    "password_min_placeholder": "Mínimo 6 caracteres",
+    "create_account_cta": "Crear cuenta",
+    "new_password": "NUEVA CONTRASEÑA"
   },
   "install": {
     "title": "Instalar Heron en tu dispositivo",
@@ -123,7 +131,24 @@
     "deleting_deck": "Eliminando mazo…",
     "show_metadata": "Mostrar detalles de la tarjeta",
     "source_prompt_fallback": "Pregunta",
-    "target_answer_fallback": "Respuesta"
+    "target_answer_fallback": "Respuesta",
+    "tap_to_reveal": "Toca para revelar",
+    "flashcard_answer_aria": "Respuesta mostrada. Desliza a la izquierda para no aprendida o a la derecha para aprendida en pantallas táctiles.",
+    "flashcard_prompt_aria": "Pregunta de la tarjeta. Toca para revelar la respuesta en pantallas táctiles.",
+    "replay_audio_aria": "Reproducir audio de {label}",
+    "audio_unavailable_aria": "Audio en {label} no disponible",
+    "didnt_know": "No la sabía",
+    "knew_it": "La sabía",
+    "hide_answer": "Ocultar respuesta",
+    "reveal_answer": "Revelar respuesta",
+    "exclude_practice_aria": "Excluir {title} de la sesión de práctica",
+    "include_practice_aria": "Incluir {title} en la sesión de práctica",
+    "practice_active_title": "Activo en práctica — clic para pausar",
+    "practice_paused_title": "Pausado — clic para incluir en práctica",
+    "search_matches_aria": "Coincidencias de búsqueda para {title}",
+    "review_updates_aria": "{count, plural, one {Revisar 1 actualización del mercado para {title}} other {Revisar # actualizaciones del mercado para {title}}}",
+    "review_updates_title": "La fuente del mercado de este mazo cambió: revisa y obtén las actualizaciones",
+    "market_updates_count": "{count, plural, one {1 actualización del mercado} other {# actualizaciones del mercado}}"
   },
   "home": {
     "search_placeholder": "Buscar mazos y palabras…",
@@ -289,7 +314,27 @@
     "load_error": "No se pudieron cargar las propuestas: {error}",
     "maintained_decks_title": "Mazos que mantienes",
     "tabs_aria": "Listas de propuestas",
-    "to_review_tab": "Por revisar"
+    "to_review_tab": "Por revisar",
+    "already_proposed_chip": "Ya incluida en una propuesta abierta",
+    "modal_aria": "Proponer cambios al mazo del mercado",
+    "close_dialog_aria": "Cerrar diálogo de propuesta",
+    "modal_eyebrow": "Proponer al mercado",
+    "modal_default_title": "Proponer cambios",
+    "comparing_market": "Comparando tu mazo con el mercado…",
+    "proposal_sent_with_count": "✓ Propuesta enviada con {count, plural, one {1 cambio} other {# cambios}}.",
+    "maintainer_review_note": "La persona responsable del mazo la revisará. Puedes seguirla en «Propuestas» en el mercado.",
+    "cards_match_market": "Tus tarjetas coinciden con el mazo del mercado: no hay nada que proponer.",
+    "edit_first_note": "Edita, agrega o elimina tarjetas en tu copia primero, y luego propón los cambios aquí.",
+    "differences_intro": "Estas son las diferencias de tu copia respecto al mercado. Los cambios seleccionados se agrupan en una propuesta para que la revise la persona responsable del mazo.",
+    "section_edited": "Tarjetas editadas",
+    "new_cards_hint": "Tarjetas que agregaste y que el mazo del mercado aún no tiene.",
+    "section_removals": "Tarjetas eliminadas",
+    "removals_hint": "Tarjetas que eliminaste en tu copia. Aprobar una eliminación las borrará para todas las personas suscritas al mazo del mercado.",
+    "message_label": "Mensaje para quien mantiene el mazo (opcional)",
+    "message_placeholder": "¿Qué mejoraste y por qué?",
+    "cards_selected": "{count, plural, one {1 tarjeta seleccionada} other {# tarjetas seleccionadas}}",
+    "sending": "Enviando…",
+    "send_proposal_btn": "Enviar propuesta"
   },
   "practice": {
     "mode_new": "Material nuevo",
@@ -364,7 +409,8 @@
     },
     "cloze_type": {
       "placeholder": "Escribe la palabra que falta",
-      "input_label": "Escribe la palabra que completa el espacio"
+      "input_label": "Escribe la palabra que completa el espacio",
+      "label": "Completa la palabra que falta"
     },
     "type_translation": {
       "placeholder": "Escribe la respuesta",
@@ -397,14 +443,17 @@
     "speed_round": {
       "label": "Ronda rápida",
       "verdict": "¡Buen ritmo! ⚡",
-      "score": "{correct} / {total} correctas · {elapsed}"
+      "score": "{correct} / {total} correctas · {elapsed}",
+      "question_count": "Pregunta {current} de {total}",
+      "timer_aria": "Tiempo transcurrido"
     },
     "word_scramble": {
       "label": "Palabra revuelta",
       "placeholder": "Ordena la palabra",
       "input_label": "Escribe la palabra ordenada",
       "solved": "¡Resuelto! 🎉",
-      "here_it_is": "Aquí está"
+      "here_it_is": "Aquí está",
+      "reveal": "Revelar"
     },
     "hangman": {
       "label": "Ahorcado",
@@ -412,7 +461,8 @@
       "guesses_left": "{count, plural, one {1 intento restante} other {# intentos restantes}}",
       "solved": "¡Resuelto! 🎉",
       "out_of_guesses": "Sin intentos restantes",
-      "guess_aria": "Adivinar letra {letter}"
+      "guess_aria": "Adivinar letra {letter}",
+      "letters_group": "Letras"
     },
     "synonym_match": {
       "label": "Búsqueda de sinónimos",
@@ -651,7 +701,17 @@
     "diff_reason": "Motivo",
     "all_populated_msg": "Todos los campos ya estaban completos o protegidos. No hay cambios propuestos.",
     "include_card_title": "Incluir tarjeta al aplicar",
-    "pair_mismatch_fixes": "{count, plural, one {Incoherencia de par (1 corrección)} other {Incoherencia de par (# correcciones)}}"
+    "pair_mismatch_fixes": "{count, plural, one {Incoherencia de par (1 corrección)} other {Incoherencia de par (# correcciones)}}",
+    "filter_aria": "Filtrar tarjetas propuestas",
+    "pair_mismatch_heading": "⚠️ Posible discrepancia de traducción",
+    "pair_fix_both_summary": "La corrección n.º 1 (término de destino) actualizará esta tarjeta. La corrección n.º 2 se agregará como una nueva tarjeta a tu mazo.",
+    "pair_fix_single_summary": "Esta tarjeta se actualizará a “{pair}”.",
+    "pair_fix_none_summary": "No se seleccionaron correcciones para el par. El par de palabras original permanecerá sin cambios.",
+    "pair_not_rewritten": "Los textos de origen y destino no se reescribieron para proteger la identidad de la tarjeta.",
+    "empty": "(vacío)",
+    "fill_gap_reason": "Completar espacio",
+    "reject_field_title": "Haz clic para rechazar el cambio en este campo",
+    "accept_field_title": "Haz clic para aceptar el cambio en este campo"
   },
   "cards_list": {
     "title": "Tarjetas",
@@ -669,7 +729,8 @@
     "meta_collocations": "Colocaciones",
     "meta_word_bank": "Banco de palabras",
     "open_issues": "{count, plural, one {1 problema pendiente} other {# problemas pendientes}}",
-    "no_cards_filter": "No hay tarjetas en este filtro."
+    "no_cards_filter": "No hay tarjetas en este filtro.",
+    "filter_cards_aria": "Filtrar tarjetas"
   },
   "provider": {
     "title": "Proveedor de IA",
@@ -688,7 +749,20 @@
     "loading_models": "Cargando modelos…",
     "forget_key": "Olvidar clave",
     "models_available": "{count, plural, one {1 modelo disponible.} other {# modelos disponibles.}}",
-    "no_models_returned": "El proveedor no devolvió modelos."
+    "no_models_returned": "El proveedor no devolvió modelos.",
+    "api_key_for_provider": "Clave API de {label}",
+    "stored_key_hint": "Almacenada {scope} como {masked}.",
+    "scope_session": "solo para esta pestaña",
+    "scope_device": "en este navegador",
+    "paste_key_hint": "Pega tu propia clave.",
+    "get_key_link": "Obtener clave de {label} ↗",
+    "advanced_summary": "Avanzado: almacenamiento, punto de conexión y enrutamiento",
+    "keep_key_label": "Mantener esta clave después de cerrar la pestaña",
+    "keep_key_meta": "Activado: se almacena en este navegador para reanudar más tarde. Desactivado: solo se conserva en esta pestaña (más seguro en equipos compartidos).",
+    "proxy_label": "Enviar solicitudes a través del retransmisor de esta aplicación",
+    "proxy_direct_meta": "Desactivado (recomendado): el navegador llama directamente al proveedor y la clave nunca toca nuestro servidor. Actívalo solo si tu red bloquea al proveedor.",
+    "proxy_relay_meta": "{label} no acepta solicitudes desde el navegador, por lo que cada llamada pasa por el retransmisor. La clave se usa para la llamada y nunca se almacena allí.",
+    "base_url_hint": "Personaliza para una puerta de enlace compatible. Déjalo tal como está a menos que sepas que necesitas otra cosa."
   },
   "run_page": {
     "blueprint_stage": "Esquema",
@@ -1106,7 +1180,14 @@
     "view_market_deck": "Ver en el mercado",
     "conflicted_cards_title": "Tarjetas que requieren atención ({count})",
     "disable_card_btn": "Ocultar tarjeta del mazo",
-    "disabling": "Ocultando…"
+    "disabling": "Ocultando…",
+    "cards_clean": "✓ {count, plural, one {1 tarjeta limpia} other {# tarjetas limpias}}",
+    "zero_policy_conflicts": "✓ 0 conflictos de políticas",
+    "fix_highlighted_hint": "Corrige los problemas destacados a continuación o excluye la tarjeta del mazo antes de publicar.",
+    "why_rejected_label": "Motivo del rechazo:",
+    "flagged_text_label": "Texto señalado ({field}):",
+    "how_to_fix_label": "💡 Cómo solucionarlo:",
+    "rerun_audit_btn": "🔄 Volver a ejecutar auditoría de seguridad"
   },
   "diff": {
     "prompt": "Pregunta",

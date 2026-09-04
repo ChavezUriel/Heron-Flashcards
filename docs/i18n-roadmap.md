@@ -291,42 +291,16 @@ propose edits to an `es→en` deck.
 
 ## Status — resume here
 
-P0 through P5 are complete and committed on `feat/language-agnostic`.
-P6 is partially complete. P7 has not started.
+P0 through P6 are complete and verified. P7 has not started.
 
-**P6 done:** `src/i18n.js` (react-i18next + ICU plugin),
-`src/context/LocaleContext.jsx` backed by `profiles.ui_locale`, locale files
-for all six Tier 1 UI locales under `src/locales/`, and the shared components
-(modals, badges, tabs, run indicator, minigame feedback and hints, auth panel,
-install button).
+**P6 complete:**
+- `src/i18n.js` (react-i18next + ICU plugin) and `src/context/LocaleContext.jsx` backed by `profiles.ui_locale` with `localeCompare`, `formatNumber`, and `formatDate`.
+- Exact 1-to-1 key parity across all six Tier 1 UI locales (`en`, `es`, `fr`, `pt-BR`, `de`, `it`) with 1,109 translation keys.
+- All 31 UI files fully extracted with zero remaining hardcoded user-facing English strings.
+- Dynamic learning card content preserved untouched in all minigames and deck builders.
+- `npm run build` and all 4 test suites pass clean (`run_stub_tests.cjs`, `run_safety_audit_tests.mjs`, `run_single_card_review_tests.mjs`, `run_browser_pipeline_tests.mjs`).
 
-**P6 remaining** — 31 files still carry literal UI strings. Follow the key
-structure and ICU plural style already established in `src/locales/en.json`
-and the extracted components; add every new key to all six locale files
-together so none drifts. Ordered by density:
-
-| File | Literals |
-|---|---|
-| `pages/SettingsPage.jsx` | 68 |
-| `components/CardDetailsModal.jsx` | 37 |
-| `pages/AiDeckCompletePage.jsx` | 35 |
-| `pages/DeckWordsPage.jsx` | 34 |
-| `pages/HomePage.jsx` | 25 |
-| `pages/DeckRunPage.jsx` | 17 |
-| `components/DeckSpecEditor.jsx` | 16 |
-| `pages/PracticePage.jsx` | 15 |
-| `pages/ProposalsPage.jsx`, `pages/AiDeckBuilderPage.jsx` | 14 |
-| `pages/ResetPasswordPage.jsx`, `components/ProposeChangesModal.jsx`, `components/DeckGapReport.jsx` | 12 |
-| `components/ProposedChangeList.jsx` | 10 |
-| `pages/RegisterPage.jsx`, `components/AiProviderPanel.jsx` | 8 |
-| `pages/MarketPage.jsx`, `pages/LoginPage.jsx` | 7 |
-| `pages/ReviewPage.jsx`, `pages/ForgotPasswordPage.jsx`, `components/GeneratedCardList.jsx`, `components/Flashcard.jsx` | 6 |
-| `components/SynonymMatch.jsx`, `components/Listening.jsx` | 5 |
-| `components/MultipleChoice.jsx`, `components/DeckCard.jsx` | 4 |
-| `components/TypeTranslation.jsx`, `components/RecallFromDefinition.jsx`, `components/InterstitialHost.jsx`, `components/Hangman.jsx`, `components/ClozeType.jsx` | 3 |
-
-Still outstanding within P6: locale-aware dates and numbers, and the
-`localeCompare` call in `MarketPage.jsx` that takes no locale argument.
+**Next up:** P7 (Native L1/L2 multi-pair catalog).
 
 ### Notes for whoever picks this up
 

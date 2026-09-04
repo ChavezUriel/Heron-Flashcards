@@ -87,7 +87,15 @@
     "brand_quote_register": "\"Begin quietly. A few words today become a language by the river of time.\"",
     "brand_quote_forgot": "\"Lose a word, find it again. The river always returns what matters.\"",
     "brand_quote_reset": "\"A fresh start is just another still morning by the water.\"",
-    "brand_tagline": "A QUIET WAY TO LEARN LANGUAGES"
+    "brand_tagline": "A QUIET WAY TO LEARN LANGUAGES",
+    "login_failed": "Login failed",
+    "google_signin_failed": "Google sign-in failed",
+    "registration_failed": "Registration failed",
+    "reset_email_failed": "Could not send the reset email",
+    "update_password_failed": "Could not update your password",
+    "password_min_placeholder": "Minimum 6 characters",
+    "create_account_cta": "Create account",
+    "new_password": "NEW PASSWORD"
   },
   "install": {
     "title": "Install Heron on your device",
@@ -123,7 +131,24 @@
     "deleting_deck": "Deleting deck…",
     "show_metadata": "Show flashcard metadata",
     "source_prompt_fallback": "Prompt",
-    "target_answer_fallback": "Answer"
+    "target_answer_fallback": "Answer",
+    "tap_to_reveal": "Tap to reveal",
+    "flashcard_answer_aria": "Flashcard answer shown. Swipe left for unknown or right for known on touch devices.",
+    "flashcard_prompt_aria": "Flashcard prompt. Tap to reveal the answer on touch devices.",
+    "replay_audio_aria": "Replay {label} audio",
+    "audio_unavailable_aria": "{label} audio unavailable",
+    "didnt_know": "I didn't know it",
+    "knew_it": "I knew it",
+    "hide_answer": "Hide answer",
+    "reveal_answer": "Reveal answer",
+    "exclude_practice_aria": "Exclude {title} from practice session",
+    "include_practice_aria": "Include {title} in practice session",
+    "practice_active_title": "Active in practice — click to pause",
+    "practice_paused_title": "Paused — click to include in practice",
+    "search_matches_aria": "Search matches for {title}",
+    "review_updates_aria": "{count, plural, one {Review 1 market update for {title}} other {Review # market updates for {title}}}",
+    "review_updates_title": "This deck's market source changed — review and pull the updates",
+    "market_updates_count": "{count, plural, one {1 market update} other {# market updates}}"
   },
   "home": {
     "search_placeholder": "Search decks and words…",
@@ -289,7 +314,27 @@
     "load_error": "Unable to load proposals: {error}",
     "maintained_decks_title": "Decks you maintain",
     "tabs_aria": "Proposal lists",
-    "to_review_tab": "To review"
+    "to_review_tab": "To review",
+    "already_proposed_chip": "Already in an open proposal",
+    "modal_aria": "Propose changes to market deck",
+    "close_dialog_aria": "Close proposal dialog",
+    "modal_eyebrow": "Propose to market",
+    "modal_default_title": "Propose changes",
+    "comparing_market": "Comparing your deck with the market…",
+    "proposal_sent_with_count": "✓ Proposal sent with {count, plural, one {1 change} other {# changes}}.",
+    "maintainer_review_note": "The deck maintainer will review it. Track it under “Proposals” in the market.",
+    "cards_match_market": "Your cards match the market deck — nothing to propose.",
+    "edit_first_note": "Edit, add, or delete cards in your copy first, then propose the changes here.",
+    "differences_intro": "These are the ways your copy differs from the market. Selected changes are bundled into one proposal for the deck maintainer to review.",
+    "section_edited": "Edited cards",
+    "new_cards_hint": "Cards you added that the market deck does not have yet.",
+    "section_removals": "Card removals",
+    "removals_hint": "Cards you deleted in your copy. Approving a removal deletes them for all subscribers of the market deck.",
+    "message_label": "Message for the maintainer (optional)",
+    "message_placeholder": "What did you improve, and why?",
+    "cards_selected": "{count, plural, one {1 card selected} other {# cards selected}}",
+    "sending": "Sending…",
+    "send_proposal_btn": "Send proposal"
   },
   "practice": {
     "mode_new": "New Material",
@@ -364,7 +409,8 @@
     },
     "cloze_type": {
       "placeholder": "Type the missing word",
-      "input_label": "Type the word that fills the gap"
+      "input_label": "Type the word that fills the gap",
+      "label": "Fill in the missing word"
     },
     "type_translation": {
       "placeholder": "Type the answer",
@@ -397,14 +443,17 @@
     "speed_round": {
       "label": "Speed round",
       "verdict": "Nice pace! ⚡",
-      "score": "{correct} / {total} correct · {elapsed}"
+      "score": "{correct} / {total} correct · {elapsed}",
+      "question_count": "Question {current} of {total}",
+      "timer_aria": "Elapsed time"
     },
     "word_scramble": {
       "label": "Word scramble",
       "placeholder": "Unscramble the word",
       "input_label": "Type the unscrambled word",
       "solved": "Solved it! 🎉",
-      "here_it_is": "Here it is"
+      "here_it_is": "Here it is",
+      "reveal": "Reveal"
     },
     "hangman": {
       "label": "Hangman",
@@ -412,7 +461,8 @@
       "guesses_left": "{count, plural, one {1 guess left} other {# guesses left}}",
       "solved": "Solved it! 🎉",
       "out_of_guesses": "Out of guesses",
-      "guess_aria": "Guess letter {letter}"
+      "guess_aria": "Guess letter {letter}",
+      "letters_group": "Letters"
     },
     "synonym_match": {
       "label": "Synonym match",
@@ -651,7 +701,17 @@
     "diff_reason": "Reason",
     "all_populated_msg": "All fields were already populated or protected. No changes proposed.",
     "include_card_title": "Include card in apply",
-    "pair_mismatch_fixes": "{count, plural, one {Pair mismatch (1 fix)} other {Pair mismatch (# fixes)}}"
+    "pair_mismatch_fixes": "{count, plural, one {Pair mismatch (1 fix)} other {Pair mismatch (# fixes)}}",
+    "filter_aria": "Filter proposed cards",
+    "pair_mismatch_heading": "⚠️ Potential Translation Mismatch",
+    "pair_fix_both_summary": "Fix #1 (target term) will update this card. Fix #2 will be added as a new flashcard in your deck.",
+    "pair_fix_single_summary": "This card will be updated to “{pair}”.",
+    "pair_fix_none_summary": "No pair fixes selected. Original word pair will remain unchanged.",
+    "pair_not_rewritten": "Source and target texts were not rewritten to protect card identity.",
+    "empty": "(empty)",
+    "fill_gap_reason": "Fill gap",
+    "reject_field_title": "Click to reject this field change",
+    "accept_field_title": "Click to accept this field change"
   },
   "cards_list": {
     "title": "Cards",
@@ -669,7 +729,8 @@
     "meta_collocations": "Collocations",
     "meta_word_bank": "Word bank",
     "open_issues": "{count, plural, one {1 open issue} other {# open issues}}",
-    "no_cards_filter": "No cards in this filter."
+    "no_cards_filter": "No cards in this filter.",
+    "filter_cards_aria": "Filter cards"
   },
   "provider": {
     "title": "AI provider",
@@ -688,7 +749,20 @@
     "loading_models": "Loading models…",
     "forget_key": "Forget key",
     "models_available": "{count, plural, one {1 model available.} other {# models available.}}",
-    "no_models_returned": "The provider returned no models."
+    "no_models_returned": "The provider returned no models.",
+    "api_key_for_provider": "{label} API key",
+    "stored_key_hint": "Stored {scope} as {masked}.",
+    "scope_session": "for this tab only",
+    "scope_device": "in this browser",
+    "paste_key_hint": "Paste your own key.",
+    "get_key_link": "Get a {label} key ↗",
+    "advanced_summary": "Advanced: storage, endpoint and routing",
+    "keep_key_label": "Keep this key after the tab closes",
+    "keep_key_meta": "On: stored in this browser so a run can be resumed later. Off: kept only for this tab — safer on a shared computer.",
+    "proxy_label": "Send requests through this app's relay",
+    "proxy_direct_meta": "Off (recommended): your browser calls the provider directly and the key never touches our server. Turn on only if your network blocks the provider.",
+    "proxy_relay_meta": "{label} does not accept browser requests, so every call goes through the relay. The key is used for the call and never stored there.",
+    "base_url_hint": "Override for a compatible gateway. Leave as-is unless you know you need something else."
   },
   "run_page": {
     "blueprint_stage": "Blueprint",
@@ -1106,7 +1180,14 @@
     "view_market_deck": "View in Market",
     "conflicted_cards_title": "Cards Requiring Attention ({count})",
     "disable_card_btn": "Hide card from deck",
-    "disabling": "Hiding…"
+    "disabling": "Hiding…",
+    "cards_clean": "✓ {count, plural, one {1 card clean} other {# cards clean}}",
+    "zero_policy_conflicts": "✓ 0 policy conflicts",
+    "fix_highlighted_hint": "Fix the highlighted issues below or exclude the card from the deck before publishing.",
+    "why_rejected_label": "Why Rejected:",
+    "flagged_text_label": "Flagged text ({field}):",
+    "how_to_fix_label": "💡 How to Fix:",
+    "rerun_audit_btn": "🔄 Re-run Safety Audit"
   },
   "diff": {
     "prompt": "Prompt",

@@ -5,12 +5,14 @@
 // (for step 2 of AiDeckCompletePage).
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function DeckGapReport({ scan, deck, compact = false }) {
+  const { t } = useTranslation();
   const [showCardDetails, setShowCardDetails] = useState(false);
 
   if (!scan || !scan.totals) {
-    return <div className="st-section__hint">No scan data available.</div>;
+    return <div className="st-section__hint">{t('gap_report.no_scan_data')}</div>;
   }
 
   const { totals, perFeature, perCard } = scan;
@@ -23,28 +25,28 @@ export default function DeckGapReport({ scan, deck, compact = false }) {
     if (totals.cardsNeedingWork === 0) {
       return (
         <span className="ai-gap-badge ai-gap-badge--clean">
-          ✓ {totals.totalCards} cards · All complete
+          ✓ {t('gap_report.all_complete', { count: totals.totalCards })}
         </span>
       );
     }
     const badges = [];
     if (totals.missingExamples > 0) {
-      badges.push(`${totals.missingExamples} missing examples`);
+      badges.push(t('gap_report.missing_examples', { count: totals.missingExamples }));
     }
     if (totals.missingClozeDistractors > 0) {
-      badges.push(`${totals.missingClozeDistractors} missing word-bank options`);
+      badges.push(t('gap_report.missing_cloze', { count: totals.missingClozeDistractors }));
     }
     if (totals.emptyFields > 0) {
-      badges.push(`${totals.emptyFields} missing core fields`);
+      badges.push(t('gap_report.empty_fields', { count: totals.emptyFields }));
     }
     if (totals.invalidFields > 0) {
-      badges.push(`${totals.invalidFields} invalid fields`);
+      badges.push(t('gap_report.invalid_fields', { count: totals.invalidFields }));
     }
 
     return (
       <div className="ai-gap-compact">
         <span className="ai-gap-badge ai-gap-badge--warn">
-          {totals.cardsNeedingWork}/{totals.totalCards} cards need work
+          {t('gap_report.cards_need_work', { count: totals.cardsNeedingWork, total: totals.totalCards })}
         </span>
         {badges.length > 0 ? (
           <span className="ai-gap-compact__details">
@@ -61,46 +63,46 @@ export default function DeckGapReport({ scan, deck, compact = false }) {
       <div className="ai-gap-summary">
         <div className="ai-gap-stat">
           <span className="ai-gap-stat__value">{totals.totalCards}</span>
-          <span className="ai-gap-stat__label">Total Cards</span>
+          <span className="ai-gap-stat__label">{t('gap_report.total_cards_stat')}</span>
         </div>
         <div className={`ai-gap-stat ${totals.cardsNeedingWork > 0 ? 'ai-gap-stat--warn' : 'ai-gap-stat--success'}`}>
           <span className="ai-gap-stat__value">{totals.cardsNeedingWork}</span>
-          <span className="ai-gap-stat__label">Need Work</span>
+          <span className="ai-gap-stat__label">{t('gap_report.need_work_stat')}</span>
         </div>
         {totals.missingExamples > 0 ? (
           <div className="ai-gap-stat ai-gap-stat--warn">
             <span className="ai-gap-stat__value">{totals.missingExamples}</span>
-            <span className="ai-gap-stat__label">Missing Examples</span>
+            <span className="ai-gap-stat__label">{t('gap_report.missing_examples_stat')}</span>
           </div>
         ) : null}
         {totals.missingClozeDistractors > 0 ? (
           <div className="ai-gap-stat ai-gap-stat--warn">
             <span className="ai-gap-stat__value">{totals.missingClozeDistractors}</span>
-            <span className="ai-gap-stat__label">Missing Word-Bank</span>
+            <span className="ai-gap-stat__label">{t('gap_report.missing_wordbank_stat')}</span>
           </div>
         ) : null}
         {totals.neverAudited > 0 ? (
           <div className="ai-gap-stat ai-gap-stat--muted">
             <span className="ai-gap-stat__value">{totals.neverAudited}</span>
-            <span className="ai-gap-stat__label">Unaudited by AI</span>
+            <span className="ai-gap-stat__label">{t('gap_report.unaudited_stat')}</span>
           </div>
         ) : (
           <div className="ai-gap-stat ai-gap-stat--success">
             <span className="ai-gap-stat__value">100%</span>
-            <span className="ai-gap-stat__label">AI Audited</span>
+            <span className="ai-gap-stat__label">{t('gap_report.audited_stat')}</span>
           </div>
         )}
         {totals.invalidFields > 0 ? (
           <div className="ai-gap-stat ai-gap-stat--danger">
             <span className="ai-gap-stat__value">{totals.invalidFields}</span>
-            <span className="ai-gap-stat__label">Invalid Fields</span>
+            <span className="ai-gap-stat__label">{t('gap_report.invalid_stat')}</span>
           </div>
         ) : null}
       </div>
 
       {/* --- Feature breakdown: Core Structural Data --- */}
       <div className="ai-gap-breakdown">
-        <h3 className="st-field__label">Core Data Completeness (Required for minigames)</h3>
+        <h3 className="st-field__label">{t('gap_report.core_completeness_title')}</h3>
         <ul className="ai-gap-feature-list">
           {structuralFeatures.map((feature) => {
             const isClean = feature.count === 0;
@@ -114,10 +116,10 @@ export default function DeckGapReport({ scan, deck, compact = false }) {
                 </div>
                 <div className="ai-gap-feature-item__status">
                   {isClean ? (
-                    <span className="ai-status ai-status--completed">Complete</span>
+                    <span className="ai-status ai-status--completed">{t('gap_report.complete_status')}</span>
                   ) : (
                     <span className="ai-status ai-status--failed">
-                      {feature.count} card{feature.count === 1 ? '' : 's'} missing
+                      {t('gap_report.missing_status', { count: feature.count })}
                     </span>
                   )}
                 </div>
@@ -131,7 +133,7 @@ export default function DeckGapReport({ scan, deck, compact = false }) {
       {auditFeatures.length > 0 ? (
         <div className="ai-gap-breakdown">
           <div className="ai-run__log-head">
-            <h3 className="st-field__label">AI Quality Audits (Optional Deep Verification)</h3>
+            <h3 className="st-field__label">{t('gap_report.ai_audit_title')}</h3>
           </div>
           <ul className="ai-gap-feature-list">
             {auditFeatures.map((feature) => {
@@ -146,10 +148,10 @@ export default function DeckGapReport({ scan, deck, compact = false }) {
                   </div>
                   <div className="ai-gap-feature-item__status">
                     {isClean ? (
-                      <span className="ai-status ai-status--completed">Verified</span>
+                      <span className="ai-status ai-status--completed">{t('gap_report.verified_status')}</span>
                     ) : (
                       <span className="ai-status">
-                        {feature.count} card{feature.count === 1 ? '' : 's'} unverified
+                        {t('gap_report.unverified_status', { count: feature.count })}
                       </span>
                     )}
                   </div>
@@ -158,8 +160,7 @@ export default function DeckGapReport({ scan, deck, compact = false }) {
             })}
           </ul>
           <p className="st-section__hint">
-            Unaudited cards are fully playable in Smart Practice and all minigames as long as core fields are complete.
-            Running an <strong>Audit and improve</strong> run evaluates and refines them using an AI judge.
+            {t('gap_report.unaudited_hint')}
           </p>
         </div>
       ) : null}
@@ -174,8 +175,8 @@ export default function DeckGapReport({ scan, deck, compact = false }) {
             aria-expanded={showCardDetails}
           >
             {showCardDetails
-              ? `Hide itemized cards (${cardsNeedingWork.length})`
-              : `Inspect cards needing work (${cardsNeedingWork.length})`}
+              ? t('gap_report.hide_cards_btn', { count: cardsNeedingWork.length })
+              : t('gap_report.inspect_cards_btn', { count: cardsNeedingWork.length })}
           </button>
 
           {showCardDetails ? (
@@ -190,22 +191,22 @@ export default function DeckGapReport({ scan, deck, compact = false }) {
 
                   <div className="ai-gap-card-item__tags">
                     {presence.examples === 'empty' && (
-                      <span className="ai-gap-tag ai-gap-tag--empty">No examples</span>
+                      <span className="ai-gap-tag ai-gap-tag--empty">{t('gap_report.tag_no_examples')}</span>
                     )}
                     {presence.examples === 'partial' && (
-                      <span className="ai-gap-tag ai-gap-tag--partial">Incomplete examples</span>
+                      <span className="ai-gap-tag ai-gap-tag--partial">{t('gap_report.tag_incomplete_examples')}</span>
                     )}
                     {presence['cloze-options'] === 'empty' && (
-                      <span className="ai-gap-tag ai-gap-tag--empty">No word-bank options</span>
+                      <span className="ai-gap-tag ai-gap-tag--empty">{t('gap_report.tag_no_wordbank')}</span>
                     )}
                     {presence['cloze-options'] === 'partial' && (
-                      <span className="ai-gap-tag ai-gap-tag--partial">Incomplete word-bank</span>
+                      <span className="ai-gap-tag ai-gap-tag--partial">{t('gap_report.tag_incomplete_wordbank')}</span>
                     )}
                     {presence.lexical === 'empty' && (
-                      <span className="ai-gap-tag ai-gap-tag--empty">No definition</span>
+                      <span className="ai-gap-tag ai-gap-tag--empty">{t('gap_report.tag_no_def')}</span>
                     )}
                     {presence.synonyms === 'empty' && (
-                      <span className="ai-gap-tag ai-gap-tag--empty">No synonyms</span>
+                      <span className="ai-gap-tag ai-gap-tag--empty">{t('gap_report.tag_no_synonyms')}</span>
                     )}
                   </div>
 
@@ -227,7 +228,7 @@ export default function DeckGapReport({ scan, deck, compact = false }) {
       ) : (
         <div className="ai-gap-all-clean">
           <p className="st-section__hint">
-            🎉 All cards in this deck have complete definitions, examples, and word-bank options. No structural gaps detected.
+            {t('gap_report.all_clean_msg')}
           </p>
         </div>
       )}

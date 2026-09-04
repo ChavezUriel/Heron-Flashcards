@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CARD_STATUS } from '../ai/generator';
 
 // The results table of a run: one row per card, expandable into everything the
@@ -6,22 +7,8 @@ import { CARD_STATUS } from '../ai/generator';
 // state is legible at a glance (ready / open issues / failed / still working)
 // and the open issues are spelled out rather than hidden behind a count.
 
-const STATUS_LABEL = {
-  [CARD_STATUS.pending]: 'Queued',
-  [CARD_STATUS.working]: 'Working',
-  [CARD_STATUS.ready]: 'Ready',
-  [CARD_STATUS.flagged]: 'Check',
-  [CARD_STATUS.failed]: 'Failed',
-};
-
-const FILTERS = [
-  ['all', 'All'],
-  [CARD_STATUS.ready, 'Ready'],
-  [CARD_STATUS.flagged, 'Needs a look'],
-  [CARD_STATUS.failed, 'Failed'],
-];
-
 function CardDetail({ card }) {
+  const { t } = useTranslation();
   const definition = card.l2_definition ?? card.definition_en;
   const translations = card.l1_translations ?? card.main_translations_es ?? [];
   const synonyms = card.l2_synonyms ?? card.synonyms_en ?? [];
@@ -48,16 +35,16 @@ function CardDetail({ card }) {
 
       <dl className="ai-card__meta">
         {translations.length > 0 ? (
-          <div><dt>Translations</dt><dd>{translations.join(' · ')}</dd></div>
+          <div><dt>{t('cards_list.meta_translations')}</dt><dd>{translations.join(' · ')}</dd></div>
         ) : null}
         {synonyms.length > 0 ? (
-          <div><dt>Synonyms</dt><dd>{synonyms.join(' · ')}</dd></div>
+          <div><dt>{t('cards_list.meta_synonyms')}</dt><dd>{synonyms.join(' · ')}</dd></div>
         ) : null}
         {(card.collocations ?? []).length > 0 ? (
-          <div><dt>Collocations</dt><dd>{card.collocations.join(' · ')}</dd></div>
+          <div><dt>{t('cards_list.meta_collocations')}</dt><dd>{card.collocations.join(' · ')}</dd></div>
         ) : null}
         {distractors.length > 0 ? (
-          <div><dt>Word bank</dt><dd>{distractors.join(' · ')}</dd></div>
+          <div><dt>{t('cards_list.meta_word_bank')}</dt><dd>{distractors.join(' · ')}</dd></div>
         ) : null}
       </dl>
 
@@ -71,8 +58,24 @@ function CardDetail({ card }) {
 }
 
 function GeneratedCardList({ job }) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState('all');
   const [openId, setOpenId] = useState(null);
+
+  const statusLabel = {
+    [CARD_STATUS.pending]: t('cards_list.status_queued'),
+    [CARD_STATUS.working]: t('cards_list.status_working'),
+    [CARD_STATUS.ready]: t('cards_list.status_ready'),
+    [CARD_STATUS.flagged]: t('cards_list.status_check'),
+    [CARD_STATUS.failed]: t('cards_list.status_failed'),
+  };
+
+  const filters = [
+    ['all', t('cards_list.filter_all')],
+    [CARD_STATUS.ready, t('cards_list.filter_ready')],
+    [CARD_STATUS.flagged, t('cards_list.filter_needs_look')],
+    [CARD_STATUS.failed, t('cards_list.filter_failed')],
+  ];
 
   const cards = job.cards ?? [];
   if (cards.length === 0) return null;
@@ -82,9 +85,9 @@ function GeneratedCardList({ job }) {
   return (
     <section className="panel st-section" aria-labelledby="ai-cards-title">
       <div className="ai-run__log-head">
-        <h2 className="st-section__title" id="ai-cards-title">Cards</h2>
-        <div className="ai-filters" role="tablist" aria-label="Filter cards">
-          {FILTERS.map(([id, label]) => {
+        <h2 className="st-section__title" id="ai-cards-title">{t('cards_list.title')}</h2>
+        <div className="ai-filters" role="tablist" aria-label={t('cards_list.filter_cards_aria')}>
+          {filters.map(([id, label]) => {
             const count = id === 'all' ? cards.length : cards.filter((card) => card._status === id).length;
             if (count === 0 && id !== 'all') return null;
             return (
@@ -124,7 +127,7 @@ function GeneratedCardList({ job }) {
                 </span>
                 <span className="ai-card__tags">
                   {card.section_name ? <span className="st-chip st-chip--muted">{card.section_name}</span> : null}
-                  <span className="ai-card__state">{STATUS_LABEL[card._status]}</span>
+                  <span className="ai-card__state">{statusLabel[card._status]}</span>
                 </span>
               </button>
               {isOpen ? <CardDetail card={card} /> : null}

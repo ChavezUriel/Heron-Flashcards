@@ -5,16 +5,9 @@
 // card when applying patches.
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CARD_STATUS } from '../ai/generator';
 import { diffCardContent } from '../cardDiff';
-
-const STATUS_LABEL = {
-  [CARD_STATUS.pending]: 'Queued',
-  [CARD_STATUS.working]: 'Working',
-  [CARD_STATUS.ready]: 'Ready',
-  [CARD_STATUS.flagged]: 'Check',
-  [CARD_STATUS.failed]: 'Failed',
-};
 
 export default function ProposedChangeList({
   job,
@@ -23,8 +16,17 @@ export default function ProposedChangeList({
   onToggleField,
   onToggleMismatchFix,
 }) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState('all');
   const [openCardId, setOpenCardId] = useState(null);
+
+  const statusLabel = {
+    [CARD_STATUS.pending]: t('cards_list.status_queued'),
+    [CARD_STATUS.working]: t('cards_list.status_working'),
+    [CARD_STATUS.ready]: t('cards_list.status_ready'),
+    [CARD_STATUS.flagged]: t('cards_list.status_check'),
+    [CARD_STATUS.failed]: t('cards_list.status_failed'),
+  };
 
   const cards = job.cards ?? [];
   if (cards.length === 0) return null;
@@ -52,9 +54,9 @@ export default function ProposedChangeList({
     <section className="panel st-section" aria-labelledby="ai-proposed-title">
       <div className="ai-run__log-head">
         <div>
-          <h2 className="st-section__title" id="ai-proposed-title">Proposed Changes</h2>
+          <h2 className="st-section__title" id="ai-proposed-title">{t('proposed_changes.title')}</h2>
           <p className="st-section__hint">
-            {selectedCount} of {cards.length} card(s) selected to apply.
+            {t('proposed_changes.selected_count', { selected: selectedCount, total: cards.length })}
           </p>
         </div>
 
@@ -64,19 +66,19 @@ export default function ProposedChangeList({
             className="ai-link"
             onClick={() => onToggleAll && onToggleAll(true)}
           >
-            Select all
+            {t('proposed_changes.select_all')}
           </button>
           <button
             type="button"
             className="ai-link"
             onClick={() => onToggleAll && onToggleAll(false)}
           >
-            Deselect all
+            {t('proposed_changes.deselect_all')}
           </button>
         </div>
       </div>
 
-      <div className="ai-filters" role="tablist" aria-label="Filter proposed cards">
+      <div className="ai-filters" role="tablist" aria-label={t('proposed_changes.filter_aria')}>
         <button
           type="button"
           role="tab"
@@ -84,7 +86,7 @@ export default function ProposedChangeList({
           className={`ai-tab${filter === 'all' ? ' ai-tab--active' : ''}`}
           onClick={() => setFilter('all')}
         >
-          All <span className="ai-tab__count">{cards.length}</span>
+          {t('proposed_changes.filter_all')} <span className="ai-tab__count">{cards.length}</span>
         </button>
 
         <button
@@ -94,7 +96,7 @@ export default function ProposedChangeList({
           className={`ai-tab${filter === 'changed' ? ' ai-tab--active' : ''}`}
           onClick={() => setFilter('changed')}
         >
-          Changes proposed <span className="ai-tab__count">{changedCount}</span>
+          {t('proposed_changes.filter_changed')} <span className="ai-tab__count">{changedCount}</span>
         </button>
 
         {unchangedCount > 0 ? (
@@ -105,7 +107,7 @@ export default function ProposedChangeList({
             className={`ai-tab${filter === 'unchanged' ? ' ai-tab--active' : ''}`}
             onClick={() => setFilter('unchanged')}
           >
-            No changes <span className="ai-tab__count">{unchangedCount}</span>
+            {t('proposed_changes.filter_unchanged')} <span className="ai-tab__count">{unchangedCount}</span>
           </button>
         ) : null}
 
@@ -117,7 +119,7 @@ export default function ProposedChangeList({
             className={`ai-tab${filter === 'flagged' ? ' ai-tab--active' : ''}`}
             onClick={() => setFilter('flagged')}
           >
-            Needs a look <span className="ai-tab__count">{flaggedCount}</span>
+            {t('proposed_changes.filter_flagged')} <span className="ai-tab__count">{flaggedCount}</span>
           </button>
         ) : null}
       </div>
@@ -132,7 +134,7 @@ export default function ProposedChangeList({
           return (
             <li key={cardId} className={`ai-card ai-card--${card._status}`}>
               <div className="ai-proposed-row">
-                <label className="ai-card-select" title="Include card in apply">
+                <label className="ai-card-select" title={t('proposed_changes.include_card_title')}>
                   <input
                     type="checkbox"
                     checked={isSelected}
@@ -154,22 +156,20 @@ export default function ProposedChangeList({
 
                   <span className="ai-card__tags">
                     {hasPairIssue ? (
-                      <span className="st-chip st-chip--warning" title="Potential translation mismatch">
-                        {card._pair_mismatch?.fixes?.length > 1
-                          ? `Pair mismatch (${card._pair_mismatch.fixes.length} fixes)`
-                          : card._pair_mismatch?.fixes?.length === 1
-                            ? 'Pair mismatch (1 fix)'
-                            : 'Pair mismatch'}
+                      <span className="st-chip st-chip--warning" title={t('proposed_changes.pair_mismatch_title')}>
+                        {card._pair_mismatch?.fixes?.length
+                          ? t('proposed_changes.pair_mismatch_fixes', { count: card._pair_mismatch.fixes.length })
+                          : t('proposed_changes.pair_mismatch_title')}
                       </span>
                     ) : null}
                     {hasDiffs ? (
                       <span className="st-chip st-chip--muted">
-                        {diffs.length} change{diffs.length === 1 ? '' : 's'}
+                        {t('proposed_changes.changes_count', { count: diffs.length })}
                       </span>
                     ) : (
-                      <span className="st-chip st-chip--muted">No changes</span>
+                      <span className="st-chip st-chip--muted">{t('proposed_changes.no_changes')}</span>
                     )}
-                    <span className="ai-card__state">{STATUS_LABEL[card._status]}</span>
+                    <span className="ai-card__state">{statusLabel[card._status]}</span>
                   </span>
                 </button>
               </div>
@@ -179,7 +179,7 @@ export default function ProposedChangeList({
                   {hasPairIssue ? (
                     <div className="ai-mismatch-panel">
                       <div className="ai-mismatch-panel__head">
-                        <span>⚠️ Potential Translation Mismatch</span>
+                        <span>{t('proposed_changes.pair_mismatch_heading')}</span>
                       </div>
                       <p className="ai-mismatch-panel__desc">
                         {card._pair_mismatch?.explanation || (card._pair_issues?.length ? card._pair_issues.join('. ') : 'The Spanish and English terms do not match.')}
@@ -220,20 +220,20 @@ export default function ProposedChangeList({
                             {(() => {
                               const selectedFixes = card._pair_mismatch.fixes.filter((f) => f._selected !== false);
                               if (selectedFixes.length >= 2) {
-                                return 'Fix #1 (target term) will update this card. Fix #2 will be added as a new flashcard in your deck.';
+                                return t('proposed_changes.pair_fix_both_summary');
                               }
                               if (selectedFixes.length === 1) {
                                 const fixL1 = selectedFixes[0].l1_text ?? selectedFixes[0].spanish_text;
                                 const fixL2 = selectedFixes[0].l2_text ?? selectedFixes[0].english_text;
-                                return `This card will be updated to “${fixL1} ➔ ${fixL2}”.`;
+                                return t('proposed_changes.pair_fix_single_summary', { pair: `${fixL1} ➔ ${fixL2}` });
                               }
-                              return 'No pair fixes selected. Original word pair will remain unchanged.';
+                              return t('proposed_changes.pair_fix_none_summary');
                             })()}
                           </div>
                         </>
                       ) : (
                         <p style={{ margin: '0.25rem 0', fontSize: '0.85rem' }}>
-                          <em>Spanish and English texts were not rewritten to protect card identity.</em>
+                          <em>{t('proposed_changes.pair_not_rewritten')}</em>
                         </p>
                       )}
                     </div>
@@ -244,10 +244,10 @@ export default function ProposedChangeList({
                       <table className="ai-diff-table">
                         <thead>
                           <tr>
-                            <th>Field</th>
-                            <th>Current</th>
-                            <th>Proposed</th>
-                            <th>Reason</th>
+                            <th>{t('proposed_changes.diff_field')}</th>
+                            <th>{t('proposed_changes.diff_current')}</th>
+                            <th>{t('proposed_changes.diff_proposed')}</th>
+                            <th>{t('proposed_changes.diff_reason')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -262,15 +262,15 @@ export default function ProposedChangeList({
                                       type="checkbox"
                                       checked={isFieldIncluded}
                                       onChange={() => onToggleField && onToggleField(cardId, diff.key)}
-                                      title={isFieldIncluded ? 'Click to reject this field change' : 'Click to accept this field change'}
+                                      title={isFieldIncluded ? t('proposed_changes.reject_field_title') : t('proposed_changes.accept_field_title')}
                                     />
                                     {diff.label}
                                   </label>
                                 </td>
-                                <td className="ai-diff-from">{diff.from || <em className="ai-diff-empty">(empty)</em>}</td>
+                                <td className="ai-diff-from">{diff.from || <em className="ai-diff-empty">{t('proposed_changes.empty')}</em>}</td>
                                 <td className="ai-diff-to">{diff.to}</td>
                                 <td className="ai-diff-reason" style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                                  {reason || 'Fill gap'}
+                                  {reason || t('proposed_changes.fill_gap_reason')}
                                 </td>
                               </tr>
                             );
@@ -280,7 +280,7 @@ export default function ProposedChangeList({
                     </div>
                   ) : (
                     <p className="st-section__hint">
-                      All fields were already populated or protected. No changes proposed.
+                      {t('proposed_changes.all_populated_msg')}
                     </p>
                   )}
 

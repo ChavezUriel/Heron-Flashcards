@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { DECK_ORIGIN_CONFIG, DeckOriginIcon, getDeckOriginType } from './DeckOriginBadge';
 
 function percentage(value) {
@@ -54,11 +55,12 @@ function DeckCard({
   searchMatchReasons = [],
   isSearchDimmed = false,
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const isPracticeEnabled = Boolean(deck.is_enabled_in_smart_practice);
   const isOnHome = Boolean(deck.is_selected_on_home);
   const originType = getDeckOriginType(deck);
-  const originConfig = DECK_ORIGIN_CONFIG[originType] || DECK_ORIGIN_CONFIG.personal;
+  const originTooltip = t(`deck.origin_${originType}_tooltip`);
 
   function handleOpenDeck() {
     navigate(`/decks/${deck.id}/words`, { state: { from: variant } });
@@ -94,14 +96,14 @@ function DeckCard({
         ].filter(Boolean).join(' ')}
         role="button"
         tabIndex={0}
-        aria-label={`Open ${deck.title} deck explorer`}
+        aria-label={t('market.explore_deck_aria', { title: deck.title })}
         aria-busy={isPending}
         onClick={handleOpenDeck}
         onKeyDown={handleCardKeyDown}
       >
         <div className="h-deck-card__top">
           <div className="h-deck-card__title">
-            {renderTitleWithOriginIcon(deck.title, originType, originConfig.tooltip)}
+            {renderTitleWithOriginIcon(deck.title, originType, originTooltip)}
           </div>
           <div className="h-deck-card__top-actions">
             <button
@@ -109,8 +111,8 @@ function DeckCard({
               type="button"
               role="checkbox"
               aria-checked={isPracticeEnabled}
-              aria-label={isPracticeEnabled ? `Exclude ${deck.title} from practice session` : `Include ${deck.title} in practice session`}
-              title={isPracticeEnabled ? 'Active in practice — click to pause' : 'Paused — click to include in practice'}
+              aria-label={isPracticeEnabled ? t('deck.exclude_practice_aria', { title: deck.title }) : t('deck.include_practice_aria', { title: deck.title })}
+              title={isPracticeEnabled ? t('deck.practice_active_title') : t('deck.practice_paused_title')}
               disabled={isPending}
               onClick={handleTogglePractice}
               onKeyDown={(e) => {
@@ -136,7 +138,7 @@ function DeckCard({
         </div>
 
         {searchMatchReasons.length > 0 && (
-          <div className="deck-card__match-reasons" aria-label={`Search matches for ${deck.title}`}>
+          <div className="deck-card__match-reasons" aria-label={t('deck.search_matches_aria', { title: deck.title })}>
             {searchMatchReasons.map((reason) => (
               <span key={reason} className="deck-card__match-badge">
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -153,8 +155,8 @@ function DeckCard({
           <button
             className="h-deck-card__updates"
             type="button"
-            aria-label={`Review ${deck.updates_available} market update${deck.updates_available === 1 ? '' : 's'} for ${deck.title}`}
-            title="This deck's market source changed — review and pull the updates"
+            aria-label={t('deck.review_updates_aria', { count: deck.updates_available, title: deck.title })}
+            title={t('deck.review_updates_title')}
             onClick={(e) => { e.stopPropagation(); onOpenSync(deck.id); }}
             onKeyDown={(e) => e.stopPropagation()}
           >
@@ -163,13 +165,13 @@ function DeckCard({
               <path d="m7 11 5 5 5-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M5 20h14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
-            {deck.updates_available} market update{deck.updates_available === 1 ? '' : 's'}
+            {t('deck.market_updates_count', { count: deck.updates_available })}
           </button>
         ) : null}
 
         <div className="h-deck-card__bottom">
           <div className="h-deck-card__stats">
-            <span>{deck.total_cards} cards</span>
+            <span>{t('deck.cards_count', { count: deck.total_cards })}</span>
             <span className="h-deck-card__pct">{pct}%</span>
           </div>
           <div className="h-progress-track" aria-hidden="true">
@@ -190,8 +192,8 @@ function DeckCard({
       <button
         className="h-market-card__explore"
         type="button"
-        aria-label={`Open ${deck.title} deck explorer`}
-        title="Open deck explorer"
+        aria-label={t('market.explore_deck_aria', { title: deck.title })}
+        title={t('market.explore_deck_title')}
         onClick={(e) => { e.stopPropagation(); handleOpenDeck(); }}
         onKeyDown={(e) => e.stopPropagation()}
       >
@@ -209,15 +211,15 @@ function DeckCard({
             {renderTitleWithOriginIcon(
               deck.title,
               deck.is_owner ? 'managing' : 'public',
-              deck.is_owner ? 'Deck you manage (maintainer)' : 'Public community deck'
+              deck.is_owner ? t('deck.origin_managing_tooltip') : t('deck.origin_public_tooltip')
             )}
           </div>
-          <div className="h-market-card__meta">{deck.total_cards} CARDS</div>
+          <div className="h-market-card__meta">{t('market.cards_count_upper', { count: deck.total_cards })}</div>
         </div>
       </div>
 
       {searchMatchReasons.length > 0 && (
-        <div className="deck-card__match-reasons" aria-label={`Search matches for ${deck.title}`}>
+        <div className="deck-card__match-reasons" aria-label={t('deck.search_matches_aria', { title: deck.title })}>
           {searchMatchReasons.map((reason) => (
             <span key={reason} className="deck-card__match-badge">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -236,25 +238,25 @@ function DeckCard({
         <div className="h-market-card__maintainer">
           {deck.is_owner ? (
             <>
-              <span className="sync-chip sync-chip--owner">You maintain this deck</span>
+              <span className="sync-chip sync-chip--owner">{t('market.you_maintain_this')}</span>
               {deck.open_proposals > 0 ? (
                 <button
                   type="button"
                   className="h-decks__text-action"
                   onClick={(e) => { e.stopPropagation(); navigate('/market/proposals'); }}
                 >
-                  {deck.open_proposals} proposal{deck.open_proposals === 1 ? '' : 's'} to review →
+                  {t('market.proposals_to_review', { count: deck.open_proposals })}
                 </button>
               ) : null}
             </>
           ) : deck.owner_id ? (
             <span className="h-market-card__maintainer-name">
-              Maintained by <strong>{deck.owner_name}</strong>
-              {deck.my_open_proposals > 0 ? ` · ${deck.my_open_proposals} proposal${deck.my_open_proposals === 1 ? '' : 's'} pending` : ''}
+              {t('market.maintained_by', { name: deck.owner_name })}
+              {deck.my_open_proposals > 0 ? ` · ${t('market.my_proposals_pending', { count: deck.my_open_proposals })}` : ''}
             </span>
           ) : (
             <>
-              <span className="h-market-card__maintainer-name">Unmaintained</span>
+              <span className="h-market-card__maintainer-name">{t('market.unmaintained')}</span>
               {onClaim ? (
                 <button
                   type="button"
@@ -262,7 +264,7 @@ function DeckCard({
                   disabled={isPending}
                   onClick={(e) => { e.stopPropagation(); onClaim(deck.id); }}
                 >
-                  Become maintainer
+                  {t('market.become_maintainer')}
                 </button>
               ) : null}
             </>
@@ -270,9 +272,9 @@ function DeckCard({
         </div>
       ) : null}
 
-      <div className="h-market-card__progress" aria-label={`Progress for ${deck.title}`}>
+      <div className="h-market-card__progress" aria-label={t('market.progress_aria', { title: deck.title })}>
         <div className="h-market-card__progress-meta">
-          <span>{deck.reviewed_cards} of {deck.total_cards} seen</span>
+          <span>{t('market.reviewed_of_total_seen', { reviewed: deck.reviewed_cards, total: deck.total_cards })}</span>
           <span className="h-market-card__progress-pct">{marketPct}%</span>
         </div>
         <div className="h-progress-track" aria-hidden="true">
@@ -292,14 +294,14 @@ function DeckCard({
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </svg>
-            On home
+            {t('market.on_home')}
           </>
         ) : (
           <>
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </svg>
-            Add to home
+            {t('market.add_to_home')}
           </>
         )}
       </button>

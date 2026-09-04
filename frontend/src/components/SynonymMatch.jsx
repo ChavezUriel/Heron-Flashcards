@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { normalizeAnswer } from '../minigameText';
 import { recordDepthResult } from '../depthStat';
 import { logMinigamePlay } from '../api';
@@ -72,6 +73,7 @@ function buildRound(card, pool) {
 // queue-external — it NEVER grades, never calls a session RPC, and never touches
 // due_at or the graduation streak. Wins feed a separate client-side "depth" stat.
 function SynonymMatch({ card, pool, onDone }) {
+  const { t } = useTranslation();
   const { tiles, total } = useMemo(() => buildRound(card, pool), [card, pool]);
 
   // Indices of the currently selected tiles (multi-select), then frozen on reveal.
@@ -176,19 +178,19 @@ function SynonymMatch({ card, pool, onDone }) {
   const verdict = !result
     ? ''
     : result.matched === result.total && result.wrong === 0
-      ? 'Perfect! 🎉'
+      ? t('games.synonym_match.verdict_all')
       : result.matched > 0
-        ? 'Nice — a few of them'
-        : 'Here they are';
+        ? t('games.synonym_match.verdict_some')
+        : t('games.synonym_match.verdict_none');
 
   return (
     <section className="panel synmatch">
-      <p className="flashcard__label">Synonym match</p>
-      <p className="synmatch__lead">Pick the words that mean the same as</p>
+      <p className="flashcard__label">{t('games.synonym_match.label')}</p>
+      <p className="synmatch__lead">{t('games.synonym_match.lead')}</p>
       <h2 className="synmatch__answer">{card?.answer_l2 ?? card?.answer_en}</h2>
       {card?.prompt_l1 ?? card?.prompt_es ? <p className="synmatch__context">{card.prompt_l1 ?? card.prompt_es}</p> : null}
 
-      <div className="synmatch__tiles" role="group" aria-label="Word options">
+      <div className="synmatch__tiles" role="group" aria-label={t('games.synonym_match.options_group')}>
         {tiles.map((tile, index) => (
           <button
             key={`${tile.text}-${index}`}
@@ -197,7 +199,7 @@ function SynonymMatch({ card, pool, onDone }) {
             onClick={() => toggle(index)}
             disabled={isRevealed}
             aria-pressed={selected.has(index)}
-            aria-label={`${tile.text}${isRevealed && tile.correct ? ' — synonym' : ''}`}
+            aria-label={isRevealed && tile.correct ? t('games.synonym_match.synonym_aria', { word: tile.text }) : tile.text}
           >
             <span className="synmatch__tile-key" aria-hidden="true">{index + 1}</span>
             <span className="synmatch__tile-text">{tile.text}</span>
@@ -208,20 +210,20 @@ function SynonymMatch({ card, pool, onDone }) {
       {!isRevealed ? (
         <div className="synmatch__actions">
           <button type="button" className="button button--primary synmatch__action" onClick={handleCheck}>
-            Check
+            {t('common.check')}
           </button>
           <button type="button" className="st-link-button" onClick={finish}>
-            Skip
+            {t('common.skip')}
           </button>
         </div>
       ) : (
         <div className="synmatch__feedback" role="status" aria-live="polite">
           <p className="synmatch__verdict">{verdict}</p>
           <p className="synmatch__result">
-            Matched {result.matched} of {result.total} · depth {result.stat.matched} words
+            {t('games.synonym_match.result', { matched: result.matched, total: result.total, stat: result.stat.matched })}
           </p>
           <button ref={continueRef} type="button" className="button button--primary synmatch__action" onClick={finish}>
-            Continue
+            {t('common.continue')}
           </button>
         </div>
       )}

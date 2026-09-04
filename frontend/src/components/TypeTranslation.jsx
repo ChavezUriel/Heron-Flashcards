@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { classifyGuess, normalizeAnswer, pickCardExample } from '../minigameText';
 import MinigameFeedback from './MinigameFeedback';
 import { useAutoAdvance } from '../useAutoAdvance';
@@ -18,6 +19,7 @@ const FEEDBACK_MS = { known: 1100, almost: 2000, unknown: 2000 };
 // amber feedback shows the exact answer and the card advances via the skip RPC —
 // never graded, recycled for a clean rep (§4 near-miss aside).
 function TypeTranslation({ card, onResolve, onOpenDetails }) {
+  const { t } = useTranslation();
   const [guess, setGuess] = useState('');
   const activeExample = pickCardExample(card);
   const prompt = card.prompt_l1 ?? card.prompt_es;
@@ -87,7 +89,7 @@ function TypeTranslation({ card, onResolve, onOpenDetails }) {
       ) : null}
 
       <div className="typegame__body">
-        <p className="flashcard__label">Type the translation</p>
+        <p className="flashcard__label">{t('games.type_translation.input_label')}</p>
         <h2 className="typegame__prompt">{prompt}</h2>
         {activeExample.example_l1 ?? activeExample.l1 ?? activeExample.example_es ?? activeExample.es ? (
           <p className="flashcard__example typegame__example">{activeExample.example_l1 ?? activeExample.l1 ?? activeExample.example_es ?? activeExample.es}</p>
@@ -106,8 +108,8 @@ function TypeTranslation({ card, onResolve, onOpenDetails }) {
                 setConfirmSkip(false);
               }
             }}
-            placeholder="Type the answer"
-            aria-label="Type the translation"
+            placeholder={t('games.type_translation.placeholder')}
+            aria-label={t('games.type_translation.input_label')}
             autoComplete="off"
             autoCapitalize="off"
             autoCorrect="off"
@@ -126,12 +128,12 @@ function TypeTranslation({ card, onResolve, onOpenDetails }) {
               {/* On a near miss, echo the guess so the learner can spot the typo. */}
               {outcome === 'almost' ? (
                 <p className="typegame__answer">
-                  <span className="typegame__answer-label">You typed</span>
+                  <span className="typegame__answer-label">{t('games.feedback.you_typed')}</span>
                   <span className="typegame__typed-text">{guess.trim()}</span>
                 </p>
               ) : null}
               <p className="typegame__answer">
-                <span className="typegame__answer-label">Answer</span>
+                <span className="typegame__answer-label">{t('games.feedback.answer')}</span>
                 <span className="typegame__answer-text">{answer}</span>
               </p>
             </MinigameFeedback>
@@ -144,7 +146,7 @@ function TypeTranslation({ card, onResolve, onOpenDetails }) {
                   : `button typegame__action typegame__action--skip${confirmSkip ? ' typegame__action--confirm' : ''}`
               }
             >
-              {guess.trim() ? 'Check' : confirmSkip ? 'Sure?' : 'Skip'}
+              {guess.trim() ? t('common.check') : confirmSkip ? t('common.sure') : t('common.skip')}
             </button>
           )}
         </form>
@@ -152,7 +154,7 @@ function TypeTranslation({ card, onResolve, onOpenDetails }) {
 
       {isRevealed && onOpenDetails ? (
         <button
-          aria-label="Show flashcard metadata"
+          aria-label={t('deck.show_metadata')}
           className="info-button"
           type="button"
           onClick={onOpenDetails}

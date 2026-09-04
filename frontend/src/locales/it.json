@@ -87,7 +87,15 @@
     "brand_quote_register": "\"Inizia con calma. Poche parole oggi diventano una lingua lungo il fiume del tempo.\"",
     "brand_quote_forgot": "\"Perdi una parola, ritrovala. Il fiume riporta sempre ciò che conta.\"",
     "brand_quote_reset": "\"Un nuovo inizio è solo un'altra mattina serena in riva all'acqua.\"",
-    "brand_tagline": "UN MODO SERENO PER IMPARARE LE LINGUE"
+    "brand_tagline": "UN MODO SERENO PER IMPARARE LE LINGUE",
+    "login_failed": "Accesso non riuscito",
+    "google_signin_failed": "Accesso con Google non riuscito",
+    "registration_failed": "Registrazione non riuscita",
+    "reset_email_failed": "Impossibile inviare l'email di reimpostazione",
+    "update_password_failed": "Impossibile aggiornare la password",
+    "password_min_placeholder": "Minimo 6 caratteri",
+    "create_account_cta": "Crea account",
+    "new_password": "NUOVA PASSWORD"
   },
   "install": {
     "title": "Installa Heron sul tuo dispositivo",
@@ -123,7 +131,24 @@
     "deleting_deck": "Eliminazione mazzo…",
     "show_metadata": "Mostra dettagli della flashcard",
     "source_prompt_fallback": "Domanda",
-    "target_answer_fallback": "Risposta"
+    "target_answer_fallback": "Risposta",
+    "tap_to_reveal": "Tocca per rivelare",
+    "flashcard_answer_aria": "Risposta visualizzata. Scorri a sinistra se non conosciuta o a destra se conosciuta su dispositivi touch.",
+    "flashcard_prompt_aria": "Domanda della carta. Tocca per rivelare la risposta su dispositivi touch.",
+    "replay_audio_aria": "Riascolta l'audio in {label}",
+    "audio_unavailable_aria": "Audio in {label} non disponibile",
+    "didnt_know": "Non la sapevo",
+    "knew_it": "La sapevo",
+    "hide_answer": "Nascondi risposta",
+    "reveal_answer": "Mostra risposta",
+    "exclude_practice_aria": "Escludi {title} dalla sessione di pratica",
+    "include_practice_aria": "Includi {title} nella sessione di pratica",
+    "practice_active_title": "Attivo nella pratica — clicca per mettere in pausa",
+    "practice_paused_title": "In pausa — clicca per includere nella pratica",
+    "search_matches_aria": "Corrispondenze di ricerca per {title}",
+    "review_updates_aria": "{count, plural, one {Controlla 1 aggiornamento del mercato per {title}} other {Controlla # aggiornamenti del mercato per {title}}}",
+    "review_updates_title": "La fonte di questo mazzo nel mercato è cambiata: controlla e applica gli aggiornamenti",
+    "market_updates_count": "{count, plural, one {1 aggiornamento del mercado} other {# aggiornamenti del mercato}}"
   },
   "home": {
     "search_placeholder": "Cerca mazzi e parole…",
@@ -289,7 +314,27 @@
     "load_error": "Impossibile caricare le proposte: {error}",
     "maintained_decks_title": "Mazzi che gestisci",
     "tabs_aria": "Elenchi di proposte",
-    "to_review_tab": "Da verificare"
+    "to_review_tab": "Da verificare",
+    "already_proposed_chip": "Già incluso in una proposta aperta",
+    "modal_aria": "Proponi modifiche al mazzo del mercato",
+    "close_dialog_aria": "Chiudi finestra di proposta",
+    "modal_eyebrow": "Proponi al mercato",
+    "modal_default_title": "Proponi modifiche",
+    "comparing_market": "Confronto del tuo mazzo con il mercato in corso…",
+    "proposal_sent_with_count": "✓ Proposta inviata con {count, plural, one {1 modifica} other {# modifiche}}.",
+    "maintainer_review_note": "La persona responsabile del mazzo la esaminerà. Seguila sotto “Proposte” nel mercato.",
+    "cards_match_market": "Le tue carte corrispondono al mazzo del mercato: niente da proporre.",
+    "edit_first_note": "Modifica, aggiungi o elimina prima le carte nella tua copia, poi proponi qui le modifiche.",
+    "differences_intro": "Ecco le differenze tra la tua copia e il mercato. Le modifiche selezionate vengono raggruppate in una proposta per il gestore del mazzo.",
+    "section_edited": "Carte modificate",
+    "new_cards_hint": "Carte che hai aggiunto e che il mazzo del mercato non ha ancora.",
+    "section_removals": "Rimozioni di carte",
+    "removals_hint": "Carte eliminate nella tua copia. L'approvazione di una rimozione le eliminerà per tutte le persone iscritte al mazzo.",
+    "message_label": "Messaggio per chi gestisce il mazzo (facoltativo)",
+    "message_placeholder": "Cosa hai migliorato e perché?",
+    "cards_selected": "{count, plural, one {1 carta selezionata} other {# carte selezionate}}",
+    "sending": "Invio in corso…",
+    "send_proposal_btn": "Invia proposta"
   },
   "practice": {
     "mode_new": "Nuovo materiale",
@@ -364,7 +409,8 @@
     },
     "cloze_type": {
       "placeholder": "Digita la parola mancante",
-      "input_label": "Digita la parola che riempie lo spazio"
+      "input_label": "Digita la parola che riempie lo spazio",
+      "label": "Inserisci la parola mancante"
     },
     "type_translation": {
       "placeholder": "Digita la risposta",
@@ -397,14 +443,17 @@
     "speed_round": {
       "label": "Round rapido",
       "verdict": "Ottimo ritmo! ⚡",
-      "score": "{correct} / {total} corrette · {elapsed}"
+      "score": "{correct} / {total} corrette · {elapsed}",
+      "question_count": "Domanda {current} di {total}",
+      "timer_aria": "Tempo trascorso"
     },
     "word_scramble": {
       "label": "Anagramma",
       "placeholder": "Riordina la parola",
       "input_label": "Digita la parola riordinata",
       "solved": "Risolto! 🎉",
-      "here_it_is": "Eccola qui"
+      "here_it_is": "Eccola qui",
+      "reveal": "Rivela"
     },
     "hangman": {
       "label": "Impiccato",
@@ -412,7 +461,8 @@
       "guesses_left": "{count, plural, one {1 tentativo rimasto} other {# tentativi rimasti}}",
       "solved": "Risolto! 🎉",
       "out_of_guesses": "Tentativi esauriti",
-      "guess_aria": "Indovina la lettera {letter}"
+      "guess_aria": "Indovina la lettera {letter}",
+      "letters_group": "Lettere"
     },
     "synonym_match": {
       "label": "Corrispondenza sinonimi",
@@ -651,7 +701,17 @@
     "diff_reason": "Motivo",
     "all_populated_msg": "Tutti i campi erano già completi o protetti. Nessuna modifica proposta.",
     "include_card_title": "Includi la carta nell'applicazione",
-    "pair_mismatch_fixes": "{count, plural, one {Incoerenza di coppia (1 correzione)} other {Incoerenza di coppia (# correzioni)}}"
+    "pair_mismatch_fixes": "{count, plural, one {Incoerenza di coppia (1 correzione)} other {Incoerenza di coppia (# correzioni)}}",
+    "filter_aria": "Filtra carte proposte",
+    "pair_mismatch_heading": "⚠️ Possibile discrepanza di traduzione",
+    "pair_fix_both_summary": "La correzione n. 1 (termine di destinazione) aggiornerà questa carta. La correzione n. 2 verrà aggiunta come nuova carta al tuo mazzo.",
+    "pair_fix_single_summary": "Questa carta verrà aggiornata a “{pair}”.",
+    "pair_fix_none_summary": "Nessuna correzione della coppia selezionata. La coppia di parole originale rimarrà invariata.",
+    "pair_not_rewritten": "I testi di partenza e di arrivo non sono stati riscritti per proteggere l'identità della carta.",
+    "empty": "(vuoto)",
+    "fill_gap_reason": "Colma lacuna",
+    "reject_field_title": "Clicca per rifiutare questa modifica del campo",
+    "accept_field_title": "Clicca per accettare questa modifica del campo"
   },
   "cards_list": {
     "title": "Carte",
@@ -669,7 +729,8 @@
     "meta_collocations": "Collocazioni",
     "meta_word_bank": "Banca parole",
     "open_issues": "{count, plural, one {1 problema aperto} other {# problemi aperti}}",
-    "no_cards_filter": "Nessuna carta con questo filtro."
+    "no_cards_filter": "Nessuna carta con questo filtro.",
+    "filter_cards_aria": "Filtra carte"
   },
   "provider": {
     "title": "Provider IA",
@@ -688,7 +749,20 @@
     "loading_models": "Caricamento modelli in corso…",
     "forget_key": "Dimentica chiave",
     "models_available": "{count, plural, one {1 modello disponibile.} other {# modelli disponibili.}}",
-    "no_models_returned": "Il provider non ha restituito alcun modello."
+    "no_models_returned": "Il provider non ha restituito alcun modello.",
+    "api_key_for_provider": "Chiave API {label}",
+    "stored_key_hint": "Salvata {scope} come {masked}.",
+    "scope_session": "solo per questa scheda",
+    "scope_device": "in questo browser",
+    "paste_key_hint": "Incolla la tua chiave.",
+    "get_key_link": "Ottieni una chiave {label} ↗",
+    "advanced_summary": "Avanzate: archiviazione, endpoint e routing",
+    "keep_key_label": "Mantieni questa chiave dopo la chiusura della scheda",
+    "keep_key_meta": "Attivo: memorizzata in questo browser per riprendere in seguito. Disattivo: conservata solo per questa scheda — più sicuro su un computer condiviso.",
+    "proxy_label": "Invia richieste tramite il relay di questa app",
+    "proxy_direct_meta": "Disattivo (consigliato): il browser chiama direttamente il provider e la chiave non passa mai dal nostro server. Attiva solo se la tua rete blocca il provider.",
+    "proxy_relay_meta": "{label} non accetta richieste dal browser, quindi ogni chiamata passa attraverso il relay. La chiave viene usata per la chamada e non viene mai salvata lì.",
+    "base_url_hint": "Sostituisci per un gateway compatibile. Lascia invariato a meno che tu non sappia di aver bisogno di altro."
   },
   "run_page": {
     "blueprint_stage": "Struttura",
@@ -1106,7 +1180,14 @@
     "view_market_deck": "Visualizza nel mercato",
     "conflicted_cards_title": "Carte che richiedono attenzione ({count})",
     "disable_card_btn": "Nascondi carta dal mazzo",
-    "disabling": "Nascondimento in corso…"
+    "disabling": "Nascondimento in corso…",
+    "cards_clean": "✓ {count, plural, one {1 carta conforme} other {# carte conformi}}",
+    "zero_policy_conflicts": "✓ 0 conflitti con i criteri",
+    "fix_highlighted_hint": "Correggi i problemi evidenziati di seguito o escludi la carta dal mazzo prima di pubblicare.",
+    "why_rejected_label": "Motivo del rifiuto:",
+    "flagged_text_label": "Testo segnalato ({field}):",
+    "how_to_fix_label": "💡 Come risolvere:",
+    "rerun_audit_btn": "🔄 Esegui nuovamente il controllo di sicurezza"
   },
   "diff": {
     "prompt": "Domanda",

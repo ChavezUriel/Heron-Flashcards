@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createDeckChangeProposal, fetchDeckOutgoingChanges } from '../api';
 import { cardTitle, diffCardContent } from '../cardDiff';
 
 // One proposable change. Edits show a field-level diff; additions and removals
 // only need their title plus a chip naming the kind.
 function ProposeChangeRow({ change, checked, onToggle }) {
+  const { t } = useTranslation();
   const kind = change.kind ?? 'edit';
   const cardId = change.user_card.card_id;
   const diff = kind === 'edit' ? diffCardContent(change.base_card, change.user_card) : [];
@@ -14,13 +16,13 @@ function ProposeChangeRow({ change, checked, onToggle }) {
       <label className="sync-check">
         <input type="checkbox" checked={checked} onChange={() => onToggle(cardId)} />
         <span className="sync-row__title">
-          {kind === 'add' ? <span className="sync-chip sync-chip--add">New card</span> : null}
+          {kind === 'add' ? <span className="sync-chip sync-chip--add">{t('proposals.new_card_chip')}</span> : null}
           {kind === 'remove' ? (
-            <span className="sync-chip sync-chip--warn">Deleted</span>
+            <span className="sync-chip sync-chip--warn">{t('proposals.removal_chip')}</span>
           ) : null}
           {cardTitle(change.user_card)}
           {change.already_proposed ? (
-            <span className="sync-chip">Already in an open proposal</span>
+            <span className="sync-chip">{t('proposals.already_proposed_chip')}</span>
           ) : null}
         </span>
       </label>
@@ -70,6 +72,7 @@ function ProposeSection({ title, hint, changes, selectedIds, onToggle }) {
 // Propose my local card edits, additions, and removals back to the market deck
 // ("pull request").
 function ProposeChangesModal({ deckId, onClose, onSubmitted }) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
   const [outgoing, setOutgoing] = useState(null);
@@ -138,10 +141,10 @@ function ProposeChangesModal({ deckId, onClose, onSubmitted }) {
   const removeChanges = changes.filter((change) => change.kind === 'remove');
 
   return (
-    <div className="details-modal" role="dialog" aria-modal="true" aria-label="Propose changes to market deck">
-      <button aria-label="Close proposal dialog" className="details-modal__backdrop" type="button" onClick={onClose} />
+    <div className="details-modal" role="dialog" aria-modal="true" aria-label={t('proposals.modal_aria')}>
+      <button aria-label={t('proposals.close_dialog_aria')} className="details-modal__backdrop" type="button" onClick={onClose} />
       <div className="details-modal__panel sync-modal__panel">
-        <button aria-label="Close proposal dialog" className="details-modal__close" type="button" onClick={onClose}>
+        <button aria-label={t('proposals.close_dialog_aria')} className="details-modal__close" type="button" onClick={onClose}>
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M7 7 17 17" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
             <path d="M17 7 7 17" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
@@ -149,83 +152,82 @@ function ProposeChangesModal({ deckId, onClose, onSubmitted }) {
         </button>
 
         <div className="details-modal__header">
-          <p className="flashcard__label">Propose to market</p>
-          <h3>{outgoing?.linked ? outgoing.market_deck_title : 'Propose changes'}</h3>
+          <p className="flashcard__label">{t('proposals.modal_eyebrow')}</p>
+          <h3>{outgoing?.linked ? outgoing.market_deck_title : t('proposals.modal_default_title')}</h3>
         </div>
 
-        {status === 'loading' ? <p className="sync-modal__status">Comparing your deck with the market…</p> : null}
+        {status === 'loading' ? <p className="sync-modal__status">{t('proposals.comparing_market')}</p> : null}
         {status === 'error' ? <p className="sync-modal__status sync-modal__status--error">{error}</p> : null}
 
         {status === 'sent' && sentProposal ? (
           <div className="sync-modal__done">
-            <p>✓ Proposal sent with {sentProposal.items.length} change{sentProposal.items.length === 1 ? '' : 's'}.</p>
+            <p>{t('proposals.proposal_sent_with_count', { count: sentProposal.items.length })}</p>
             <p className="sync-modal__done-note">
-              The deck maintainer will review it. Track it under “Proposals” in the market.
+              {t('proposals.maintainer_review_note')}
             </p>
-            <button className="button button--secondary" type="button" onClick={onClose}>Close</button>
+            <button className="button button--secondary" type="button" onClick={onClose}>{t('common.close')}</button>
           </div>
         ) : null}
 
         {(status === 'ready' || status === 'submitting') && outgoing && !outgoing.linked ? (
-          <p className="sync-modal__status">This deck is no longer linked to a market deck.</p>
+          <p className="sync-modal__status">{t('sync.not_linked')}</p>
         ) : null}
 
         {(status === 'ready' || status === 'submitting') && outgoing?.linked ? (
           changes.length === 0 ? (
             <div className="sync-modal__done">
-              <p>Your cards match the market deck — nothing to propose.</p>
-              <p className="sync-modal__done-note">Edit, add, or delete cards in your copy first, then propose the changes here.</p>
+              <p>{t('proposals.cards_match_market')}</p>
+              <p className="sync-modal__done-note">{t('proposals.edit_first_note')}</p>
             </div>
           ) : (
             <>
               <div className="sync-modal__body">
                 {error ? <p className="sync-modal__status sync-modal__status--error">{error}</p> : null}
                 <p className="sync-section__hint">
-                  These are the ways your copy differs from the market. Selected changes are bundled
-                  into one proposal for the deck maintainer to review.
+                  {t('proposals.differences_intro')}
                 </p>
 
                 <ProposeSection
-                  title="Edited cards"
+                  title={t('proposals.section_edited')}
                   changes={editChanges}
                   selectedIds={selectedIds}
                   onToggle={toggleCard}
                 />
                 <ProposeSection
-                  title="New cards"
-                  hint="Cards you added that the market deck does not have yet."
+                  title={t('sync.section_new_cards')}
+                  hint={t('proposals.new_cards_hint')}
                   changes={addChanges}
                   selectedIds={selectedIds}
                   onToggle={toggleCard}
                 />
                 <ProposeSection
-                  title="Card removals"
-                  hint="Cards you deleted in your copy. Approving a removal deletes them for all subscribers of the market deck."
+                  title={t('proposals.section_removals')}
+                  hint={t('proposals.removals_hint')}
                   changes={removeChanges}
                   selectedIds={selectedIds}
                   onToggle={toggleCard}
                 />
 
                 <label className="sync-modal__message">
-                  <span>Message for the maintainer (optional)</span>
+                  <span>{t('proposals.message_label')}</span>
                   <textarea
                     rows={3}
                     value={message}
                     onChange={(event) => setMessage(event.target.value)}
-                    placeholder="What did you improve, and why?"
+                    placeholder={t('proposals.message_placeholder')}
                   />
                 </label>
               </div>
 
               <div className="sync-modal__footer">
-                <span className="sync-modal__footer-note">{selectedIds.size} card{selectedIds.size === 1 ? '' : 's'} selected</span>
+                <span className="sync-modal__footer-note">{t('proposals.cards_selected', { count: selectedIds.size })}</span>
                 <button
                   className="button button--primary"
                   type="button"
                   disabled={selectedIds.size === 0 || status === 'submitting'}
                   onClick={handleSubmit}
                 >
-                  {status === 'submitting' ? 'Sending…' : 'Send proposal'}
+                  {status === 'submitting' ? t('proposals.sending') : t('proposals.send_proposal_btn')}
                 </button>
               </div>
             </>
