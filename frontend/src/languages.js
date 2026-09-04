@@ -439,3 +439,156 @@ export function isPairSupported(l1, l2) {
 export function defaultPair() {
   return { l1: 'es', l2: 'en' };
 }
+
+// ===========================================================================
+// Language-aware validation rules and script/n-gram heuristics (P4)
+// ===========================================================================
+
+// Unicode script matchers for script-range checks
+export const SCRIPT_MATCHERS = {
+  Latn: /\p{sc=Latin}/u,
+  Cyrl: /\p{sc=Cyrillic}/u,
+  Arab: /\p{sc=Arabic}/u,
+  Hebr: /\p{sc=Hebrew}/u,
+  Hans: /\p{sc=Han}/u,
+  Jpan: /[\p{sc=Hiragana}\p{sc=Katakana}\p{sc=Han}]/u,
+  Kore: /[\p{sc=Hangul}\p{sc=Han}]/u,
+};
+
+// Check whether text contains any letter character outside the expected script
+export function hasDisallowedScriptLetter(text, expectedScript) {
+  if (!text || typeof text !== 'string') return false;
+  const matcher = SCRIPT_MATCHERS[expectedScript];
+  if (!matcher) return false;
+  const letters = text.match(/[\p{L}]+/gu);
+  if (!letters) return false;
+  for (const token of letters) {
+    for (const ch of token) {
+      if (!matcher.test(ch)) return true;
+    }
+  }
+  return false;
+}
+
+// Distinctive stopwords and character n-grams for Tier 1 languages (Latin script).
+// Used by the lightweight in-repo n-gram heuristic when comparing L1 vs L2.
+export const LANGUAGE_PROFILES = {
+  en: {
+    words: new Set(['the', 'is', 'are', 'was', 'were', 'have', 'has', 'had', 'with', 'that', 'this', 'from', 'which', 'will', 'would', 'their', 'there', 'they', 'what', 'when', 'where', 'who', 'how', 'been', 'into', 'about', 'than', 'them', 'these', 'those', 'each', 'other', 'some', 'only', 'your', 'our', 'its']),
+    charNgrams: ['the', ' th', 'he ', 'ing', 'ng ', 'wit', 'ith', 'tha', 'hat', 'for', 'you', 'whi', 'sho', 'oul', 'uld'],
+  },
+  es: {
+    punct: /[¿¡]/,
+    words: new Set(['el', 'la', 'los', 'las', 'del', 'al', 'por', 'para', 'con', 'sin', 'sobre', 'este', 'esta', 'estos', 'estas', 'como', 'pero', 'muy', 'más', 'cuando', 'donde', 'son', 'fue', 'sus', 'nos', 'les', 'una', 'unos', 'unas']),
+    charNgrams: [' de ', ' el ', ' la ', ' los', ' las', 'ción', 'ión ', 'que', 'ue ', 'ado ', 'ada ', 'ido ', 'ida ', 'nte ', 'ara ', 'est', ' con', ' por', ' par'],
+  },
+  fr: {
+    chars: /[«»œæ]/,
+    words: new Set(['le', 'la', 'les', 'des', 'du', 'dans', 'pour', 'avec', 'sur', 'par', 'est', 'sont', 'cette', 'ces', 'ce', 'qui', 'mais', 'plus', 'pas', 'son', 'sa', 'ses', 'leur', 'leurs', 'aux', 'sans', 'sous', 'comme', 'tout', 'faire', 'une']),
+    charNgrams: [' de ', ' le ', ' la ', ' les', ' des', ' dans', ' avec', ' pour', ' qu\'', ' d\'', ' l\'', ' c\'', 'tion', 'ment', 'eaux', 'euse', 'ique', 'est ', 'ont ', 'ait '],
+  },
+  de: {
+    chars: /[ß]/,
+    words: new Set(['der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einem', 'einen', 'einer', 'eines', 'und', 'ist', 'sind', 'war', 'in', 'mit', 'von', 'zu', 'für', 'auf', 'nach', 'bei', 'aus', 'nicht', 'wie', 'aber', 'auch', 'sich', 'dass']),
+    charNgrams: ['der', 'die', 'das', 'den', 'dem', 'des', 'und', 'ein', 'sch', 'cht', 'ung', 'ten ', 'gen ', 'für', 'bei', 'aus', 'nach', 'nich'],
+  },
+  it: {
+    words: new Set(['il', 'lo', 'gli', 'del', 'dello', 'della', 'dei', 'degli', 'delle', 'nel', 'nello', 'nella', 'nei', 'negli', 'nelle', 'con', 'per', 'su', 'tra', 'fra', 'non', 'che', 'come', 'anche', 'sono', 'stato', 'una', 'uno']),
+    charNgrams: [' di ', ' il ', ' la ', ' che', ' non', ' per', ' con', 'zione', 'ell', 'ato ', 'ita ', 'uto '],
+  },
+  'pt-BR': {
+    chars: /[ãõ]/,
+    words: new Set(['os', 'as', 'do', 'da', 'dos', 'das', 'no', 'na', 'nos', 'nas', 'com', 'para', 'por', 'como', 'mais', 'não', 'está', 'são', 'foi', 'seu', 'sua', 'seus', 'suas', 'uma', 'uns', 'umas']),
+    charNgrams: [' de ', ' do ', ' da ', ' dos', ' das', 'ção', 'não', ' que', ' com', ' para', 'ando', 'endo'],
+  },
+  pt: {
+    chars: /[ãõ]/,
+    words: new Set(['os', 'as', 'do', 'da', 'dos', 'das', 'no', 'na', 'nos', 'nas', 'com', 'para', 'por', 'como', 'mais', 'não', 'está', 'são', 'foi', 'seu', 'sua', 'seus', 'suas', 'uma', 'uns', 'umas']),
+    charNgrams: [' de ', ' do ', ' da ', ' dos', ' das', 'ção', 'não', ' que', ' com', ' para', 'ando', 'endo'],
+  },
+  nl: {
+    words: new Set(['de', 'het', 'een', 'van', 'in', 'op', 'te', 'met', 'voor', 'is', 'en', 'niet', 'dat', 'die', 'maar', 'om', 'ook', 'aan']),
+    charNgrams: ['van', 'het', 'een', 'der', 'den', 'ing', 'en ', 'ij', 'cht'],
+  },
+};
+
+// Supply per-pair validation rules to enforce target language constraints
+// and prevent L1 leakage into L2 fields.
+export function getPairValidationRule(pair) {
+  const l1 = typeof pair === 'object' && pair ? (pair.l1 || pair.language_from || 'es') : 'es';
+  const l2 = typeof pair === 'object' && pair ? (pair.l2 || pair.language_to || 'en') : 'en';
+  const l1Lang = getLanguage(l1) || { name: 'Spanish', script: 'Latn' };
+  const l2Lang = getLanguage(l2) || { name: 'English', script: 'Latn' };
+  const l1Profile = LANGUAGE_PROFILES[l1] || LANGUAGE_PROFILES[l1.split('-')[0]];
+  const l2Profile = LANGUAGE_PROFILES[l2] || LANGUAGE_PROFILES[l2.split('-')[0]];
+
+  const isDefault = l1 === 'es' && l2 === 'en';
+  // Spanish inverted punctuation rule: ¿ and ¡ only apply when L1 is Spanish and L2 is not.
+  const disallowedPunctuation = (l1 === 'es' && l2 !== 'es') ? /[¿¡]/ : null;
+  const disallowedChars = (l1Profile?.chars && l2Lang.script === 'Latn' && !l2Profile?.chars?.test(l1Profile.chars.source))
+    ? l1Profile.chars
+    : null;
+
+  return {
+    l1,
+    l2,
+    l1Name: l1Lang.name,
+    l2Name: l2Lang.name,
+    expectedScript: l2Lang.script,
+    isDefault,
+    disallowedPunctuation,
+    disallowedChars,
+    isInvalidTargetText(text) {
+      if (!text || typeof text !== 'string') return false;
+      const str = text.trim();
+      if (!str) return false;
+
+      // 1. Script range check: any letter character belonging to a non-target script
+      if (hasDisallowedScriptLetter(str, l2Lang.script)) {
+        return true;
+      }
+
+      // 2. Disallowed punctuation / characters
+      if (disallowedPunctuation && disallowedPunctuation.test(str)) {
+        return true;
+      }
+      if (disallowedChars && disallowedChars.test(str)) {
+        return true;
+      }
+
+      // 3. Lightweight n-gram / function word heuristic for same-script pairs
+      if (l1Profile && l2Profile && l1Lang.script === l2Lang.script) {
+        const clean = str.toLowerCase();
+        const words = clean.match(/[\p{L}']+/gu) || [];
+        if (words.length >= 2) {
+          const l1Words = l1Profile.words || new Set();
+          const l2Words = l2Profile.words || new Set();
+
+          let l1WordMatches = 0;
+          let l2WordMatches = 0;
+          for (const w of words) {
+            if (l1Words.has(w) && !l2Words.has(w)) l1WordMatches++;
+            if (l2Words.has(w) && !l1Words.has(w)) l2WordMatches++;
+          }
+
+          let l1NgramMatches = 0;
+          let l2NgramMatches = 0;
+          const padded = ' ' + clean.replace(/\s+/g, ' ').trim() + ' ';
+          for (const ng of (l1Profile.charNgrams || [])) {
+            if (padded.includes(ng)) l1NgramMatches++;
+          }
+          for (const ng of (l2Profile.charNgrams || [])) {
+            if (padded.includes(ng)) l2NgramMatches++;
+          }
+
+          if ((l1WordMatches >= 2 && l1WordMatches > l2WordMatches) ||
+              (l1WordMatches >= 1 && l1NgramMatches >= 2 && l1NgramMatches > l2NgramMatches)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    },
+  };
+}

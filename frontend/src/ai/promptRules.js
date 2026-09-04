@@ -61,7 +61,8 @@ export const EXAMPLES_TARGET = 3;
 export function resolvePairDescriptor(pair, fallback) {
   if (pair && typeof pair === 'object') {
     if (pair.l1 && pair.l2) {
-      return getPair(pair.l1, pair.l2) || {
+      const base = getPair(pair.l1, pair.l2);
+      return base ? { ...base, ...pair } : {
         l1: pair.l1,
         l2: pair.l2,
         tier: pair.tier || 1,
@@ -70,7 +71,8 @@ export function resolvePairDescriptor(pair, fallback) {
       };
     }
     if (pair.language_from && pair.language_to) {
-      return getPair(pair.language_from, pair.language_to) || {
+      const base = getPair(pair.language_from, pair.language_to);
+      return base ? { ...base, ...pair, l1: pair.language_from, l2: pair.language_to } : {
         l1: pair.language_from,
         l2: pair.language_to,
         tier: 1,

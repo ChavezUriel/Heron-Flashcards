@@ -13,7 +13,8 @@ import {
   exampleFingerprint as esmExampleFingerprint,
   clozeFingerprint as esmClozeFingerprint,
 } from '../../../frontend/src/ai/enrich.js';
-import { validateCard, flatten } from '../../../frontend/src/ai/validate.js';
+import { validateCard, flatten, hasIssues, hasWarnings, flattenWarnings } from '../../../frontend/src/ai/validate.js';
+import * as esmValidate from '../../../frontend/src/ai/validate.js';
 import { locateAnswerInExample } from '../../../frontend/src/ai/cardText.js';
 import * as esmPrompts from '../../../frontend/src/ai/prompts.js';
 import { validateModelTier } from '../../../frontend/src/ai/providers.js';
@@ -21,6 +22,7 @@ import { validateModelTier } from '../../../frontend/src/ai/providers.js';
 const require = createRequire(import.meta.url);
 const cjsEnrich = require('../../scripts/lib/enrich.cjs');
 const cjsPrompts = require('../../scripts/lib/prompts.cjs');
+const cjsValidate = require('../../scripts/lib/validate.cjs');
 const { normCard } = require('../../scripts/lib/cards.cjs');
 
 const DECK = { slug: 'travel', title: 'Travel Phrases', description: 'Short phrases for transport, directions, and common travel moments.' };
@@ -703,6 +705,156 @@ async function test(name, fn) {
     assert.doesNotThrow(
       () => validateModelTier('gemini-2.5-flash', { l1: 'es', l2: 'en', minModelTier: 'tier1' })
     );
+  });
+
+  await test('T21 language-aware validation: cross-port parity, script ranges, n-gram detection, and clozeStrategy warning', async () => {
+    // 1. Cross-port parity between ESM and CJS validate modules
+    assert.strictEqual(typeof esmValidate.validateCard, 'function');
+    assert.strictEqual(typeof cjsValidate.validateCard, 'function');
+    assert.strictEqual(esmValidate.EXAMPLES_MIN, cjsValidate.EXAMPLES_MIN);
+    assert.strictEqual(esmValidate.EXAMPLES_MAX, cjsValidate.EXAMPLES_MAX);
+    assert.strictEqual(esmValidate.CLOZE_DISTRACTORS_MIN, cjsValidate.CLOZE_DISTRACTORS_MIN);
+    assert.strictEqual(esmValidate.CLOZE_DISTRACTORS_MAX, cjsValidate.CLOZE_DISTRACTORS_MAX);
+
+    const cleanCard = {
+      l1_text: 'Pasaporte',
+      l2_text: 'Passport',
+      part_of_speech: 'noun',
+      l2_definition: 'An official travel document issued by a government.',
+      l1_translations: ['pasaporte'],
+      collocations: ['passport control', 'valid passport'],
+      examples: [
+        { l1: 'Necesito mi pasaporte.', l2: 'I need my passport for travel.' },
+        { l1: 'Muestre su pasaporte.', l2: 'Show your passport to the officer.' },
+        { l1: 'Renové mi pasaporte.', l2: 'I renewed my passport yesterday.' },
+      ],
+      example_l1: 'Necesito mi pasaporte.',
+      example_l2: 'I need my passport for travel.',
+      example_sentence: 'I need my passport for travel.',
+      l2_synonyms: ['travel document'],
+      l2_cloze_distractors: ['visa', 'ticket', 'boarding pass'],
+    };
+
+    const esmVerdicts = esmValidate.validateCard(cleanCard);
+    const cjsVerdicts = cjsValidate.validateCard(cleanCard);
+    assert.deepStrictEqual(esmVerdicts, cjsVerdicts, 'clean card validation must match across ESM and CJS');
+    assert.strictEqual(esmValidate.hasIssues(esmVerdicts), false, 'clean card has no issues');
+
+    // 2. es->en: Inverted punctuation marks (¿ / ¡) in English fields must flag
+    const cardWithSpanishPunct = {
+      ...cleanCard,
+      l2_definition: '¿An official document?',
+      collocations: ['¡passport photo!'],
+      examples: [
+        { l1: 'x', l2: '¿I need my passport?' },
+        cleanCard.examples[1],
+        cleanCard.examples[2],
+      ],
+      example_l1: 'x',
+      example_l2: '¿I need my passport?',
+      example_sentence: '¿I need my passport?',
+      l2_synonyms: ['¡travel document!'],
+      l2_cloze_distractors: ['¿visa?', 'ticket', 'boarding pass'],
+    };
+    const esIssues = esmValidate.validateCard(cardWithSpanishPunct, { l1: 'es', l2: 'en' });
+    assert.ok(esIssues.lexical.some((m) => m === 'l2_definition must be English (no ¿ or ¡)'));
+    assert.ok(esIssues.equivalents.some((m) => m === 'collocations must be English phrases (no ¿ or ¡)'));
+    assert.ok(esIssues.examples.some((m) => m === 'examples[0].l2 must be English (no ¿ or ¡)'));
+    assert.ok(esIssues.synonyms.some((m) => m === 'l2_synonyms must be English (no ¿ or ¡)'));
+    assert.ok(esIssues.clozeDistractors.some((m) => m === 'l2_cloze_distractors must be English (no ¿ or ¡)'));
+
+    // 3. en->es: Spanish target fields with inverted punctuation must NOT flag false positives
+    const cleanSpanishCard = {
+      l1_text: 'Passport',
+      l2_text: 'Pasaporte',
+      part_of_speech: 'noun',
+      l2_definition: '¿Qué es? Un documento oficial emitido por el gobierno.',
+      l1_translations: ['passport'],
+      collocations: ['control de pasaportes', 'pasaporte válido'],
+      examples: [
+        { l1: 'Where is your passport?', l2: '¿Dónde está su pasaporte?' },
+        { l1: 'Show your passport.', l2: '¡Muestre su pasaporte ahora mismo!' },
+        { l1: 'I have a passport.', l2: 'Tengo un pasaporte para viajar.' },
+      ],
+      example_l1: 'Where is your passport?',
+      example_l2: '¿Dónde está su pasaporte?',
+      example_sentence: '¿Dónde está su pasaporte?',
+      l2_synonyms: ['documento de viaje'],
+      l2_cloze_distractors: ['boleto', 'visado', 'tarjeta'],
+    };
+    const enEsIssues = esmValidate.validateCard(cleanSpanishCard, { l1: 'en', l2: 'es' });
+    assert.strictEqual(enEsIssues.lexical.length, 0, 'en->es must not flag ¿ in Spanish definition');
+    assert.strictEqual(enEsIssues.examples.length, 0, 'en->es must not flag ¿ or ¡ in Spanish examples');
+    assert.strictEqual(esmValidate.hasIssues(enEsIssues), false, 'clean en->es card has no issues');
+
+    // 4. en->es: English text in Spanish target fields must be caught by n-gram / language heuristic
+    const englishInSpanishCard = {
+      ...cleanSpanishCard,
+      l2_definition: 'An official document issued by the government for travel.',
+      examples: [
+        { l1: 'x', l2: 'I bought a ticket for the train yesterday.' },
+        cleanSpanishCard.examples[1],
+        cleanSpanishCard.examples[2],
+      ],
+    };
+    const enEsCaught = esmValidate.validateCard(englishInSpanishCard, { l1: 'en', l2: 'es' });
+    assert.ok(enEsCaught.lexical.some((m) => m === 'l2_definition must be Spanish'));
+    assert.ok(enEsCaught.examples.some((m) => m === 'examples[0].l2 must be Spanish'));
+
+    // 5. fr->en: French text in English target fields must be caught
+    const frenchInEnglishCard = {
+      ...cleanCard,
+      l2_definition: 'Un document officiel émis par le gouvernement pour voyager.',
+      examples: [
+        { l1: 'x', l2: 'J\'ai acheté un billet pour le train hier matin.' },
+        cleanCard.examples[1],
+        cleanCard.examples[2],
+      ],
+    };
+    const frEnCaught = esmValidate.validateCard(frenchInEnglishCard, { l1: 'fr', l2: 'en' });
+    assert.ok(frEnCaught.lexical.some((m) => m === 'l2_definition must be English'));
+    assert.ok(frEnCaught.examples.some((m) => m === 'examples[0].l2 must be English'));
+
+    // 6. Script range check: Cyrillic characters in Latin target fields must flag
+    const cyrillicCard = {
+      ...cleanCard,
+      l2_definition: 'Official document паспорт issued by government.',
+    };
+    const cyrillicIssues = esmValidate.validateCard(cyrillicCard, { l1: 'ru', l2: 'en' });
+    assert.ok(cyrillicIssues.lexical.some((m) => m.includes('must be English')));
+
+    // 7. Cloze strategy: when pair.clozeStrategy is 'lemma' (non-verbatim) or card.cloze_ineligible,
+    // inflected answers report as warnings rather than hard failures in examples
+    const nonVerbatimCard = {
+      ...cleanCard,
+      examples: [
+        { l1: 'x', l2: 'She renewed her passports yesterday.' },
+        cleanCard.examples[1],
+        cleanCard.examples[2],
+      ],
+      example_l1: 'x',
+      example_l2: 'She renewed her passports yesterday.',
+      example_sentence: 'She renewed her passports yesterday.',
+    };
+    // In verbatim pair (default es->en), inflected answer is a hard failure in examples
+    const verbatimIssues = esmValidate.validateCard(nonVerbatimCard, { l1: 'es', l2: 'en', clozeStrategy: 'verbatim' });
+    assert.ok(verbatimIssues.examples.some((m) => m.includes('verbatim')), 'verbatim failure flags in examples');
+    assert.strictEqual(esmValidate.hasIssues(verbatimIssues), true);
+
+    // In non-verbatim pair (e.g. clozeStrategy: 'lemma'), it reports as a warning
+    const lemmaIssues = esmValidate.validateCard(nonVerbatimCard, { l1: 'de', l2: 'en', clozeStrategy: 'lemma' });
+    assert.strictEqual(lemmaIssues.examples.length, 0, 'non-verbatim strategy does not fail examples');
+    assert.ok(lemmaIssues.warnings.length > 0, 'reports warning for cloze ineligibility');
+    assert.ok(lemmaIssues.warnings.some((w) => w.includes('cloze-ineligible')));
+    assert.strictEqual(esmValidate.hasIssues(lemmaIssues), false, 'warnings do not count as hard issues');
+    assert.deepStrictEqual(esmValidate.flatten(lemmaIssues), [], 'flatten ignores warnings');
+    assert.strictEqual(esmValidate.hasWarnings(lemmaIssues), true, 'hasWarnings detects warnings');
+
+    // If marked cloze_ineligible explicitly on verbatim pair
+    const markedIneligible = { ...nonVerbatimCard, cloze_ineligible: true };
+    const ineligibleIssues = esmValidate.validateCard(markedIneligible, { l1: 'es', l2: 'en' });
+    assert.strictEqual(ineligibleIssues.examples.length, 0, 'marked cloze_ineligible does not fail examples');
+    assert.ok(ineligibleIssues.warnings.length > 0, 'marked cloze_ineligible produces warning');
   });
 
   console.log(`\nALL ${passed} BROWSER ESM PIPELINE STUB TESTS PASSED`);

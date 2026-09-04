@@ -442,7 +442,7 @@ async function solveSentence(card, sentenceL2, runPrompt, pair) {
 function cardStatus(card, deck, opts = {}) {
   const { auditFields = true, auditExamples = true, auditCloze = true, wantCloze = true } = opts;
   const pair = resolvePairDescriptor(opts.pair || deck || card);
-  const issues = validateCard(card);
+  const issues = validateCard(card, pair);
   if (!wantCloze) issues.clozeDistractors = [];
   const audits = [];
   if (!issues.card.length) {
@@ -566,7 +566,7 @@ async function processCard(draft, opts = {}) {
 
   for (let round = 0; round < maxRounds; round++) {
     let acted = false;
-    let det = validateCard(card);
+    let det = validateCard(card, pair);
     if (det.card.length) break; // spanish/english problems can't be fixed by enrichment
 
     // Filter det based on only and protect options
@@ -693,7 +693,7 @@ async function processCard(draft, opts = {}) {
     }
 
     // Distractors need a valid, fully blankable example set — recheck first.
-    det = validateCard(card);
+    det = validateCard(card, pair);
     if (onlySet && !isGroupAllowed('clozeDistractors', onlySet)) det.clozeDistractors = [];
     if (protectSet && isGroupProtected('clozeDistractors', protectSet) && isGroupNonEmpty('clozeDistractors', card)) det.clozeDistractors = [];
     if (wantCloze && !det.examples.length && (det.clozeDistractors.length || clozeHints.length)) {
@@ -701,7 +701,7 @@ async function processCard(draft, opts = {}) {
       clearAudit(card, 'cloze_options');
       clozeHints = [];
       acted = true;
-      det = validateCard(card);
+      det = validateCard(card, pair);
     }
 
     // --- audits (only over deterministically clean fields) ---
