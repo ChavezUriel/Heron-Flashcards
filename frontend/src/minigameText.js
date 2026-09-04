@@ -105,8 +105,8 @@ export function classifyGuess(guess, card) {
     return 'wrong';
   }
 
-  const answer = card.answer_l2 ?? card.answer_en;
-  const synonyms = card.l2_synonyms ?? card.synonyms_en ?? [];
+  const answer = card.answer_l2;
+  const synonyms = card.l2_synonyms ?? [];
   const candidates = [answer, ...synonyms]
     .map(normalizeAnswer)
     .filter(Boolean);
@@ -205,19 +205,19 @@ export function pickCardExample(card) {
 export function clozeCandidates(card) {
   const pairs = [
     {
-      l2: card?.example_l2 ?? card?.example_en,
-      l1: card?.example_l1 ?? card?.example_es,
+      l2: card?.example_l2,
+      l1: card?.example_l1,
     },
     ...(Array.isArray(card?.examples)
       ? card.examples.map((p) => ({
-          l2: p?.l2 ?? p?.en ?? p?.example_l2 ?? p?.example_en,
-          l1: p?.l1 ?? p?.es ?? p?.example_l1 ?? p?.example_es,
+          l2: p?.l2 ?? p?.example_l2,
+          l1: p?.l1 ?? p?.example_l1,
         }))
       : []),
   ];
   const out = [];
   const seen = new Set();
-  const answer = card?.answer_l2 ?? card?.answer_en;
+  const answer = card?.answer_l2;
   for (const pair of pairs) {
     const l2 = typeof pair.l2 === 'string' ? pair.l2 : '';
     if (!l2) {

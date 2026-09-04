@@ -122,8 +122,8 @@ export function usableBoundaryCards(cards) {
   const seenAnswers = new Set();
   const seenPrompts = new Set();
   for (const card of cards ?? []) {
-    const prompt = (card?.prompt_l1 ?? card?.prompt_es ?? '').trim();
-    const answer = (card?.answer_l2 ?? card?.answer_en ?? '').trim();
+    const prompt = (card?.prompt_l1 ?? '').trim();
+    const answer = (card?.answer_l2 ?? '').trim();
     if (!prompt || !answer) {
       continue;
     }
@@ -138,8 +138,6 @@ export function usableBoundaryCards(cards) {
       card_id: card.card_id,
       prompt_l1: prompt,
       answer_l2: answer,
-      prompt_es: prompt,
-      answer_en: answer,
       section_name: card.section_name ?? null,
     });
   }
@@ -187,11 +185,11 @@ function preferenceFor(placement, seed) {
 // A card's distinct English synonyms, excluding any that just restate the answer —
 // the correct picks for a Synonym-match round (docs/minigames.md §9 Phase 6).
 function usableSynonyms(card) {
-  const answerKey = normalizeKey(card?.answer_l2 ?? card?.answer_en);
+  const answerKey = normalizeKey(card?.answer_l2);
   const seen = new Set(answerKey ? [answerKey] : []);
   const out = [];
-  const synonyms = Array.isArray(card?.l2_synonyms ?? card?.synonyms_en)
-    ? (card?.l2_synonyms ?? card?.synonyms_en)
+  const synonyms = Array.isArray(card?.l2_synonyms)
+    ? card?.l2_synonyms
     : [];
   for (const raw of synonyms) {
     const text = typeof raw === 'string' ? raw.trim() : '';
@@ -219,7 +217,7 @@ function chooseDepthRound(cards) {
     if (!card || card.card_id == null) {
       continue;
     }
-    const answerKey = normalizeKey(card.answer_l2 ?? card.answer_en);
+    const answerKey = normalizeKey(card.answer_l2);
     if (!answerKey || seenAnswers.has(answerKey)) {
       continue;
     }
@@ -232,7 +230,7 @@ function chooseDepthRound(cards) {
     return null;
   }
   const anchor = sample(anchors, 1)[0];
-  const anchorAnswerKey = normalizeKey(anchor.answer_l2 ?? anchor.answer_en);
+  const anchorAnswerKey = normalizeKey(anchor.answer_l2);
   const anchorSynonymKeys = new Set(usableSynonyms(anchor).map(normalizeKey));
 
   // Distractors: other answers that are neither the anchor's answer nor a synonym.
@@ -240,7 +238,7 @@ function chooseDepthRound(cards) {
     if (card.card_id === anchor.card_id) {
       return false;
     }
-    const key = normalizeKey(card.answer_l2 ?? card.answer_en);
+    const key = normalizeKey(card.answer_l2);
     return key !== anchorAnswerKey && !anchorSynonymKeys.has(key);
   });
   if (distractors.length < DEPTH_MIN_DISTRACTORS) {

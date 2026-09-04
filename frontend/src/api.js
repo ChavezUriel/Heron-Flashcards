@@ -306,18 +306,18 @@ export function deleteCards(cardIds) {
 export function updateCard(cardId, payload) {
   return rpc('update_card', {
     p_card_id: cardId,
-    p_prompt_l1: payload.prompt_l1 ?? payload.prompt_es,
-    p_answer_l2: payload.answer_l2 ?? payload.answer_en,
+    p_prompt_l1: payload.prompt_l1,
+    p_answer_l2: payload.answer_l2,
     p_section_name: payload.section_name ?? null,
     p_part_of_speech: payload.part_of_speech ?? null,
-    p_l2_definition: payload.l2_definition ?? payload.definition_en ?? null,
-    p_l1_translations: payload.l1_translations ?? payload.main_translations_es ?? [],
+    p_l2_definition: payload.l2_definition ?? null,
+    p_l1_translations: payload.l1_translations ?? [],
     p_collocations: payload.collocations ?? [],
-    p_l2_synonyms: payload.l2_synonyms ?? payload.synonyms_en ?? [],
+    p_l2_synonyms: payload.l2_synonyms ?? [],
     p_example_sentence: payload.example_sentence ?? null,
-    p_example_l1: payload.example_l1 ?? payload.example_es ?? null,
-    p_example_l2: payload.example_l2 ?? payload.example_en ?? null,
-    p_l2_mnemonic: payload.l2_mnemonic ?? payload.mnemonic_en ?? null,
+    p_example_l1: payload.example_l1 ?? null,
+    p_example_l2: payload.example_l2 ?? null,
+    p_l2_mnemonic: payload.l2_mnemonic ?? null,
     p_examples: payload.examples ?? null,
   });
 }

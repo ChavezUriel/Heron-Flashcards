@@ -36,22 +36,19 @@ function slimCard(card) {
   if (!card || card.card_id == null) {
     return null;
   }
-  const prompt = (card.prompt_l1 ?? card.prompt_es ?? '').trim();
-  const answer = (card.answer_l2 ?? card.answer_en ?? '').trim();
+  const prompt = (card.prompt_l1 ?? '').trim();
+  const answer = (card.answer_l2 ?? '').trim();
   if (!prompt || !answer) {
     return null;
   }
-  const synonyms = slimSynonyms(card.l2_synonyms ?? card.synonyms_en);
+  const synonyms = slimSynonyms(card.l2_synonyms);
   return {
     card_id: card.card_id,
     prompt_l1: prompt,
     answer_l2: answer,
-    prompt_es: prompt,
-    answer_en: answer,
     section_name: card.section_name ?? null,
     // Carried for the depth game only; boundary games ignore it. See §9 Phase 6.
     l2_synonyms: synonyms,
-    synonyms_en: synonyms,
   };
 }
 

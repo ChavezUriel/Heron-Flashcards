@@ -10,8 +10,8 @@ const MAX_MISSES = 6;
 // pure arcade fun, so it NEVER grades: it only
 // ever calls onDone() to dismiss and never touches a session RPC (§5.2, §8.2).
 function Hangman({ card, onDone }) {
-  const answer = (card.answer_l2 ?? card.answer_en ?? '').trim();
-  const prompt = card.prompt_l1 ?? card.prompt_es;
+  const answer = (card.answer_l2 ?? '').trim();
+  const prompt = card.prompt_l1;
   const sourceLang = getLanguage(card.language_from ?? 'es');
   const sourceLabel = sourceLang?.name ?? 'Prompt';
   const answerLetters = useMemo(() => {

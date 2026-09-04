@@ -52,26 +52,7 @@ function CardDetailsModal({
   }, [canEdit, card.card_id, startInEditMode]);
 
   function updateField(name, value) {
-    setFormValues((current) => {
-      const next = { ...current, [name]: value };
-      if (name === 'prompt_l1' || name === 'prompt_es') {
-        next.prompt_l1 = value;
-        next.prompt_es = value;
-      } else if (name === 'answer_l2' || name === 'answer_en') {
-        next.answer_l2 = value;
-        next.answer_en = value;
-      } else if (name === 'l2_definition' || name === 'definition_en') {
-        next.l2_definition = value;
-        next.definition_en = value;
-      } else if (name === 'l1_translations' || name === 'main_translations_es') {
-        next.l1_translations = value;
-        next.main_translations_es = value;
-      } else if (name === 'l2_synonyms' || name === 'synonyms_en') {
-        next.l2_synonyms = value;
-        next.synonyms_en = value;
-      }
-      return next;
-    });
+    setFormValues((current) => ({ ...current, [name]: value }));
   }
 
   function updateExamplePair(index, field, value) {
@@ -106,37 +87,30 @@ function CardDetailsModal({
       .map((pair) => {
         const l1 = (pair.l1 || pair.es || '').trim();
         const l2 = (pair.l2 || pair.en || '').trim();
-        return { l1, l2, es: l1, en: l2 };
+        return { l1, l2 };
       })
       .filter((pair) => pair.l1 || pair.l2);
     const first = cleanedExamples[0] ?? null;
-    const prompt = (formValues.prompt_l1 || formValues.prompt_es || '').trim();
-    const answer = (formValues.answer_l2 || formValues.answer_en || '').trim();
-    const definition = nullableText(formValues.l2_definition ?? formValues.definition_en);
-    const translations = splitMultiline(formValues.l1_translations ?? formValues.main_translations_es ?? '');
-    const synonyms = splitMultiline(formValues.l2_synonyms ?? formValues.synonyms_en ?? '');
+    const prompt = (formValues.prompt_l1 || '').trim();
+    const answer = (formValues.answer_l2 || '').trim();
+    const definition = nullableText(formValues.l2_definition);
+    const translations = splitMultiline(formValues.l1_translations ?? '');
+    const synonyms = splitMultiline(formValues.l2_synonyms ?? '');
 
     return {
       ...card,
       prompt_l1: prompt,
       answer_l2: answer,
-      prompt_es: prompt,
-      answer_en: answer,
       section_name: nullableText(formValues.section_name),
       part_of_speech: nullableText(formValues.part_of_speech),
       l2_definition: definition,
-      definition_en: definition,
       l1_translations: translations,
-      main_translations_es: translations,
       collocations: splitMultiline(formValues.collocations),
       l2_synonyms: synonyms,
-      synonyms_en: synonyms,
       examples: cleanedExamples,
-      example_sentence: first ? (first.l2 ?? first.en) : null,
-      example_l1: first ? (first.l1 ?? first.es) : null,
-      example_es: first ? (first.l1 ?? first.es) : null,
-      example_l2: first ? (first.l2 ?? first.en) : null,
-      example_en: first ? (first.l2 ?? first.en) : null,
+      example_sentence: first ? first.l2 : null,
+      example_l1: first ? first.l1 : null,
+      example_l2: first ? first.l2 : null,
     };
   }
 
@@ -216,39 +190,31 @@ function CardDetailsModal({
       .map((pair) => {
         const l1 = (pair.l1 || pair.es || '').trim();
         const l2 = (pair.l2 || pair.en || '').trim();
-        return { l1, l2, es: l1, en: l2 };
+        return { l1, l2 };
       })
       .filter((pair) => pair.l1 || pair.l2);
     const first = cleanedExamples[0] ?? null;
 
-    const prompt = (aiProposedFix.prompt_l1 || aiProposedFix.prompt_es || '').trim();
-    const answer = (aiProposedFix.answer_l2 || aiProposedFix.answer_en || '').trim();
-    const definition = nullableText(aiProposedFix.l2_definition ?? aiProposedFix.definition_en);
-    const translations = aiProposedFix.l1_translations || aiProposedFix.main_translations_es || [];
-    const synonyms = aiProposedFix.l2_synonyms || aiProposedFix.synonyms_en || [];
+    const prompt = (aiProposedFix.prompt_l1 || '').trim();
+    const answer = (aiProposedFix.answer_l2 || '').trim();
+    const definition = nullableText(aiProposedFix.l2_definition);
+    const translations = aiProposedFix.l1_translations || [];
+    const synonyms = aiProposedFix.l2_synonyms || [];
 
     const updatedPayload = {
       prompt_l1: prompt,
       answer_l2: answer,
-      prompt_es: prompt,
-      answer_en: answer,
       section_name: nullableText(aiProposedFix.section_name ?? formValues.section_name),
       part_of_speech: nullableText(aiProposedFix.part_of_speech),
       l2_definition: definition,
-      definition_en: definition,
       l1_translations: translations,
-      main_translations_es: translations,
       collocations: aiProposedFix.collocations || [],
       l2_synonyms: synonyms,
-      synonyms_en: synonyms,
       examples: cleanedExamples,
-      example_sentence: first ? (first.l2 ?? first.en) : null,
-      example_l1: first ? (first.l1 ?? first.es) : null,
-      example_es: first ? (first.l1 ?? first.es) : null,
-      example_l2: first ? (first.l2 ?? first.en) : null,
-      example_en: first ? (first.l2 ?? first.en) : null,
-      l2_mnemonic: card.l2_mnemonic ?? card.mnemonic_en ?? null,
-      mnemonic_en: card.l2_mnemonic ?? card.mnemonic_en ?? null,
+      example_sentence: first ? first.l2 : null,
+      example_l1: first ? first.l1 : null,
+      example_l2: first ? first.l2 : null,
+      l2_mnemonic: card.l2_mnemonic ?? null,
     };
 
     try {
@@ -307,41 +273,33 @@ function CardDetailsModal({
       .map((pair) => {
         const l1 = (pair.l1 || pair.es || '').trim();
         const l2 = (pair.l2 || pair.en || '').trim();
-        return { l1, l2, es: l1, en: l2 };
+        return { l1, l2 };
       })
       .filter((pair) => pair.l1 || pair.l2);
 
     const first = cleanedExamples[0] ?? null;
-    const prompt = (formValues.prompt_l1 || formValues.prompt_es || '').trim();
-    const answer = (formValues.answer_l2 || formValues.answer_en || '').trim();
-    const definition = nullableText(formValues.l2_definition ?? formValues.definition_en);
-    const translations = splitMultiline(formValues.l1_translations ?? formValues.main_translations_es ?? '');
-    const synonyms = splitMultiline(formValues.l2_synonyms ?? formValues.synonyms_en ?? '');
+    const prompt = (formValues.prompt_l1 || '').trim();
+    const answer = (formValues.answer_l2 || '').trim();
+    const definition = nullableText(formValues.l2_definition);
+    const translations = splitMultiline(formValues.l1_translations ?? '');
+    const synonyms = splitMultiline(formValues.l2_synonyms ?? '');
 
     const savedCard = await onSave({
       prompt_l1: prompt,
       answer_l2: answer,
-      prompt_es: prompt,
-      answer_en: answer,
       section_name: nullableText(formValues.section_name),
       part_of_speech: nullableText(formValues.part_of_speech),
       l2_definition: definition,
-      definition_en: definition,
       l1_translations: translations,
-      main_translations_es: translations,
       collocations: splitMultiline(formValues.collocations),
       examples: cleanedExamples,
-      example_sentence: first ? (first.l2 ?? first.en) : null,
-      example_l1: first ? (first.l1 ?? first.es) : null,
-      example_es: first ? (first.l1 ?? first.es) : null,
-      example_l2: first ? (first.l2 ?? first.en) : null,
-      example_en: first ? (first.l2 ?? first.en) : null,
+      example_sentence: first ? first.l2 : null,
+      example_l1: first ? first.l1 : null,
+      example_l2: first ? first.l2 : null,
       // No longer shown or editable anywhere, but update_card nulls the column
       // when the param is omitted — pass the stored value through untouched.
-      l2_mnemonic: card.l2_mnemonic ?? card.mnemonic_en ?? null,
-      mnemonic_en: card.l2_mnemonic ?? card.mnemonic_en ?? null,
+      l2_mnemonic: card.l2_mnemonic ?? null,
       l2_synonyms: synonyms,
-      synonyms_en: synonyms,
     });
 
     if (savedCard) {
@@ -389,7 +347,7 @@ function CardDetailsModal({
           <div className="details-modal__header-row">
             <div className="details-modal__header-content">
               <p className="flashcard__label">Flashcard metadata</p>
-              <h3>{isEditing ? (formValues.answer_l2 || formValues.answer_en || 'Flashcard') : (card.answer_l2 || card.answer_en)}</h3>
+              <h3>{isEditing ? (formValues.answer_l2 || 'Flashcard') : (card.answer_l2 || 'Flashcard')}</h3>
             </div>
             <div className="details-modal__header-actions">
               <button
@@ -621,17 +579,17 @@ function CardDetailsModal({
         <div className="flashcard-details">
           <Field label={`${sourceLabel} prompt`}>
             {isEditing ? (
-              <input value={formValues.prompt_l1 ?? formValues.prompt_es} onChange={(event) => updateField('prompt_l1', event.target.value)} />
+              <input value={formValues.prompt_l1 ?? ''} onChange={(event) => updateField('prompt_l1', event.target.value)} />
             ) : (
-              <p>{card.prompt_l1 ?? card.prompt_es}</p>
+              <p>{card.prompt_l1}</p>
             )}
           </Field>
 
           <Field label={`${targetLabel} answer`}>
             {isEditing ? (
-              <input value={formValues.answer_l2 ?? formValues.answer_en} onChange={(event) => updateField('answer_l2', event.target.value)} />
+              <input value={formValues.answer_l2 ?? ''} onChange={(event) => updateField('answer_l2', event.target.value)} />
             ) : (
-              <p>{card.answer_l2 ?? card.answer_en}</p>
+              <p>{card.answer_l2}</p>
             )}
           </Field>
 
@@ -875,50 +833,43 @@ function Field({ label, wide = false, children }) {
 function buildFormValues(card) {
   const existingPairs = (Array.isArray(card.examples) && card.examples.length > 0)
     ? card.examples.map((p) => ({
-        l1: p?.l1 ?? p?.example_l1 ?? p?.es ?? p?.example_es ?? '',
-        l2: p?.l2 ?? p?.example_l2 ?? p?.en ?? p?.example_en ?? '',
+        l1: p?.l1 ?? p?.example_l1 ?? '',
+        l2: p?.l2 ?? p?.example_l2 ?? '',
       }))
     : [
         {
-          l1: card.example_l1 ?? card.example_es ?? '',
-          l2: card.example_l2 ?? card.example_en ?? card.example_sentence ?? '',
+          l1: card.example_l1 ?? '',
+          l2: card.example_l2 ?? card.example_sentence ?? '',
         },
       ];
 
   const examples = [
-    { l1: existingPairs[0]?.l1 ?? '', l2: existingPairs[0]?.l2 ?? '', es: existingPairs[0]?.l1 ?? '', en: existingPairs[0]?.l2 ?? '' },
-    { l1: existingPairs[1]?.l1 ?? '', l2: existingPairs[1]?.l2 ?? '', es: existingPairs[1]?.l1 ?? '', en: existingPairs[1]?.l2 ?? '' },
-    { l1: existingPairs[2]?.l1 ?? '', l2: existingPairs[2]?.l2 ?? '', es: existingPairs[2]?.l1 ?? '', en: existingPairs[2]?.l2 ?? '' },
+    { l1: existingPairs[0]?.l1 ?? '', l2: existingPairs[0]?.l2 ?? '' },
+    { l1: existingPairs[1]?.l1 ?? '', l2: existingPairs[1]?.l2 ?? '' },
+    { l1: existingPairs[2]?.l1 ?? '', l2: existingPairs[2]?.l2 ?? '' },
   ];
 
-  const prompt = card.prompt_l1 ?? card.prompt_es ?? '';
-  const answer = card.answer_l2 ?? card.answer_en ?? '';
-  const definition = card.l2_definition ?? card.definition_en ?? '';
-  const translations = (card.l1_translations ?? card.main_translations_es ?? []).join('\n');
-  const synonyms = (card.l2_synonyms ?? card.synonyms_en ?? []).join('\n');
-  const ex1 = examples[0].l1 || card.example_l1 || card.example_es || '';
-  const ex2 = examples[0].l2 || card.example_l2 || card.example_en || '';
+  const prompt = card.prompt_l1 ?? '';
+  const answer = card.answer_l2 ?? '';
+  const definition = card.l2_definition ?? '';
+  const translations = (card.l1_translations ?? []).join('\n');
+  const synonyms = (card.l2_synonyms ?? []).join('\n');
+  const ex1 = examples[0].l1 || card.example_l1 || '';
+  const ex2 = examples[0].l2 || card.example_l2 || '';
 
   return {
     prompt_l1: prompt,
     answer_l2: answer,
-    prompt_es: prompt,
-    answer_en: answer,
     section_name: card.section_name ?? '',
     part_of_speech: card.part_of_speech ?? '',
     l2_definition: definition,
-    definition_en: definition,
     l1_translations: translations,
-    main_translations_es: translations,
     collocations: (card.collocations ?? []).join('\n'),
     l2_synonyms: synonyms,
-    synonyms_en: synonyms,
     examples,
     example_sentence: ex2 || card.example_sentence || '',
     example_l1: ex1,
-    example_es: ex1,
     example_l2: ex2,
-    example_en: ex2,
   };
 }
 
@@ -938,20 +889,13 @@ function nullableText(value) {
 function fieldLabel(field) {
   const map = {
     prompt_l1: 'Prompt',
-    prompt_es: 'Prompt',
-    spanish_prompt: 'Prompt',
     answer_l2: 'Answer',
-    answer_en: 'Answer',
-    english_answer: 'Answer',
     section_name: 'Section',
     part_of_speech: 'Part of speech',
     l2_definition: 'Definition',
-    definition_en: 'Definition',
     l1_translations: 'Translations',
-    main_translations_es: 'Translations',
     collocations: 'Collocations',
     l2_synonyms: 'Synonyms',
-    synonyms_en: 'Synonyms',
     examples: 'Examples',
     general: 'General',
   };

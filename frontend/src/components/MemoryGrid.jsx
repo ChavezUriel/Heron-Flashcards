@@ -26,8 +26,8 @@ function MemoryGrid({ cards, onDone }) {
 
   const { l1Tiles, l2Tiles } = useMemo(
     () => ({
-      l1Tiles: shuffle(cards.map((card) => ({ id: card.card_id, text: card.prompt_l1 ?? card.prompt_es }))),
-      l2Tiles: shuffle(cards.map((card) => ({ id: card.card_id, text: card.answer_l2 ?? card.answer_en }))),
+      l1Tiles: shuffle(cards.map((card) => ({ id: card.card_id, text: card.prompt_l1 }))),
+      l2Tiles: shuffle(cards.map((card) => ({ id: card.card_id, text: card.answer_l2 }))),
     }),
     [cards],
   );

@@ -36,14 +36,14 @@ export function normExamplePairs(value, legacyEs, legacyEn) {
     const key = en.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ l1: es, l2: en, es, en });
+    out.push({ l1: es, l2: en });
   };
   if (Array.isArray(value)) {
     for (const pair of value) {
       if (!pair || typeof pair !== 'object') continue;
       push(
-        pair.l1 ?? pair.example_l1 ?? pair.es ?? pair.example_es,
-        pair.l2 ?? pair.example_l2 ?? pair.en ?? pair.example_en
+        pair.l1 ?? pair.example_l1,
+        pair.l2 ?? pair.example_l2
       );
     }
   }
@@ -66,51 +66,42 @@ function normAudits(v, genMeta) {
 // the pairs are the source of truth and the mirror is what pre-0019 consumers
 // (and the 0017 sync hash) read.
 export function normCard(card, deckTitle) {
-  const prompt = optText(card.l1_text ?? card.prompt_l1 ?? card.spanish ?? card.spanish_text ?? card.prompt_es);
-  const answer = optText(card.l2_text ?? card.answer_l2 ?? card.english ?? card.english_text ?? card.answer_en);
+  const prompt = optText(card.l1_text ?? card.prompt_l1 ?? card.spanish);
+  const answer = optText(card.l2_text ?? card.answer_l2 ?? card.english);
   if (!prompt || !answer) return null;
   const examples = normExamplePairs(
     card.examples,
-    card.example_l1 ?? card.example_es,
-    card.example_l2 ?? card.example_en
+    card.example_l1,
+    card.example_l2
   );
   const first = examples[0] ?? null;
-  const l2Definition = optText(card.l2_definition ?? card.definition_en);
-  const l1Translations = normList(card.l1_translations ?? card.main_translations_es);
-  const l2Synonyms = normList(card.l2_synonyms ?? card.synonyms_en);
+  const l2Definition = optText(card.l2_definition);
+  const l1Translations = normList(card.l1_translations);
+  const l2Synonyms = normList(card.l2_synonyms);
   const collocations = normList(card.collocations);
-  const exampleSentence = first ? (first.l2 ?? first.en) : optText(card.example_sentence);
-  const exampleL1 = first ? (first.l1 ?? first.es) : optText(card.example_l1 ?? card.example_es);
-  const exampleL2 = first ? (first.l2 ?? first.en) : optText(card.example_l2 ?? card.example_en);
-  const l2Mnemonic = optText(card.l2_mnemonic ?? card.mnemonic_en);
-  const l2ClozeDistractors = normList(card.l2_cloze_distractors ?? card.cloze_distractors_en);
+  const exampleSentence = first ? first.l2 : optText(card.example_sentence);
+  const exampleL1 = first ? first.l1 : optText(card.example_l1);
+  const exampleL2 = first ? first.l2 : optText(card.example_l2);
+  const l2Mnemonic = optText(card.l2_mnemonic);
+  const l2ClozeDistractors = normList(card.l2_cloze_distractors);
 
   return {
     l1_text: prompt,
     l2_text: answer,
     prompt_l1: prompt,
     answer_l2: answer,
-    spanish_text: prompt,
-    english_text: answer,
     section_name: optText(card.section_name) ?? deckTitle ?? null,
     part_of_speech: optText(card.part_of_speech),
     l2_definition: l2Definition,
-    definition_en: l2Definition,
     l1_translations: l1Translations,
-    main_translations_es: l1Translations,
     collocations,
     l2_synonyms: l2Synonyms,
-    synonyms_en: l2Synonyms,
     examples,
     example_sentence: exampleSentence,
     example_l1: exampleL1,
     example_l2: exampleL2,
-    example_es: exampleL1,
-    example_en: exampleL2,
     l2_mnemonic: l2Mnemonic,
-    mnemonic_en: l2Mnemonic,
     l2_cloze_distractors: l2ClozeDistractors,
-    cloze_distractors_en: l2ClozeDistractors,
     _audits: normAudits(card._audits, card.generation_metadata),
   };
 }

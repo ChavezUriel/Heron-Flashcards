@@ -201,8 +201,8 @@ function Flashcard({
   const sourceLang = speechLangFor(languageFrom ?? displayCard?.language_from ?? card?.language_from ?? card?.deck?.language_from ?? 'es');
   const sourceLabel = getLanguage(languageFrom ?? displayCard?.language_from ?? card?.language_from ?? card?.deck?.language_from ?? 'es')?.name ?? 'Prompt';
   const targetLabel = getLanguage(languageTo ?? displayCard?.language_to ?? card?.language_to ?? card?.deck?.language_to ?? 'en')?.name ?? 'Answer';
-  const displayPrompt = displayCard?.prompt_l1 ?? displayCard?.prompt_es;
-  const displayAnswer = displayCard?.answer_l2 ?? displayCard?.answer_en;
+  const displayPrompt = displayCard?.prompt_l1;
+  const displayAnswer = displayCard?.answer_l2;
   const activeExample = pickCardExample(displayCard);
   const isBackVisible = exitDirection ? true : isAnswerVisible;
   const hasAnswerSpeech = canUseSpeechSynthesis() && Boolean(normalizeSpeechText(displayAnswer));
@@ -304,8 +304,8 @@ function Flashcard({
     window.speechSynthesis.speak(utterance);
   }
 
-  const cardPrompt = card.prompt_l1 ?? card.prompt_es;
-  const cardAnswer = card.answer_l2 ?? card.answer_en;
+  const cardPrompt = card.prompt_l1;
+  const cardAnswer = card.answer_l2;
 
   useEffect(() => {
     stopSpeech();

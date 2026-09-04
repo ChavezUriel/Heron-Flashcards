@@ -105,8 +105,8 @@ function GeneratedCardList({ job }) {
 
       <ul className="ai-card-list">
         {visible.map((card) => {
-          const prompt = card.l1_text ?? card.prompt_l1 ?? card.spanish_text ?? card.prompt_es;
-          const answer = card.l2_text ?? card.answer_l2 ?? card.english_text ?? card.answer_en;
+          const prompt = card.l1_text ?? card.prompt_l1;
+          const answer = card.l2_text ?? card.answer_l2;
           const key = `${prompt}|${answer}`;
           const isOpen = openId === key;
           return (

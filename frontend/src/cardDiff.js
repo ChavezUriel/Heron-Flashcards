@@ -25,26 +25,26 @@ export function normalizeCardContent(raw) {
   }
   const examplesList = Array.isArray(raw.examples) && raw.examples.length > 0
     ? raw.examples.map((p) => {
-        const l1 = p?.l1 ?? p?.example_l1 ?? p?.es ?? p?.example_es ?? '';
-        const l2 = p?.l2 ?? p?.example_l2 ?? p?.en ?? p?.example_en ?? '';
+        const l1 = p?.l1 ?? p?.example_l1 ?? '';
+        const l2 = p?.l2 ?? p?.example_l2 ?? '';
         return l1 && l2 ? `${l1} / ${l2}` : (l1 || l2 || '');
       }).filter(Boolean)
     : [];
 
   return {
-    prompt: raw.prompt_l1 ?? raw.l1_text ?? raw.prompt_es ?? raw.spanish_text ?? null,
-    answer: raw.answer_l2 ?? raw.l2_text ?? raw.answer_en ?? raw.english_text ?? null,
+    prompt: raw.prompt_l1 ?? raw.l1_text ?? null,
+    answer: raw.answer_l2 ?? raw.l2_text ?? null,
     section_name: raw.section_name ?? null,
     part_of_speech: raw.part_of_speech ?? null,
-    l2_definition: raw.l2_definition ?? raw.definition_en ?? null,
-    l1_translations: raw.l1_translations ?? raw.main_translations_es ?? [],
+    l2_definition: raw.l2_definition ?? null,
+    l1_translations: raw.l1_translations ?? [],
     collocations: raw.collocations ?? [],
-    l2_synonyms: raw.l2_synonyms ?? raw.synonyms_en ?? [],
+    l2_synonyms: raw.l2_synonyms ?? [],
     examples: examplesList,
     example_sentence: raw.example_sentence ?? null,
-    example_l1: raw.example_l1 ?? raw.example_es ?? null,
-    example_l2: raw.example_l2 ?? raw.example_en ?? null,
-    l2_cloze_distractors: raw.l2_cloze_distractors ?? raw.cloze_distractors_en ?? [],
+    example_l1: raw.example_l1 ?? null,
+    example_l2: raw.example_l2 ?? null,
+    l2_cloze_distractors: raw.l2_cloze_distractors ?? [],
   };
 }
 

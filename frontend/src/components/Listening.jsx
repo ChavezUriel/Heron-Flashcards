@@ -23,8 +23,8 @@ function Listening({ card, onResolve, onOpenDetails, languageTo }) {
   const hasResolvedRef = useRef(false);
   const speakTokenRef = useRef(0);
 
-  const answer = card.answer_l2 ?? card.answer_en;
-  const prompt = card.prompt_l1 ?? card.prompt_es;
+  const answer = card.answer_l2;
+  const prompt = card.prompt_l1;
   const targetLanguage = getLanguage(languageTo ?? card?.language_to ?? card?.deck?.language_to ?? 'en');
   const targetLabel = targetLanguage?.name ?? 'Answer';
   const targetLang = speechLangFor(languageTo ?? card?.language_to ?? card?.deck?.language_to ?? 'en');

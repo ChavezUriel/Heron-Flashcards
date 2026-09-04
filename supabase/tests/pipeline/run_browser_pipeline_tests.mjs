@@ -15,10 +15,10 @@ import {
 } from '../../../frontend/src/ai/enrich.js';
 import { validateCard, flatten } from '../../../frontend/src/ai/validate.js';
 import { locateAnswerInExample } from '../../../frontend/src/ai/cardText.js';
-import { normCard } from '../../../frontend/src/ai/cards.js';
 
 const require = createRequire(import.meta.url);
 const cjsEnrich = require('../../scripts/lib/enrich.cjs');
+const { normCard } = require('../../scripts/lib/cards.cjs');
 
 const DECK = { slug: 'travel', title: 'Travel Phrases', description: 'Short phrases for transport, directions, and common travel moments.' };
 

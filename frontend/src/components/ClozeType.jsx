@@ -35,9 +35,9 @@ function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
 
   // The raw span of the answer inside the chosen example, so the sentence can be
   // split into "before ___ after". The gate guarantees a match; guard defensively.
-  const example = clozeExample?.l2 ?? clozeExample?.en ?? card.example_l2 ?? card.example_en ?? '';
-  const answer = card.answer_l2 ?? card.answer_en;
-  const prompt = card.prompt_l1 ?? card.prompt_es;
+  const example = clozeExample?.l2 ?? card.example_l2 ?? '';
+  const answer = card.answer_l2;
+  const prompt = card.prompt_l1;
   const span = useMemo(
     () => clozeExample?.span ?? locateAnswerInExample(example, answer),
     [clozeExample, example, answer],
