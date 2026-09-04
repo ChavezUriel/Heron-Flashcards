@@ -24,7 +24,7 @@ L2 means re-validating eleven minigames. That asymmetry drives the tiering.
 
 - **Tier 1 L2 (targets):** `en`, `es`, `fr` — the engine works unmodified.
 - **Tier 1 L1 (sources):** `en`, `es`, `fr`, `pt-BR`, `de`, `it`.
-- 13 new pairs. `es→en` already ships.
+- 15 pairs total; 14 are new, since `es→en` already ships.
 - **Tier 2** (`pt`, `it`, `de`, `nl` as L2) needs a lemma-aware blank locator.
 - **Tier 3a** (`ru`, `pl`, `tr`), **Tier 3b** (`ja`, `zh`, `ko`), **Tier 4** (`ar`, `he`) are out of scope.
 
@@ -85,7 +85,7 @@ Create `frontend/src/languages.js` exporting:
 
 - `LANGUAGES` — keyed by BCP-47 tag. Per entry: `tag`, `name` (English name),
   `endonym`, `script` (`'Latn'`, `'Cyrl'`, …), `diacriticsSignificant` (bool),
-  `functionWords` (array — for `en`, the exact 23-entry list currently in
+  `functionWords` (array — for `en`, the exact 25-entry list currently in
   `frontend/src/minigameText.js`), `typoBudget` profile, `ttsTag` (e.g. `'en-US'`),
   `games` (set of minigame ids this language supports).
 - `PAIRS` / `supportedPairs()` — the Tier 1 matrix above, each entry carrying
@@ -226,7 +226,7 @@ wrong somewhere else.
   diacritic-sensitivity flag from the registry; languages where diacritics are
   phonemic keep them. (Vietnamese `ma / má / mà / mả / mã / mạ` are six different
   words that currently all normalize to `ma`.)
-- `FUNCTION_WORDS` (23 English entries) and `typoBudget` (0/1/2 by length) move
+- `FUNCTION_WORDS` (25 English entries) and `typoBudget` (0/1/2 by length) move
   into the registry, keyed by L2 and script.
 - `locateAnswerInExample` gains a strategy hook: `'verbatim'` for Tier 1,
   with the seam for `'lemma'` (Tier 2) and `'segmenter'` (Tier 3b) present but
