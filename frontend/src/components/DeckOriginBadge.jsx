@@ -1,4 +1,6 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 
 /**
  * Determine the origin classification for a deck:
@@ -119,30 +121,30 @@ export function TrashIcon({ className = '', size = 14 }) {
 export const DECK_ORIGIN_CONFIG = {
   personal: {
     type: 'personal',
-    label: 'Personal',
-    shortLabel: 'Personal',
-    scopeLabel: 'Personal deck',
-    tooltip: 'Personal deck (private to your account)',
+    get label() { return i18n.t('deck.origin_personal'); },
+    get shortLabel() { return i18n.t('deck.origin_personal'); },
+    get scopeLabel() { return i18n.t('deck.origin_personal_scope'); },
+    get tooltip() { return i18n.t('deck.origin_personal_tooltip'); },
     icon: PersonalIcon,
     badgeClass: 'deck-type-badge--personal',
     chipClass: 'deck-scope-chip--personal',
   },
   public: {
     type: 'public',
-    label: 'Public',
-    shortLabel: 'Public',
-    scopeLabel: 'Public · Market deck',
-    tooltip: 'Public community deck added from Market',
+    get label() { return i18n.t('deck.origin_public'); },
+    get shortLabel() { return i18n.t('deck.origin_public'); },
+    get scopeLabel() { return i18n.t('deck.origin_public_scope'); },
+    get tooltip() { return i18n.t('deck.origin_public_tooltip'); },
     icon: PublicIcon,
     badgeClass: 'deck-type-badge--public',
     chipClass: 'deck-scope-chip--public',
   },
   managing: {
     type: 'managing',
-    label: 'Managing',
-    shortLabel: 'Managing',
-    scopeLabel: 'Managing · Maintainer',
-    tooltip: 'Deck you manage (you are the maintainer/author)',
+    get label() { return i18n.t('deck.origin_managing'); },
+    get shortLabel() { return i18n.t('deck.origin_managing'); },
+    get scopeLabel() { return i18n.t('deck.origin_managing_scope'); },
+    get tooltip() { return i18n.t('deck.origin_managing_tooltip'); },
     icon: ManagingIcon,
     badgeClass: 'deck-type-badge--managing',
     chipClass: 'deck-scope-chip--managing',
@@ -163,19 +165,23 @@ export function DeckOriginBadge({
   className = '',
   size = 12,
 }) {
+  const { t } = useTranslation();
   const resolvedType = type || getDeckOriginType(deck);
   const normalizedType = resolvedType === 'market' ? 'public' : resolvedType;
   const config = DECK_ORIGIN_CONFIG[normalizedType] || DECK_ORIGIN_CONFIG.personal;
   const IconComponent = config.icon;
 
+  const tooltip = t(`deck.origin_${normalizedType}_tooltip`);
+  const label = t(`deck.origin_${normalizedType}`);
+
   return (
     <span
       className={`deck-type-badge ${config.badgeClass} ${className}`.trim()}
-      title={config.tooltip}
-      aria-label={config.tooltip}
+      title={tooltip}
+      aria-label={tooltip}
     >
       <IconComponent size={size} />
-      {showLabel && <span>{config.label}</span>}
+      {showLabel && <span>{label}</span>}
     </span>
   );
 }

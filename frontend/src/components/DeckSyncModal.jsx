@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { applyDeckSync, fetchDeckSyncStatus } from '../api';
 import { cardTitle, diffCardContent } from '../cardDiff';
 
@@ -68,6 +69,7 @@ function DiffRows({ rows }) {
 }
 
 function DeckSyncModal({ deckId, onClose, onApplied }) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
   const [syncStatus, setSyncStatus] = useState(null);
@@ -152,10 +154,10 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
   const totalUpdates = syncStatus?.linked ? syncStatus.total_updates : 0;
 
   return (
-    <div className="details-modal" role="dialog" aria-modal="true" aria-label="Market updates">
-      <button aria-label="Close market updates" className="details-modal__backdrop" type="button" onClick={onClose} />
+    <div className="details-modal" role="dialog" aria-modal="true" aria-label={t('sync.title')}>
+      <button aria-label={t('common.close_dialog')} className="details-modal__backdrop" type="button" onClick={onClose} />
       <div className="details-modal__panel sync-modal__panel">
-        <button aria-label="Close market updates" className="details-modal__close" type="button" onClick={onClose}>
+        <button aria-label={t('common.close_dialog')} className="details-modal__close" type="button" onClick={onClose}>
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M7 7 17 17" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
             <path d="M17 7 7 17" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
@@ -163,22 +165,22 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
         </button>
 
         <div className="details-modal__header">
-          <p className="flashcard__label">Market updates</p>
-          <h3>{syncStatus?.linked ? syncStatus.base_deck_title : 'Deck sync'}</h3>
+          <p className="flashcard__label">{t('sync.title')}</p>
+          <h3>{syncStatus?.linked ? syncStatus.base_deck_title : t('sync.title')}</h3>
         </div>
 
-        {status === 'loading' ? <p className="sync-modal__status">Checking the market deck…</p> : null}
+        {status === 'loading' ? <p className="sync-modal__status">{t('sync.checking')}</p> : null}
         {status === 'error' ? <p className="sync-modal__status sync-modal__status--error">{error}</p> : null}
 
         {status !== 'loading' && status !== 'error' && syncStatus && !syncStatus.linked ? (
-          <p className="sync-modal__status">This deck is no longer linked to a market deck.</p>
+          <p className="sync-modal__status">{t('sync.not_linked')}</p>
         ) : null}
 
         {sections && (status === 'ready' || status === 'applying') ? (
           totalUpdates === 0 ? (
             <div className="sync-modal__done">
-              <p>✓ Your deck is up to date with the market.</p>
-              {lastApplied > 0 ? <p className="sync-modal__done-note">{lastApplied} update{lastApplied === 1 ? '' : 's'} applied.</p> : null}
+              <p>{t('sync.up_to_date')}</p>
+              {lastApplied > 0 ? <p className="sync-modal__done-note">{t('sync.updates_applied', { count: lastApplied })}</p> : null}
             </div>
           ) : (
             <div className="sync-modal__body">
@@ -187,7 +189,7 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
               {sections.added.length > 0 ? (
                 <section className="sync-section">
                   <SectionHeader
-                    title="New cards"
+                    title={t('sync.section_new_cards')}
                     count={sections.added.length}
                     sectionKeys={sections.added.map(({ key }) => key)}
                     selected={selected}
@@ -209,7 +211,7 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
               {sections.changed.length > 0 ? (
                 <section className="sync-section">
                   <SectionHeader
-                    title="Updated cards"
+                    title={t('sync.section_updated_cards')}
                     count={sections.changed.length}
                     sectionKeys={sections.changed.map(({ key }) => key)}
                     selected={selected}
@@ -223,7 +225,7 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
                           <span className="sync-row__title">
                             {cardTitle(item.base_card)}
                             {item.locally_modified ? (
-                              <span className="sync-chip sync-chip--warn">You edited this card</span>
+                              <span className="sync-chip sync-chip--warn">{t('sync.locally_modified_chip')}</span>
                             ) : null}
                           </span>
                         </label>
@@ -237,13 +239,13 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
               {sections.removed.length > 0 ? (
                 <section className="sync-section">
                   <SectionHeader
-                    title="Removed from market"
+                    title={t('sync.section_removed')}
                     count={sections.removed.length}
                     sectionKeys={sections.removed.map(({ key }) => key)}
                     selected={selected}
                     onToggleAll={toggleAll}
                   />
-                  <p className="sync-section__hint">Applying removes or disables these cards in your deck. Your learning history is preserved.</p>
+                  <p className="sync-section__hint">{t('sync.removed_hint')}</p>
                   <ul className="sync-section__list">
                     {sections.removed.map(({ item, key }) => (
                       <li key={key} className="sync-row">
@@ -260,7 +262,7 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
               {syncStatus.deck_meta ? (
                 <section className="sync-section">
                   <SectionHeader
-                    title="Deck details"
+                    title={t('sync.section_deck_details')}
                     count={1}
                     sectionKeys={['deck_meta']}
                     selected={selected}
@@ -270,12 +272,12 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
                     <li className="sync-row">
                       <label className="sync-check">
                         <input type="checkbox" checked={selected.has('deck_meta')} onChange={() => toggleKey('deck_meta')} />
-                        <span className="sync-row__title">Title &amp; description</span>
+                        <span className="sync-row__title">{t('common.field')}</span>
                       </label>
                       <ul className="sync-diff">
                         {syncStatus.deck_meta.mine.title !== syncStatus.deck_meta.market.title ? (
                           <li>
-                            <span className="sync-diff__label">Title</span>
+                            <span className="sync-diff__label">{t('diff.field_title', { defaultValue: 'Title' })}</span>
                             <span className="sync-diff__values">
                               <del>{syncStatus.deck_meta.mine.title}</del>
                               <span aria-hidden="true" className="sync-diff__arrow">→</span>
@@ -285,7 +287,7 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
                         ) : null}
                         {syncStatus.deck_meta.mine.description !== syncStatus.deck_meta.market.description ? (
                           <li>
-                            <span className="sync-diff__label">Description</span>
+                            <span className="sync-diff__label">{t('diff.field_description', { defaultValue: 'Description' })}</span>
                             <span className="sync-diff__values">
                               <del>{syncStatus.deck_meta.mine.description}</del>
                               <span aria-hidden="true" className="sync-diff__arrow">→</span>
@@ -305,7 +307,7 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
         {sections && totalUpdates > 0 ? (
           <div className="sync-modal__footer">
             <span className="sync-modal__footer-note">
-              {selected.size} of {totalUpdates} selected
+              {selected.size} / {totalUpdates}
             </span>
             <button
               className="button button--primary"
@@ -313,7 +315,7 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
               disabled={selected.size === 0 || status === 'applying'}
               onClick={handleApply}
             >
-              {status === 'applying' ? 'Applying…' : `Apply ${selected.size} update${selected.size === 1 ? '' : 's'}`}
+              {status === 'applying' ? t('sync.applying_updates') : t('sync.apply_updates_btn', { count: selected.size })}
             </button>
           </div>
         ) : null}

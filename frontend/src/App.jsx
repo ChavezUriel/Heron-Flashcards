@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from './supabaseClient';
 import { logout as apiLogout } from './api';
 import HomePage from './pages/HomePage';
@@ -28,6 +29,7 @@ function PrivateRoute({ children, session }) {
 }
 
 function App() {
+  const { t } = useTranslation();
   const location = useLocation();
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
@@ -70,30 +72,30 @@ function App() {
   let headerContent = null;
 
   if (location.pathname === '/login') {
-    headerContent = <Link to="/register" className="back-link">Create account</Link>;
+    headerContent = <Link to="/register" className="back-link">{t('nav.create_account')}</Link>;
   } else if (location.pathname === '/register') {
-    headerContent = <Link to="/login" className="back-link">Login</Link>;
+    headerContent = <Link to="/login" className="back-link">{t('nav.login')}</Link>;
   } else if (location.pathname === '/forgot-password' || location.pathname === '/reset-password') {
-    headerContent = <Link to="/login" className="back-link">Back to login</Link>;
+    headerContent = <Link to="/login" className="back-link">{t('nav.back_to_login')}</Link>;
   } else if (!isFocusedRoute) {
     if (session) {
       headerContent = (
-        <nav className="app-header__links" aria-label="Account">
+        <nav className="app-header__links" aria-label={t('nav.account_aria')}>
           <AiRunIndicator />
           <InstallButton />
           {location.pathname !== '/' && (
-            <Link to="/" className="back-link">Home</Link>
+            <Link to="/" className="back-link">{t('nav.home')}</Link>
           )}
           {location.pathname !== '/settings' && (
-            <Link to="/settings" className="back-link">Settings</Link>
+            <Link to="/settings" className="back-link">{t('nav.settings')}</Link>
           )}
           <button onClick={handleLogout} className="back-link">
-            Logout
+            {t('nav.logout')}
           </button>
         </nav>
       );
     } else {
-      headerContent = <Link to="/login" className="back-link">Login</Link>;
+      headerContent = <Link to="/login" className="back-link">{t('nav.login')}</Link>;
     }
   }
 
@@ -102,7 +104,7 @@ function App() {
     return (
       <div className="app-shell">
         <main className="page-content">
-          <p className="deck-grid__status">Loading…</p>
+          <p className="deck-grid__status">{t('common.loading')}</p>
         </main>
       </div>
     );

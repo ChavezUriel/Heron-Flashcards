@@ -66,12 +66,41 @@ export async function fetchMe() {
   if (error) throw new Error(error.message);
   const user = data.user;
   if (!user) throw new Error('Not authenticated');
+  let ui_locale = null;
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('ui_locale')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (profile) {
+      ui_locale = profile.ui_locale ?? null;
+    }
+  } catch (_e) {
+    // Ignore profile fetch error if table is inaccessible
+  }
+
   return {
     id: user.id,
     email: user.email,
     full_name: user.user_metadata?.full_name || 'User',
     created_at: user.created_at,
+    ui_locale: ui_locale,
   };
+}
+
+export async function updateUiLocale(uiLocale) {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw new Error(error.message);
+  const userId = data.user?.id;
+  if (!userId) throw new Error('Not authenticated');
+
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .update({ ui_locale: uiLocale })
+    .eq('id', userId);
+  if (profileError) throw new Error(profileError.message);
+  return uiLocale;
 }
 
 export async function updateNickname(nickname) {

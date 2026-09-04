@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TrashIcon } from './DeckOriginBadge';
 
 function DeckDeleteModal({
@@ -7,6 +8,8 @@ function DeckDeleteModal({
   onClose,
   onConfirm,
 }) {
+  const { t } = useTranslation();
+
   useEffect(() => {
     function handleKeyDown(event) {
       if (event.key === 'Escape' && !isPending) {
@@ -20,7 +23,7 @@ function DeckDeleteModal({
   if (!deck) return null;
 
   const cardCount = deck.total_cards ?? (deck.cards?.length ?? 0);
-  const cardText = `${cardCount} card${cardCount === 1 ? '' : 's'}`;
+  const deckTitle = deck.title || deck.deck_title || '';
 
   return (
     <div
@@ -30,7 +33,7 @@ function DeckDeleteModal({
       aria-labelledby="delete-deck-modal-title"
     >
       <button
-        aria-label="Close dialog"
+        aria-label={t('common.close_dialog')}
         className="details-modal__backdrop"
         type="button"
         disabled={isPending}
@@ -38,7 +41,7 @@ function DeckDeleteModal({
       />
       <div className="details-modal__panel details-modal__panel--confirm">
         <button
-          aria-label="Close dialog"
+          aria-label={t('common.close_dialog')}
           className="details-modal__close"
           type="button"
           disabled={isPending}
@@ -51,16 +54,16 @@ function DeckDeleteModal({
         </button>
 
         <div className="details-modal__header">
-          <p className="flashcard__label">Delete Deck</p>
-          <h3 id="delete-deck-modal-title">Delete “{deck.title || deck.deck_title}”?</h3>
+          <p className="flashcard__label">{t('deck.delete_deck_label')}</p>
+          <h3 id="delete-deck-modal-title">{t('deck.delete_deck_confirm_title', { title: deckTitle })}</h3>
         </div>
 
         <div className="bulk-delete-dialog__body">
           <p>
-            Are you sure you want to delete <strong>{deck.title || deck.deck_title}</strong>? All {cardText} and your study progress will be permanently deleted from your account.
+            {t('deck.delete_deck_confirm_desc', { title: deckTitle, count: cardCount })}
           </p>
           <p className="bulk-delete-dialog__note">
-            This action cannot be undone.
+            {t('deck.delete_deck_undone')}
           </p>
         </div>
 
@@ -73,7 +76,7 @@ function DeckDeleteModal({
               onClick={onClose}
               disabled={isPending}
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               className="button button--danger"
@@ -81,7 +84,7 @@ function DeckDeleteModal({
               onClick={() => onConfirm(deck)}
               disabled={isPending}
             >
-              {isPending ? 'Deleting deck…' : 'Delete deck'}
+              {isPending ? t('common.deleting') : t('deck.delete_deck_action')}
             </button>
           </div>
         </div>

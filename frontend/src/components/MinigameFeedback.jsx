@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
-// Per-tone verdict mark and screen-reader text. The color mark IS the verdict; the
+// Per-tone verdict mark and translation key. The color mark IS the verdict; the
 // sr-only line keeps it available to assistive tech.
 const TONES = {
-  correct: { mark: '✓', sr: 'Correct' },
-  almost: { mark: '≈', sr: 'Almost correct — check the exact answer' },
-  wrong: { mark: '✗', sr: 'Incorrect' },
+  correct: { mark: '✓', key: 'games.feedback.correct' },
+  almost: { mark: '≈', key: 'games.feedback.almost' },
+  wrong: { mark: '✗', key: 'games.feedback.wrong' },
 };
 
 // Shared reveal feedback for the auto-advancing minigames (multiple choice + the
@@ -26,7 +27,8 @@ const TONES = {
 // `children` is the game's own answer reveal (e.g. the correct answer for a miss),
 // rendered between the color mark and the countdown/Continue control.
 function MinigameFeedback({ tone, phase, delay, stoppable = true, onAdvance, children }) {
-  const { mark, sr } = TONES[tone] ?? TONES.wrong;
+  const { t } = useTranslation();
+  const config = TONES[tone] ?? TONES.wrong;
   const stopped = phase === 'stopped';
   const continueRef = useRef(null);
 
@@ -41,14 +43,14 @@ function MinigameFeedback({ tone, phase, delay, stoppable = true, onAdvance, chi
   return (
     <div className={`mg-feedback mg-feedback--${tone}`} role="status" aria-live="polite">
       {/* The verdict is conveyed by color; this keeps it available to screen readers. */}
-      <span className="sr-only">{sr}</span>
+      <span className="sr-only">{t(config.key)}</span>
 
       <div className={`mg-feedback__flash mg-feedback__flash--${tone}`} aria-hidden="true">
-        <span className="mg-feedback__mark">{mark}</span>
+        <span className="mg-feedback__mark">{config.mark}</span>
       </div>
 
       {tone === 'almost' ? (
-        <p className="mg-feedback__caption">Almost right — this one will come back around.</p>
+        <p className="mg-feedback__caption">{t('games.feedback.almost_caption')}</p>
       ) : null}
 
       {children}
@@ -60,7 +62,7 @@ function MinigameFeedback({ tone, phase, delay, stoppable = true, onAdvance, chi
           className="button button--primary mg-feedback__continue"
           onClick={onAdvance}
         >
-          Continue
+          {t('common.continue')}
         </button>
       ) : (
         <div className="mg-feedback__auto">
@@ -71,7 +73,7 @@ function MinigameFeedback({ tone, phase, delay, stoppable = true, onAdvance, chi
             />
           </div>
           {stoppable ? (
-            <p className="mg-feedback__hint">Tap or press any key to stay</p>
+            <p className="mg-feedback__hint">{t('games.feedback.stoppable_hint')}</p>
           ) : null}
         </div>
       )}
