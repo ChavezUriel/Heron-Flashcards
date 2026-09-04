@@ -288,33 +288,58 @@ every other. Once pairs exist that produces incoherent collaboration —
 propose edits to an `es→en` deck.
 
 ---
+---
 
-## Status — resume here
+## Status — complete
 
-P0 through P6 are complete and verified. P7 has not started.
+P0 through P7 are implemented and committed on `feat/language-agnostic`.
 
-**P6 complete:**
-- `src/i18n.js` (react-i18next + ICU plugin) and `src/context/LocaleContext.jsx` backed by `profiles.ui_locale` with `localeCompare`, `formatNumber`, and `formatDate`.
-- Exact 1-to-1 key parity across all six Tier 1 UI locales (`en`, `es`, `fr`, `pt-BR`, `de`, `it`) with 1,109 translation keys.
-- All 31 UI files fully extracted with zero remaining hardcoded user-facing English strings.
-- Dynamic learning card content preserved untouched in all minigames and deck builders.
-- `npm run build` and all 4 test suites pass clean (`run_stub_tests.cjs`, `run_safety_audit_tests.mjs`, `run_single_card_review_tests.mjs`, `run_browser_pipeline_tests.mjs`).
+Verified at the end of the run: the frontend builds; 48 node pipeline tests
+pass (`run_browser_pipeline_tests.mjs`, `run_stub_tests.cjs`,
+`run_safety_audit_tests.mjs`, `run_single_card_review_tests.mjs`); all 15
+`market_sync` tests pass against local Postgres, including the new
+pair-identity case; no user-facing literal strings remain outside the locale
+files; and all six locale files carry an identical 1114-key set.
 
-**Next up:** P7 (Native L1/L2 multi-pair catalog).
+Two regression contracts were proven rather than assumed, by diffing behaviour
+against the tree as it stood before the phase:
 
-### Notes for whoever picks this up
+- **P3** — generated `es→en` prompts were diffed against the pre-P3 tree. The
+  intended change is the JSON key rename; the diff also caught a malformed
+  rule (`(no Spanish (no inverted ¿ ¡ punctuation))`) that the ESM/CJS parity
+  test could not, because both ports were wrong in the same way.
+- **P5** — `normalizeAnswer`, `classifyGuess` and `locateAnswerInExample`
+  produce byte-identical output across 27 guess pairs and 9 cloze locations
+  against the pre-P5 tree.
+
+### Invariants worth preserving
 
 - The CommonJS libs under `supabase/scripts/lib` are no longer hand-synced
   copies. `prompts.cjs`, `validate.cjs`, `minigame_text.cjs`, `seed_decks.cjs`
-  and `enrich.cjs` each re-export the corresponding module in
-  `frontend/src/ai/`, so the CLI cannot drift from the app. Do not
-  reintroduce a parallel implementation.
-- `public.cards_legacy` is read-only (plain view, `select` grant, no
-  `INSTEAD OF` triggers). It is for readers during the transition. Anything
-  that writes must use the role-named columns.
-- Card objects still accept the legacy `*_es` / `*_en` field names on input
-  and RPC payloads still dual-emit `prompt_es` / `answer_en`, both
-  deliberately, for deploy ordering. Output is role-named.
+  and `enrich.cjs` each re-export the corresponding module under
+  `frontend/src/ai/`. `cards.cjs` remains a separate file for CLI-specific
+  concerns, but its `normCard` output is verified identical to the browser
+  port's. Do not reintroduce a parallel implementation — a silent drift here
+  (`first.en` vs `first.l2`) already caused one real bug on this branch.
+- `public.cards_legacy` is read-only: a plain view with a `select` grant and no
+  `INSTEAD OF` triggers. It serves readers during the transition. Anything that
+  writes must use the role-named columns. The CLI generators were ported for
+  exactly this reason.
+- Card objects still accept the legacy `*_es` / `*_en` names on **input** and
+  the RPCs still dual-emit `prompt_es` / `answer_en`, both deliberately, for
+  deploy ordering while the migration and the frontend deploy are not atomic.
+  Output is role-named.
+- `frontend/src/languages.js` is the single authority on what a language is and
+  what a pair supports. Nothing downstream should decide this for itself.
+
+### Known follow-ups, deliberately out of scope
+
 - `generator.js` `computeCardPatch`, the `DeckRunPage` update whitelist and
   `generate_cards.cjs` seed serialization still read the legacy field names.
-  Retiring those is a separate change, not part of P6 or P7.
+  Retiring those is a separate change.
+- Once every client is past the 0034 deploy, drop the RPC dual-emit and
+  `cards_legacy`.
+- The QA gates in the plan — per-pair golden sets, cloze-eligibility rate,
+  cost envelope and native review — are what gate switching a new pair **on**.
+  None of them has run: no pair beyond `es→en` has been validated with real
+  model output yet.
