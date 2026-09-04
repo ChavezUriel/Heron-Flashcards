@@ -37,8 +37,8 @@ function MultipleChoice({
   distractors,
   onResolve,
   onOpenDetails,
-  // The correct option string (defaults to the English answer for the es→en round).
-  answer = card.answer_en,
+  // The correct option string (defaults to the L2 answer for the forward round).
+  answer = card.answer_l2 ?? card.answer_en,
   label = 'Choose the translation',
   answerLabel = 'Answer',
   // Prompt element rendered above the tiles; defaults to the Spanish word.
@@ -164,7 +164,7 @@ function MultipleChoice({
 
       <div className="mcgame__body">
         <p className="flashcard__label">{label}</p>
-        {promptNode ?? <h2 className="mcgame__prompt">{card.prompt_es}</h2>}
+        {promptNode ?? <h2 className="mcgame__prompt">{card.prompt_l1 ?? card.prompt_es}</h2>}
 
         {options ? (
           <div className="mcgame__options" role="group" aria-label="Answer options">

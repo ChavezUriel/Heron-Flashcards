@@ -5,6 +5,7 @@ import {
   generateCardFixes,
   diffSingleCard,
 } from '../ai/singleCardReview';
+import { getLanguage } from '../languages';
 
 function CardDetailsModal({
   card,
@@ -16,6 +17,10 @@ function CardDetailsModal({
   onDelete = undefined,
   deck = undefined,
 }) {
+  const sourceLang = getLanguage(deck?.language_from ?? card?.language_from ?? 'es');
+  const targetLang = getLanguage(deck?.language_to ?? card?.language_to ?? 'en');
+  const sourceLabel = sourceLang?.name ?? 'Prompt';
+  const targetLabel = targetLang?.name ?? 'Answer';
   const canEdit = typeof onSave === 'function';
   const canToggle = typeof onToggle === 'function' && typeof card.is_enabled === 'boolean';
   const canDelete = typeof onDelete === 'function';
@@ -47,45 +52,91 @@ function CardDetailsModal({
   }, [canEdit, card.card_id, startInEditMode]);
 
   function updateField(name, value) {
-    setFormValues((current) => ({ ...current, [name]: value }));
+    setFormValues((current) => {
+      const next = { ...current, [name]: value };
+      if (name === 'prompt_l1' || name === 'prompt_es') {
+        next.prompt_l1 = value;
+        next.prompt_es = value;
+      } else if (name === 'answer_l2' || name === 'answer_en') {
+        next.answer_l2 = value;
+        next.answer_en = value;
+      } else if (name === 'l2_definition' || name === 'definition_en') {
+        next.l2_definition = value;
+        next.definition_en = value;
+      } else if (name === 'l1_translations' || name === 'main_translations_es') {
+        next.l1_translations = value;
+        next.main_translations_es = value;
+      } else if (name === 'l2_synonyms' || name === 'synonyms_en') {
+        next.l2_synonyms = value;
+        next.synonyms_en = value;
+      }
+      return next;
+    });
   }
 
   function updateExamplePair(index, field, value) {
     setFormValues((current) => {
-      const updatedExamples = current.examples.map((pair, idx) =>
-        idx === index ? { ...pair, [field]: value } : pair
-      );
-      const first = updatedExamples[0] ?? { es: '', en: '' };
+      const updatedExamples = current.examples.map((pair, idx) => {
+        if (idx !== index) return pair;
+        const next = { ...pair, [field]: value };
+        if (field === 'l1' || field === 'es') {
+          next.l1 = value;
+          next.es = value;
+        } else if (field === 'l2' || field === 'en') {
+          next.l2 = value;
+          next.en = value;
+        }
+        return next;
+      });
+      const first = updatedExamples[0] ?? { l1: '', l2: '', es: '', en: '' };
       return {
         ...current,
         examples: updatedExamples,
-        example_es: first.es,
-        example_en: first.en,
-        example_sentence: first.en,
+        example_l1: first.l1,
+        example_es: first.l1,
+        example_l2: first.l2,
+        example_en: first.l2,
+        example_sentence: first.l2,
       };
     });
   }
 
   function getCurrentCardData() {
     const cleanedExamples = formValues.examples
-      .map((pair) => ({ es: (pair.es || '').trim(), en: (pair.en || '').trim() }))
-      .filter((pair) => pair.es || pair.en);
+      .map((pair) => {
+        const l1 = (pair.l1 || pair.es || '').trim();
+        const l2 = (pair.l2 || pair.en || '').trim();
+        return { l1, l2, es: l1, en: l2 };
+      })
+      .filter((pair) => pair.l1 || pair.l2);
     const first = cleanedExamples[0] ?? null;
+    const prompt = (formValues.prompt_l1 || formValues.prompt_es || '').trim();
+    const answer = (formValues.answer_l2 || formValues.answer_en || '').trim();
+    const definition = nullableText(formValues.l2_definition ?? formValues.definition_en);
+    const translations = splitMultiline(formValues.l1_translations ?? formValues.main_translations_es ?? '');
+    const synonyms = splitMultiline(formValues.l2_synonyms ?? formValues.synonyms_en ?? '');
 
     return {
       ...card,
-      prompt_es: formValues.prompt_es.trim(),
-      answer_en: formValues.answer_en.trim(),
+      prompt_l1: prompt,
+      answer_l2: answer,
+      prompt_es: prompt,
+      answer_en: answer,
       section_name: nullableText(formValues.section_name),
       part_of_speech: nullableText(formValues.part_of_speech),
-      definition_en: nullableText(formValues.definition_en),
-      main_translations_es: splitMultiline(formValues.main_translations_es),
+      l2_definition: definition,
+      definition_en: definition,
+      l1_translations: translations,
+      main_translations_es: translations,
       collocations: splitMultiline(formValues.collocations),
-      synonyms_en: splitMultiline(formValues.synonyms_en),
+      l2_synonyms: synonyms,
+      synonyms_en: synonyms,
       examples: cleanedExamples,
-      example_sentence: first ? first.en : null,
-      example_es: first ? first.es : null,
-      example_en: first ? first.en : null,
+      example_sentence: first ? (first.l2 ?? first.en) : null,
+      example_l1: first ? (first.l1 ?? first.es) : null,
+      example_es: first ? (first.l1 ?? first.es) : null,
+      example_l2: first ? (first.l2 ?? first.en) : null,
+      example_en: first ? (first.l2 ?? first.en) : null,
     };
   }
 
@@ -162,24 +213,42 @@ function CardDetailsModal({
     setSaveError('');
 
     const cleanedExamples = (aiProposedFix.examples || [])
-      .map((pair) => ({ es: (pair.es || '').trim(), en: (pair.en || '').trim() }))
-      .filter((pair) => pair.es || pair.en);
+      .map((pair) => {
+        const l1 = (pair.l1 || pair.es || '').trim();
+        const l2 = (pair.l2 || pair.en || '').trim();
+        return { l1, l2, es: l1, en: l2 };
+      })
+      .filter((pair) => pair.l1 || pair.l2);
     const first = cleanedExamples[0] ?? null;
 
+    const prompt = (aiProposedFix.prompt_l1 || aiProposedFix.prompt_es || '').trim();
+    const answer = (aiProposedFix.answer_l2 || aiProposedFix.answer_en || '').trim();
+    const definition = nullableText(aiProposedFix.l2_definition ?? aiProposedFix.definition_en);
+    const translations = aiProposedFix.l1_translations || aiProposedFix.main_translations_es || [];
+    const synonyms = aiProposedFix.l2_synonyms || aiProposedFix.synonyms_en || [];
+
     const updatedPayload = {
-      prompt_es: (aiProposedFix.prompt_es || '').trim(),
-      answer_en: (aiProposedFix.answer_en || '').trim(),
+      prompt_l1: prompt,
+      answer_l2: answer,
+      prompt_es: prompt,
+      answer_en: answer,
       section_name: nullableText(aiProposedFix.section_name ?? formValues.section_name),
       part_of_speech: nullableText(aiProposedFix.part_of_speech),
-      definition_en: nullableText(aiProposedFix.definition_en),
-      main_translations_es: aiProposedFix.main_translations_es || [],
+      l2_definition: definition,
+      definition_en: definition,
+      l1_translations: translations,
+      main_translations_es: translations,
       collocations: aiProposedFix.collocations || [],
-      synonyms_en: aiProposedFix.synonyms_en || [],
+      l2_synonyms: synonyms,
+      synonyms_en: synonyms,
       examples: cleanedExamples,
-      example_sentence: first ? first.en : null,
-      example_es: first ? first.es : null,
-      example_en: first ? first.en : null,
-      mnemonic_en: card.mnemonic_en ?? null,
+      example_sentence: first ? (first.l2 ?? first.en) : null,
+      example_l1: first ? (first.l1 ?? first.es) : null,
+      example_es: first ? (first.l1 ?? first.es) : null,
+      example_l2: first ? (first.l2 ?? first.en) : null,
+      example_en: first ? (first.l2 ?? first.en) : null,
+      l2_mnemonic: card.l2_mnemonic ?? card.mnemonic_en ?? null,
+      mnemonic_en: card.l2_mnemonic ?? card.mnemonic_en ?? null,
     };
 
     try {
@@ -235,27 +304,44 @@ function CardDetailsModal({
     setSaveError('');
 
     const cleanedExamples = formValues.examples
-      .map((pair) => ({ es: pair.es.trim(), en: pair.en.trim() }))
-      .filter((pair) => pair.es || pair.en);
+      .map((pair) => {
+        const l1 = (pair.l1 || pair.es || '').trim();
+        const l2 = (pair.l2 || pair.en || '').trim();
+        return { l1, l2, es: l1, en: l2 };
+      })
+      .filter((pair) => pair.l1 || pair.l2);
 
     const first = cleanedExamples[0] ?? null;
+    const prompt = (formValues.prompt_l1 || formValues.prompt_es || '').trim();
+    const answer = (formValues.answer_l2 || formValues.answer_en || '').trim();
+    const definition = nullableText(formValues.l2_definition ?? formValues.definition_en);
+    const translations = splitMultiline(formValues.l1_translations ?? formValues.main_translations_es ?? '');
+    const synonyms = splitMultiline(formValues.l2_synonyms ?? formValues.synonyms_en ?? '');
 
     const savedCard = await onSave({
-      prompt_es: formValues.prompt_es.trim(),
-      answer_en: formValues.answer_en.trim(),
+      prompt_l1: prompt,
+      answer_l2: answer,
+      prompt_es: prompt,
+      answer_en: answer,
       section_name: nullableText(formValues.section_name),
       part_of_speech: nullableText(formValues.part_of_speech),
-      definition_en: nullableText(formValues.definition_en),
-      main_translations_es: splitMultiline(formValues.main_translations_es),
+      l2_definition: definition,
+      definition_en: definition,
+      l1_translations: translations,
+      main_translations_es: translations,
       collocations: splitMultiline(formValues.collocations),
       examples: cleanedExamples,
-      example_sentence: first ? first.en : null,
-      example_es: first ? first.es : null,
-      example_en: first ? first.en : null,
+      example_sentence: first ? (first.l2 ?? first.en) : null,
+      example_l1: first ? (first.l1 ?? first.es) : null,
+      example_es: first ? (first.l1 ?? first.es) : null,
+      example_l2: first ? (first.l2 ?? first.en) : null,
+      example_en: first ? (first.l2 ?? first.en) : null,
       // No longer shown or editable anywhere, but update_card nulls the column
       // when the param is omitted — pass the stored value through untouched.
-      mnemonic_en: card.mnemonic_en ?? null,
-      synonyms_en: splitMultiline(formValues.synonyms_en),
+      l2_mnemonic: card.l2_mnemonic ?? card.mnemonic_en ?? null,
+      mnemonic_en: card.l2_mnemonic ?? card.mnemonic_en ?? null,
+      l2_synonyms: synonyms,
+      synonyms_en: synonyms,
     });
 
     if (savedCard) {
@@ -303,7 +389,7 @@ function CardDetailsModal({
           <div className="details-modal__header-row">
             <div className="details-modal__header-content">
               <p className="flashcard__label">Flashcard metadata</p>
-              <h3>{isEditing ? formValues.answer_en || 'Flashcard' : card.answer_en}</h3>
+              <h3>{isEditing ? (formValues.answer_l2 || formValues.answer_en || 'Flashcard') : (card.answer_l2 || card.answer_en)}</h3>
             </div>
             <div className="details-modal__header-actions">
               <button
@@ -533,19 +619,19 @@ function CardDetailsModal({
         )}
 
         <div className="flashcard-details">
-          <Field label="Spanish prompt">
+          <Field label={`${sourceLabel} prompt`}>
             {isEditing ? (
-              <input value={formValues.prompt_es} onChange={(event) => updateField('prompt_es', event.target.value)} />
+              <input value={formValues.prompt_l1 ?? formValues.prompt_es} onChange={(event) => updateField('prompt_l1', event.target.value)} />
             ) : (
-              <p>{card.prompt_es}</p>
+              <p>{card.prompt_l1 ?? card.prompt_es}</p>
             )}
           </Field>
 
-          <Field label="English answer">
+          <Field label={`${targetLabel} answer`}>
             {isEditing ? (
-              <input value={formValues.answer_en} onChange={(event) => updateField('answer_en', event.target.value)} />
+              <input value={formValues.answer_l2 ?? formValues.answer_en} onChange={(event) => updateField('answer_l2', event.target.value)} />
             ) : (
-              <p>{card.answer_en}</p>
+              <p>{card.answer_l2 ?? card.answer_en}</p>
             )}
           </Field>
 
@@ -565,20 +651,20 @@ function CardDetailsModal({
             )}
           </Field>
 
-          <Field label="Definition in English" wide>
+          <Field label={`Definition in ${targetLabel}`} wide>
             {isEditing ? (
-              <textarea value={formValues.definition_en} onChange={(event) => updateField('definition_en', event.target.value)} rows={2} />
+              <textarea value={formValues.l2_definition ?? formValues.definition_en} onChange={(event) => updateField('l2_definition', event.target.value)} rows={2} />
             ) : (
-              <p>{card.definition_en || 'Not set'}</p>
+              <p>{(card.l2_definition ?? card.definition_en) || 'Not set'}</p>
             )}
           </Field>
 
           <Field label="Main translations">
             {isEditing ? (
-              <textarea value={formValues.main_translations_es} onChange={(event) => updateField('main_translations_es', event.target.value)} rows={3} />
-            ) : card.main_translations_es?.length ? (
+              <textarea value={formValues.l1_translations ?? formValues.main_translations_es} onChange={(event) => updateField('l1_translations', event.target.value)} rows={3} />
+            ) : (card.l1_translations ?? card.main_translations_es)?.length ? (
               <ul>
-                {card.main_translations_es.map((translation) => (
+                {(card.l1_translations ?? card.main_translations_es).map((translation) => (
                   <li key={translation}>{translation}</li>
                 ))}
               </ul>
@@ -601,12 +687,12 @@ function CardDetailsModal({
             )}
           </Field>
 
-          <Field label="Synonyms (English)">
+          <Field label={`Synonyms (${targetLabel})`}>
             {isEditing ? (
-              <textarea value={formValues.synonyms_en} onChange={(event) => updateField('synonyms_en', event.target.value)} rows={3} />
-            ) : card.synonyms_en?.length ? (
+              <textarea value={formValues.l2_synonyms ?? formValues.synonyms_en} onChange={(event) => updateField('l2_synonyms', event.target.value)} rows={3} />
+            ) : (card.l2_synonyms ?? card.synonyms_en)?.length ? (
               <ul>
-                {card.synonyms_en.map((synonym) => (
+                {(card.l2_synonyms ?? card.synonyms_en).map((synonym) => (
                   <li key={synonym}>{synonym}</li>
                 ))}
               </ul>
@@ -623,17 +709,17 @@ function CardDetailsModal({
                     <span className="flashcard-details__example-edit-label">Example {idx + 1}</span>
                     <input
                       type="text"
-                      value={formValues.examples[idx]?.es ?? ''}
-                      onChange={(event) => updateExamplePair(idx, 'es', event.target.value)}
-                      placeholder={`Spanish sentence ${idx + 1}`}
-                      aria-label={`Example ${idx + 1} Spanish`}
+                      value={formValues.examples[idx]?.l1 ?? formValues.examples[idx]?.es ?? ''}
+                      onChange={(event) => updateExamplePair(idx, 'l1', event.target.value)}
+                      placeholder={`${sourceLabel} sentence ${idx + 1}`}
+                      aria-label={`Example ${idx + 1} ${sourceLabel}`}
                     />
                     <input
                       type="text"
-                      value={formValues.examples[idx]?.en ?? ''}
-                      onChange={(event) => updateExamplePair(idx, 'en', event.target.value)}
-                      placeholder={`English sentence ${idx + 1}`}
-                      aria-label={`Example ${idx + 1} English`}
+                      value={formValues.examples[idx]?.l2 ?? formValues.examples[idx]?.en ?? ''}
+                      onChange={(event) => updateExamplePair(idx, 'l2', event.target.value)}
+                      placeholder={`${targetLabel} sentence ${idx + 1}`}
+                      aria-label={`Example ${idx + 1} ${targetLabel}`}
                     />
                   </div>
                 ))}
@@ -642,22 +728,26 @@ function CardDetailsModal({
           ) : card.examples && card.examples.length > 0 ? (
             <Field label="Example sentences" wide>
               <ul className="flashcard-details__examples-list">
-                {card.examples.map((pair, idx) => (
-                  <li key={idx} className="flashcard-details__example-item">
-                    <span className="flashcard-details__example-num">Example {idx + 1}</span>
-                    {pair.es ? <p className="flashcard-details__example-es">{pair.es}</p> : null}
-                    {pair.en ? <p className="flashcard-details__example-en">{pair.en}</p> : null}
-                  </li>
-                ))}
+                {card.examples.map((pair, idx) => {
+                  const l1 = pair.l1 ?? pair.example_l1 ?? pair.es ?? pair.example_es;
+                  const l2 = pair.l2 ?? pair.example_l2 ?? pair.en ?? pair.example_en;
+                  return (
+                    <li key={idx} className="flashcard-details__example-item">
+                      <span className="flashcard-details__example-num">Example {idx + 1}</span>
+                      {l1 ? <p className="flashcard-details__example-es">{l1}</p> : null}
+                      {l2 ? <p className="flashcard-details__example-en">{l2}</p> : null}
+                    </li>
+                  );
+                })}
               </ul>
             </Field>
           ) : (
             <>
-              <Field label="Example in Spanish">
-                <p>{card.example_es || 'Not set'}</p>
+              <Field label={`Example in ${sourceLabel}`}>
+                <p>{card.example_l1 || card.example_es || 'Not set'}</p>
               </Field>
-              <Field label="Example in English">
-                <p>{card.example_en || card.example_sentence || 'Not set'}</p>
+              <Field label={`Example in ${targetLabel}`}>
+                <p>{card.example_l2 || card.example_en || card.example_sentence || 'Not set'}</p>
               </Field>
             </>
           )}
@@ -785,35 +875,50 @@ function Field({ label, wide = false, children }) {
 function buildFormValues(card) {
   const existingPairs = (Array.isArray(card.examples) && card.examples.length > 0)
     ? card.examples.map((p) => ({
-        es: p?.es ?? p?.example_es ?? '',
-        en: p?.en ?? p?.example_en ?? '',
+        l1: p?.l1 ?? p?.example_l1 ?? p?.es ?? p?.example_es ?? '',
+        l2: p?.l2 ?? p?.example_l2 ?? p?.en ?? p?.example_en ?? '',
       }))
     : [
         {
-          es: card.example_es ?? '',
-          en: card.example_en ?? card.example_sentence ?? '',
+          l1: card.example_l1 ?? card.example_es ?? '',
+          l2: card.example_l2 ?? card.example_en ?? card.example_sentence ?? '',
         },
       ];
 
   const examples = [
-    { es: existingPairs[0]?.es ?? '', en: existingPairs[0]?.en ?? '' },
-    { es: existingPairs[1]?.es ?? '', en: existingPairs[1]?.en ?? '' },
-    { es: existingPairs[2]?.es ?? '', en: existingPairs[2]?.en ?? '' },
+    { l1: existingPairs[0]?.l1 ?? '', l2: existingPairs[0]?.l2 ?? '', es: existingPairs[0]?.l1 ?? '', en: existingPairs[0]?.l2 ?? '' },
+    { l1: existingPairs[1]?.l1 ?? '', l2: existingPairs[1]?.l2 ?? '', es: existingPairs[1]?.l1 ?? '', en: existingPairs[1]?.l2 ?? '' },
+    { l1: existingPairs[2]?.l1 ?? '', l2: existingPairs[2]?.l2 ?? '', es: existingPairs[2]?.l1 ?? '', en: existingPairs[2]?.l2 ?? '' },
   ];
 
+  const prompt = card.prompt_l1 ?? card.prompt_es ?? '';
+  const answer = card.answer_l2 ?? card.answer_en ?? '';
+  const definition = card.l2_definition ?? card.definition_en ?? '';
+  const translations = (card.l1_translations ?? card.main_translations_es ?? []).join('\n');
+  const synonyms = (card.l2_synonyms ?? card.synonyms_en ?? []).join('\n');
+  const ex1 = examples[0].l1 || card.example_l1 || card.example_es || '';
+  const ex2 = examples[0].l2 || card.example_l2 || card.example_en || '';
+
   return {
-    prompt_es: card.prompt_es ?? '',
-    answer_en: card.answer_en ?? '',
+    prompt_l1: prompt,
+    answer_l2: answer,
+    prompt_es: prompt,
+    answer_en: answer,
     section_name: card.section_name ?? '',
     part_of_speech: card.part_of_speech ?? '',
-    definition_en: card.definition_en ?? '',
-    main_translations_es: (card.main_translations_es ?? []).join('\n'),
+    l2_definition: definition,
+    definition_en: definition,
+    l1_translations: translations,
+    main_translations_es: translations,
     collocations: (card.collocations ?? []).join('\n'),
-    synonyms_en: (card.synonyms_en ?? []).join('\n'),
+    l2_synonyms: synonyms,
+    synonyms_en: synonyms,
     examples,
-    example_sentence: examples[0].en || card.example_sentence || '',
-    example_es: examples[0].es || card.example_es || '',
-    example_en: examples[0].en || card.example_en || '',
+    example_sentence: ex2 || card.example_sentence || '',
+    example_l1: ex1,
+    example_es: ex1,
+    example_l2: ex2,
+    example_en: ex2,
   };
 }
 
@@ -832,15 +937,20 @@ function nullableText(value) {
 
 function fieldLabel(field) {
   const map = {
-    prompt_es: 'Spanish prompt',
-    spanish_prompt: 'Spanish prompt',
-    answer_en: 'English answer',
-    english_answer: 'English answer',
+    prompt_l1: 'Prompt',
+    prompt_es: 'Prompt',
+    spanish_prompt: 'Prompt',
+    answer_l2: 'Answer',
+    answer_en: 'Answer',
+    english_answer: 'Answer',
     section_name: 'Section',
     part_of_speech: 'Part of speech',
+    l2_definition: 'Definition',
     definition_en: 'Definition',
+    l1_translations: 'Translations',
     main_translations_es: 'Translations',
     collocations: 'Collocations',
+    l2_synonyms: 'Synonyms',
     synonyms_en: 'Synonyms',
     examples: 'Examples',
     general: 'General',

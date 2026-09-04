@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { cancelSpeech, canUseSpeechSynthesis, speak, speechLangFor } from '../speech';
 import { pickCardExample } from '../minigameText';
+import { getLanguage } from '../languages';
 
 // Tier-C encoding aid (docs/minigames.md §3.1, §4 #11) shown on a NEW card's very
-// first exposure. It is PASSIVE "listen then reveal": the learner hears the English
-// word, then reveals how it is spelled. It is a *different skill* from es→en recall
+// first exposure. It is PASSIVE "listen then reveal": the learner hears the
+// word, then reveals how it is spelled. It is a *different skill* from recall
 // (and at first exposure the word is brand-new, so "type what you hear" would be a
 // guess, not encoding), so it NEVER grades regardless — Continue advances via
 // onResolve({ skip: true }), deferring the real free-recall rep to a later cycle
@@ -22,8 +23,12 @@ function Listening({ card, onResolve, onOpenDetails, languageTo }) {
   const hasResolvedRef = useRef(false);
   const speakTokenRef = useRef(0);
 
+  const answer = card.answer_l2 ?? card.answer_en;
+  const prompt = card.prompt_l1 ?? card.prompt_es;
+  const targetLanguage = getLanguage(languageTo ?? card?.language_to ?? card?.deck?.language_to ?? 'en');
+  const targetLabel = targetLanguage?.name ?? 'Answer';
   const targetLang = speechLangFor(languageTo ?? card?.language_to ?? card?.deck?.language_to ?? 'en');
-  const hasSpeech = canUseSpeechSynthesis() && Boolean((card.answer_en ?? '').trim());
+  const hasSpeech = canUseSpeechSynthesis() && Boolean((answer ?? '').trim());
 
   // Focus the primary control for the current stage so Enter/Space always has a
   // target (§8.4): Play while listening, Continue once revealed. When audio is
@@ -46,7 +51,7 @@ function Listening({ card, onResolve, onOpenDetails, languageTo }) {
       return;
     }
     const token = (speakTokenRef.current += 1);
-    const utterance = speak(card.answer_en, {
+    const utterance = speak(answer, {
       lang: targetLang,
       onEnd: () => {
         if (speakTokenRef.current === token) {
@@ -110,7 +115,7 @@ function Listening({ card, onResolve, onOpenDetails, languageTo }) {
 
       <div className="listengame__body">
         <p className="flashcard__label">New word · listen</p>
-        <h2 className="listengame__prompt">{card.prompt_es}</h2>
+        <h2 className="listengame__prompt">{prompt}</h2>
 
         {!isRevealed ? (
           <>
@@ -127,7 +132,7 @@ function Listening({ card, onResolve, onOpenDetails, languageTo }) {
             </button>
             <p className="listengame__hint">
               {hasSpeech
-                ? 'Listen to the English word, then reveal how it’s spelled. Press R to replay.'
+                ? `Listen to the ${targetLabel} word, then reveal how it’s spelled. Press R to replay.`
                 : 'Audio isn’t available in this browser — reveal the word to continue.'}
             </p>
             <button
@@ -141,9 +146,9 @@ function Listening({ card, onResolve, onOpenDetails, languageTo }) {
         ) : (
           <div className="listengame__reveal" role="status" aria-live="polite">
             <p className="listengame__answer">
-              <span className="listengame__answer-label">English</span>
+              <span className="listengame__answer-label">{targetLabel}</span>
               <span className="listengame__answer-text">
-                {card.answer_en}
+                {answer}
                 <button
                   type="button"
                   className={`flashcard__audio-button${isSpeaking ? ' flashcard__audio-button--playing' : ''}`}
@@ -156,7 +161,9 @@ function Listening({ card, onResolve, onOpenDetails, languageTo }) {
                 </button>
               </span>
             </p>
-            {activeExample.example_en ?? activeExample.en ? <p className="listengame__example">{activeExample.example_en ?? activeExample.en}</p> : null}
+            {activeExample.example_l2 ?? activeExample.l2 ?? activeExample.example_en ?? activeExample.en ? (
+              <p className="listengame__example">{activeExample.example_l2 ?? activeExample.l2 ?? activeExample.example_en ?? activeExample.en}</p>
+            ) : null}
             <button
               ref={continueRef}
               type="button"

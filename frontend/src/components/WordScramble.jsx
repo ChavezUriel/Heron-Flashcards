@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { normalizeAnswer } from '../minigameText';
+import { getLanguage } from '../languages';
 
 // Fisher–Yates over a copy.
 function shuffle(items) {
@@ -28,12 +29,15 @@ function scramble(letters) {
 }
 
 // Tier-C cool-down game (docs/minigames.md §4 #9): a SINGLE-card word puzzle run as
-// a queue-external interstitial. Unscramble the jumbled letters of the English
-// answer and type it in. It is pure arcade fun — a *different* skill from es→en
+// a queue-external interstitial. Unscramble the jumbled letters of the
+// answer and type it in. It is pure arcade fun — a *different* skill from
 // recall — so it NEVER grades: it only ever calls onDone() to dismiss and never
 // touches a session RPC (§5.2, §8.2).
 function WordScramble({ card, onDone }) {
-  const answer = (card.answer_en ?? '').trim();
+  const answer = (card.answer_l2 ?? card.answer_en ?? '').trim();
+  const prompt = card.prompt_l1 ?? card.prompt_es;
+  const sourceLang = getLanguage(card.language_from ?? 'es');
+  const sourceLabel = sourceLang?.name ?? 'Prompt';
   // The jumbled letters to display as tiles (letters only; spaces/punctuation are
   // dropped from the jumble but the typed answer is compared whole).
   const jumble = useMemo(() => {
@@ -91,8 +95,8 @@ function WordScramble({ card, onDone }) {
     <section className="panel scramblegame">
       <p className="flashcard__label">Word scramble</p>
       <p className="scramblegame__prompt">
-        <span className="scramblegame__prompt-label">Spanish</span>
-        {card.prompt_es}
+        <span className="scramblegame__prompt-label">{sourceLabel}</span>
+        {prompt}
       </p>
 
       <div className="scramblegame__tiles" aria-hidden="true">

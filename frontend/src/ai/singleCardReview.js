@@ -39,24 +39,44 @@ export function getEffectiveAiCredential() {
 
 // Normalize card input into clean review format
 export function normalizeCardForReview(card) {
-  const prompt_es = optText(card.prompt_es ?? card.spanish_text ?? card.spanish) ?? '';
-  const answer_en = optText(card.answer_en ?? card.english_text ?? card.english) ?? '';
-  const examples = normExamplePairs(card.examples, card.example_es, card.example_en || card.example_sentence);
+  const prompt = optText(card.l1_text ?? card.prompt_l1 ?? card.prompt_es ?? card.spanish_text ?? card.spanish) ?? '';
+  const answer = optText(card.l2_text ?? card.answer_l2 ?? card.answer_en ?? card.english_text ?? card.english) ?? '';
+  const examples = normExamplePairs(
+    card.examples,
+    card.example_l1 ?? card.example_es,
+    card.example_l2 ?? card.example_en ?? card.example_sentence
+  );
+  const l2Definition = optText(card.l2_definition ?? card.definition_en);
+  const l1Translations = normList(card.l1_translations ?? card.main_translations_es);
+  const l2Synonyms = normList(card.l2_synonyms ?? card.synonyms_en);
+  const l2Mnemonic = optText(card.l2_mnemonic ?? card.mnemonic_en);
+  const l2ClozeDistractors = normList(card.l2_cloze_distractors ?? card.cloze_distractors_en);
+  const exL1 = examples[0]?.l1 ?? examples[0]?.es ?? optText(card.example_l1 ?? card.example_es);
+  const exL2 = examples[0]?.l2 ?? examples[0]?.en ?? optText(card.example_l2 ?? card.example_en ?? card.example_sentence);
 
   return {
-    prompt_es,
-    answer_en,
+    prompt_l1: prompt,
+    answer_l2: answer,
+    prompt_es: prompt,
+    answer_en: answer,
     section_name: optText(card.section_name),
     part_of_speech: optText(card.part_of_speech),
-    definition_en: optText(card.definition_en),
-    main_translations_es: normList(card.main_translations_es),
+    l2_definition: l2Definition,
+    definition_en: l2Definition,
+    l1_translations: l1Translations,
+    main_translations_es: l1Translations,
     collocations: normList(card.collocations),
-    synonyms_en: normList(card.synonyms_en),
+    l2_synonyms: l2Synonyms,
+    synonyms_en: l2Synonyms,
     examples,
-    example_es: examples[0]?.es ?? optText(card.example_es),
-    example_en: examples[0]?.en ?? optText(card.example_en ?? card.example_sentence),
-    example_sentence: examples[0]?.en ?? optText(card.example_sentence ?? card.example_en),
-    mnemonic_en: optText(card.mnemonic_en),
+    example_l1: exL1,
+    example_l2: exL2,
+    example_es: exL1,
+    example_en: exL2,
+    example_sentence: exL2,
+    l2_mnemonic: l2Mnemonic,
+    mnemonic_en: l2Mnemonic,
+    l2_cloze_distractors: l2ClozeDistractors,
   };
 }
 
@@ -155,19 +175,35 @@ export async function generateCardFixes(card, reviewResult, options = {}) {
 
   const firstExample = examples[0] ?? null;
 
+  const prompt_l1 = prompt_es;
+  const answer_l2 = answer_en;
+  const l2_definition = definition_en;
+  const l1_translations = main_translations_es;
+  const l2_synonyms = synonyms_en;
+  const example_l1 = firstExample ? (firstExample.l1 ?? firstExample.es) : norm.example_es;
+  const example_l2 = firstExample ? (firstExample.l2 ?? firstExample.en) : norm.example_en;
+
   return {
+    prompt_l1,
+    answer_l2,
     prompt_es,
     answer_en,
     section_name,
     part_of_speech,
+    l2_definition,
     definition_en,
+    l1_translations,
     main_translations_es,
     collocations,
+    l2_synonyms,
     synonyms_en,
     examples,
-    example_sentence: firstExample ? firstExample.en : norm.example_sentence,
-    example_es: firstExample ? firstExample.es : norm.example_es,
-    example_en: firstExample ? firstExample.en : norm.example_en,
+    example_sentence: firstExample ? (firstExample.l2 ?? firstExample.en) : norm.example_sentence,
+    example_l1,
+    example_l2,
+    example_es: example_l1,
+    example_en: example_l2,
+    l2_mnemonic: norm.l2_mnemonic ?? norm.mnemonic_en,
     mnemonic_en: norm.mnemonic_en,
     explanation: String(rawResponse?.explanation || 'Applied suggested corrections.').trim(),
   };

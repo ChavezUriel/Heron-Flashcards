@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { getLanguage } from '../languages';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 // Wrong guesses allowed before the word is revealed.
 const MAX_MISSES = 6;
 
 // Tier-C cool-down game (docs/minigames.md §4 #10): a SINGLE-card game of hangman run
-// as a queue-external interstitial — guess the English answer letter by letter. It is
-// pure arcade fun (a different skill from es→en recall), so it NEVER grades: it only
+// as a queue-external interstitial — guess the answer letter by letter. It is
+// pure arcade fun, so it NEVER grades: it only
 // ever calls onDone() to dismiss and never touches a session RPC (§5.2, §8.2).
 function Hangman({ card, onDone }) {
-  const answer = (card.answer_en ?? '').trim();
+  const answer = (card.answer_l2 ?? card.answer_en ?? '').trim();
+  const prompt = card.prompt_l1 ?? card.prompt_es;
+  const sourceLang = getLanguage(card.language_from ?? 'es');
+  const sourceLabel = sourceLang?.name ?? 'Prompt';
   const answerLetters = useMemo(() => {
     const set = new Set();
     for (const ch of answer.toUpperCase()) {
@@ -82,8 +86,8 @@ function Hangman({ card, onDone }) {
     <section className="panel hangmangame">
       <p className="flashcard__label">Hangman</p>
       <p className="hangmangame__prompt">
-        <span className="hangmangame__prompt-label">Spanish</span>
-        {card.prompt_es}
+        <span className="hangmangame__prompt-label">{sourceLabel}</span>
+        {prompt}
       </p>
 
       <div className="hangmangame__word" role="status" aria-live="polite" aria-label={isOver ? answer : 'Word to guess'}>

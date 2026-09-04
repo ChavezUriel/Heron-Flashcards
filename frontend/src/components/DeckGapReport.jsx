@@ -183,9 +183,9 @@ export default function DeckGapReport({ scan, deck, compact = false }) {
               {cardsNeedingWork.map(({ card, presence, issues, failingFeatures }, idx) => (
                 <li className="ai-gap-card-item" key={card.id || card.card_id || idx}>
                   <div className="ai-gap-card-item__head">
-                    <span className="ai-gap-card-item__spanish">{card.spanish_text}</span>
+                    <span className="ai-gap-card-item__spanish">{card.l1_text ?? card.prompt_l1 ?? card.spanish_text ?? card.prompt_es}</span>
                     <span className="ai-gap-card-item__arrow">→</span>
-                    <span className="ai-gap-card-item__english">{card.english_text}</span>
+                    <span className="ai-gap-card-item__english">{card.l2_text ?? card.answer_l2 ?? card.english_text ?? card.answer_en}</span>
                   </div>
 
                   <div className="ai-gap-card-item__tags">

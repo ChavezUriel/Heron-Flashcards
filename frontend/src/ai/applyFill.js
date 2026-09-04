@@ -7,25 +7,30 @@ const INSERT_CHUNK = 100;
 
 function toCardRow(card, deckId) {
   const first = card.examples?.[0] ?? null;
+  const prompt = card.l1_text ?? card.prompt_l1 ?? card.spanish_text;
+  const answer = card.l2_text ?? card.answer_l2 ?? card.english_text;
   return {
     deck_id: deckId,
-    spanish_text: card.spanish_text,
-    english_text: card.english_text,
+    l1_text: prompt,
+    l2_text: answer,
     is_enabled: true,
     generation_phase: 'refined',
     generation_metadata: {},
     section_name: card.section_name ?? null,
     part_of_speech: card.part_of_speech ?? null,
-    definition_en: card.definition_en ?? null,
-    main_translations_es: card.main_translations_es ?? [],
+    l2_definition: card.l2_definition ?? card.definition_en ?? null,
+    l1_translations: card.l1_translations ?? card.main_translations_es ?? [],
     collocations: card.collocations ?? [],
-    synonyms_en: card.synonyms_en ?? [],
-    example_sentence: card.example_sentence ?? (first?.en ?? null),
-    example_es: card.example_es ?? (first?.es ?? null),
-    example_en: card.example_en ?? (first?.en ?? null),
-    mnemonic_en: card.mnemonic_en ?? null,
-    cloze_distractors_en: card.cloze_distractors_en ?? [],
-    examples: card.examples ?? [],
+    l2_synonyms: card.l2_synonyms ?? card.synonyms_en ?? [],
+    example_sentence: card.example_sentence ?? (first?.l2 ?? first?.en ?? null),
+    example_l1: card.example_l1 ?? card.example_es ?? (first?.l1 ?? first?.es ?? null),
+    example_l2: card.example_l2 ?? card.example_en ?? (first?.l2 ?? first?.en ?? null),
+    l2_mnemonic: card.l2_mnemonic ?? card.mnemonic_en ?? null,
+    l2_cloze_distractors: card.l2_cloze_distractors ?? card.cloze_distractors_en ?? [],
+    examples: (card.examples ?? []).map((p) => ({
+      l1: p.l1 ?? p.example_l1 ?? p.es ?? p.example_es,
+      l2: p.l2 ?? p.example_l2 ?? p.en ?? p.example_en,
+    })),
   };
 }
 

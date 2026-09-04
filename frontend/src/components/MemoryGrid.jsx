@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { getLanguage } from '../languages';
 
 // Fisher–Yates so each column lands in a fresh order every round.
 function shuffle(items) {
@@ -11,28 +12,31 @@ function shuffle(items) {
 }
 
 // Tier-C matching grid (docs/minigames.md §4 #8) — a queue-external warm-up /
-// cool-down game. Pure spatial matching of prompt_es ↔ answer_en, so it carries
-// NO es→en retrieval signal and never counts: it only ever calls onDone() to
+// cool-down game. Pure spatial matching of prompt_l1 ↔ answer_l2, so it carries
+// NO retrieval signal and never counts: it only ever calls onDone() to
 // dismiss, and never touches a session RPC (§5.2, §8.2).
 //
-// Two independently shuffled columns (Spanish prompts, English answers). Pick one
+// Two independently shuffled columns (prompts, answers). Pick one
 // tile from either side, then one from the other; a pair matches when both tiles
 // carry the same card_id. Every tile is a real <button>, so Tab + Enter/Space
 // drives it with no pointer required (§8.4); the host owns Escape-to-dismiss.
 function MemoryGrid({ cards, onDone }) {
-  const { esTiles, enTiles } = useMemo(
+  const sourceLabel = getLanguage(cards?.[0]?.language_from ?? 'es')?.name ?? 'Prompt';
+  const targetLabel = getLanguage(cards?.[0]?.language_to ?? 'en')?.name ?? 'Answer';
+
+  const { l1Tiles, l2Tiles } = useMemo(
     () => ({
-      esTiles: shuffle(cards.map((card) => ({ id: card.card_id, text: card.prompt_es }))),
-      enTiles: shuffle(cards.map((card) => ({ id: card.card_id, text: card.answer_en }))),
+      l1Tiles: shuffle(cards.map((card) => ({ id: card.card_id, text: card.prompt_l1 ?? card.prompt_es }))),
+      l2Tiles: shuffle(cards.map((card) => ({ id: card.card_id, text: card.answer_l2 ?? card.answer_en }))),
     }),
     [cards],
   );
 
   // The first tile picked (from either column) while a pair is being formed.
-  const [pick, setPick] = useState(null); // { side: 'es' | 'en', id } | null
+  const [pick, setPick] = useState(null); // { side: 'l1' | 'l2', id } | null
   const [matched, setMatched] = useState(() => new Set());
   // The two ids of a just-missed pair, held briefly so both flash red.
-  const [wrongPair, setWrongPair] = useState(null); // { esId, enId } | null
+  const [wrongPair, setWrongPair] = useState(null); // { l1Id, l2Id } | null
   const wrongTimeoutRef = useRef(null);
   const doneRef = useRef(false);
 
@@ -80,18 +84,20 @@ function MemoryGrid({ cards, onDone }) {
       setPick(null);
       return;
     }
-    const esId = side === 'es' ? id : pick.id;
-    const enId = side === 'en' ? id : pick.id;
-    setWrongPair({ esId, enId });
+    const l1Id = (side === 'l1' || side === 'es') ? id : pick.id;
+    const l2Id = (side === 'l2' || side === 'en') ? id : pick.id;
+    setWrongPair({ l1Id, l2Id });
     setPick(null);
     wrongTimeoutRef.current = window.setTimeout(() => setWrongPair(null), 700);
   }
 
   function tileClassName(side, tile) {
     let className = 'matchgame__tile';
+    const isL1 = side === 'l1' || side === 'es';
+    const isL2 = side === 'l2' || side === 'en';
     if (matched.has(tile.id)) {
       className += ' matchgame__tile--matched';
-    } else if (wrongPair && ((side === 'es' && wrongPair.esId === tile.id) || (side === 'en' && wrongPair.enId === tile.id))) {
+    } else if (wrongPair && ((isL1 && wrongPair.l1Id === tile.id) || (isL2 && wrongPair.l2Id === tile.id))) {
       className += ' matchgame__tile--wrong';
     } else if (pick && pick.side === side && pick.id === tile.id) {
       className += ' matchgame__tile--active';
@@ -127,8 +133,8 @@ function MemoryGrid({ cards, onDone }) {
       </p>
 
       <div className="matchgame__columns">
-        {renderColumn('es', esTiles, 'Spanish')}
-        {renderColumn('en', enTiles, 'English')}
+        {renderColumn('l1', l1Tiles, sourceLabel)}
+        {renderColumn('l2', l2Tiles, targetLabel)}
       </div>
 
       <button type="button" className="button button--primary matchgame__done" onClick={finish}>

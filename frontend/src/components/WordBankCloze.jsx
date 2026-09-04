@@ -15,10 +15,11 @@ import { locateAnswerInExample } from '../minigameText';
 // MinigameHost picks WHICH sentence this presentation blanks (`clozeExample`,
 // migration 0019) and passes it down with its span.
 function WordBankCloze({ card, clozeExample, distractors, onResolve, onOpenDetails }) {
-  const example = clozeExample?.en ?? card.example_en ?? '';
+  const example = clozeExample?.l2 ?? clozeExample?.en ?? card.example_l2 ?? card.example_en ?? '';
+  const answer = card.answer_l2 ?? card.answer_en;
   const span = useMemo(
-    () => clozeExample?.span ?? locateAnswerInExample(example, card.answer_en),
-    [clozeExample, example, card.answer_en],
+    () => clozeExample?.span ?? locateAnswerInExample(example, answer),
+    [clozeExample, example, answer],
   );
   const before = span ? example.slice(0, span.start) : '';
   const after = span ? example.slice(span.end) : '';
@@ -37,6 +38,7 @@ function WordBankCloze({ card, clozeExample, distractors, onResolve, onOpenDetai
       distractors={distractors}
       onResolve={onResolve}
       onOpenDetails={onOpenDetails}
+      answer={answer}
       label="Fill the gap"
       promptNode={promptNode}
     />

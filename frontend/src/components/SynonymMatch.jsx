@@ -22,10 +22,12 @@ function shuffle(items) {
 // deduped so a distractor can never restate a synonym or the answer itself. No fetch —
 // the distractors come straight from the queue-external seen-cards pool.
 function buildRound(card, pool) {
-  const seen = new Set([normalizeAnswer(card?.answer_en)]);
+  const answer = card?.answer_l2 ?? card?.answer_en;
+  const synonyms = card?.l2_synonyms ?? card?.synonyms_en ?? [];
+  const seen = new Set([normalizeAnswer(answer)]);
 
   const correct = [];
-  for (const raw of card?.synonyms_en ?? []) {
+  for (const raw of synonyms) {
     const text = typeof raw === 'string' ? raw.trim() : '';
     const norm = normalizeAnswer(text);
     if (!norm || seen.has(norm)) {
@@ -40,7 +42,7 @@ function buildRound(card, pool) {
 
   const distractorPool = [];
   for (const other of pool ?? []) {
-    const text = (other?.answer_en ?? '').trim();
+    const text = (other?.answer_l2 ?? other?.answer_en ?? '').trim();
     const norm = normalizeAnswer(text);
     if (!norm || seen.has(norm)) {
       continue;
@@ -183,8 +185,8 @@ function SynonymMatch({ card, pool, onDone }) {
     <section className="panel synmatch">
       <p className="flashcard__label">Synonym match</p>
       <p className="synmatch__lead">Pick the words that mean the same as</p>
-      <h2 className="synmatch__answer">{card?.answer_en}</h2>
-      {card?.prompt_es ? <p className="synmatch__context">{card.prompt_es}</p> : null}
+      <h2 className="synmatch__answer">{card?.answer_l2 ?? card?.answer_en}</h2>
+      {card?.prompt_l1 ?? card?.prompt_es ? <p className="synmatch__context">{card.prompt_l1 ?? card.prompt_es}</p> : null}
 
       <div className="synmatch__tiles" role="group" aria-label="Word options">
         {tiles.map((tile, index) => (

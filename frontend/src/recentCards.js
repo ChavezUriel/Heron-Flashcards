@@ -36,18 +36,22 @@ function slimCard(card) {
   if (!card || card.card_id == null) {
     return null;
   }
-  const prompt_es = (card.prompt_es ?? '').trim();
-  const answer_en = (card.answer_en ?? '').trim();
-  if (!prompt_es || !answer_en) {
+  const prompt = (card.prompt_l1 ?? card.prompt_es ?? '').trim();
+  const answer = (card.answer_l2 ?? card.answer_en ?? '').trim();
+  if (!prompt || !answer) {
     return null;
   }
+  const synonyms = slimSynonyms(card.l2_synonyms ?? card.synonyms_en);
   return {
     card_id: card.card_id,
-    prompt_es,
-    answer_en,
+    prompt_l1: prompt,
+    answer_l2: answer,
+    prompt_es: prompt,
+    answer_en: answer,
     section_name: card.section_name ?? null,
     // Carried for the depth game only; boundary games ignore it. See §9 Phase 6.
-    synonyms_en: slimSynonyms(card.synonyms_en),
+    l2_synonyms: synonyms,
+    synonyms_en: synonyms,
   };
 }
 

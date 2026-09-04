@@ -16,9 +16,10 @@ function shuffle(items) {
 // needs NO distractor RPC, and — being queue-external — it never submits a grade
 // (docs/minigames.md §4 #7, §5.2).
 function buildQuestions(cards, optionsPerQuestion = 4) {
-  const answers = cards.map((card) => card.answer_en);
+  const answers = cards.map((card) => card.answer_l2 ?? card.answer_en);
   return cards.map((card) => {
-    const distractors = shuffle(answers.filter((answer) => answer !== card.answer_en));
+    const cardAnswer = card.answer_l2 ?? card.answer_en;
+    const distractors = shuffle(answers.filter((answer) => answer !== cardAnswer));
     return { card, distractors: distractors.slice(0, Math.max(0, optionsPerQuestion - 1)) };
   });
 }

@@ -83,17 +83,19 @@ export function runDeterministicPreScan(deckMeta, cards) {
   // Scan each card for fast deterministic violations
   activeCards.forEach((card, index) => {
     const cardId = card.id ?? card.card_id ?? index;
-    const promptEs = String(card.spanish_text ?? card.prompt_es ?? '').trim();
-    const answerEn = String(card.english_text ?? card.answer_en ?? '').trim();
-    const defEn = String(card.definition_en ?? '').trim();
-    const exEs = String(card.example_es ?? card.example_sentence ?? '').trim();
-    const exEn = String(card.example_en ?? '').trim();
+    const promptEs = String(card.l1_text ?? card.prompt_l1 ?? card.spanish_text ?? card.prompt_es ?? '').trim();
+    const answerEn = String(card.l2_text ?? card.answer_l2 ?? card.english_text ?? card.answer_en ?? '').trim();
+    const defEn = String(card.l2_definition ?? card.definition_en ?? '').trim();
+    const exEs = String(card.example_l1 ?? card.example_es ?? card.example_sentence ?? '').trim();
+    const exEn = String(card.example_l2 ?? card.example_en ?? '').trim();
 
     if (!promptEs || !answerEn) {
       issues.push({
         type: 'card',
         card_id: cardId,
         card_index: index,
+        prompt_l1: promptEs || '(empty)',
+        answer_l2: answerEn || '(empty)',
         prompt_es: promptEs || '(empty)',
         answer_en: answerEn || '(empty)',
         section_name: card.section_name,
@@ -310,8 +312,10 @@ export async function auditDeckForPublishing(
 
           conflictedCardsMap.set(String(cardId), {
             card_id: cardId,
-            prompt_es: cardMatch?.spanish_text ?? cardMatch?.prompt_es ?? 'Word',
-            answer_en: cardMatch?.english_text ?? cardMatch?.answer_en ?? 'Translation',
+            prompt_l1: cardMatch?.l1_text ?? cardMatch?.prompt_l1 ?? cardMatch?.spanish_text ?? cardMatch?.prompt_es ?? 'Word',
+            prompt_es: cardMatch?.l1_text ?? cardMatch?.prompt_l1 ?? cardMatch?.spanish_text ?? cardMatch?.prompt_es ?? 'Word',
+            answer_l2: cardMatch?.l2_text ?? cardMatch?.answer_l2 ?? cardMatch?.english_text ?? cardMatch?.answer_en ?? 'Translation',
+            answer_en: cardMatch?.l2_text ?? cardMatch?.answer_l2 ?? cardMatch?.english_text ?? cardMatch?.answer_en ?? 'Translation',
             section_name: cardMatch?.section_name,
             violated_categories: mergedCategories.length > 0 ? mergedCategories : ['linguistic_integrity'],
             severity: ev.severity || existing?.severity || 'high',

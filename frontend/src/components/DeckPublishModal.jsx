@@ -340,9 +340,9 @@ export default function DeckPublishModal({
                     <div key={card.card_id} className="safety-conflicted-card">
                       <div className="safety-conflicted-card__head">
                         <div className="safety-card-pair">
-                          <span className="safety-card-prompt">{card.prompt_es}</span>
+                          <span className="safety-card-prompt">{card.prompt_l1 ?? card.prompt_es}</span>
                           <span className="safety-card-arrow">→</span>
-                          <span className="safety-card-answer">{card.answer_en}</span>
+                          <span className="safety-card-answer">{card.answer_l2 ?? card.answer_en}</span>
                         </div>
                         <div className="safety-card-tags">
                           <SeverityBadge severity={card.severity} />

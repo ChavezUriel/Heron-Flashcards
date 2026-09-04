@@ -148,8 +148,8 @@ export default function ProposedChangeList({
                 >
                   <span className="ai-card__status" aria-hidden="true" />
                   <span className="ai-card__text">
-                    <span className="ai-card__prompt">{card.spanish_text}</span>
-                    <span className="ai-card__answer">{card.english_text}</span>
+                    <span className="ai-card__prompt">{card.l1_text ?? card.prompt_l1 ?? card.spanish_text ?? card.prompt_es}</span>
+                    <span className="ai-card__answer">{card.l2_text ?? card.answer_l2 ?? card.english_text ?? card.answer_en}</span>
                   </span>
 
                   <span className="ai-card__tags">
@@ -204,12 +204,12 @@ export default function ProposedChangeList({
                                   <div className="ai-mismatch-fix__content">
                                     <span className="ai-mismatch-fix__title">{fix.label}</span>
                                     <span className="ai-mismatch-fix__pair">
-                                      <span>{fix.spanish_text}</span>
+                                      <span>{fix.l1_text ?? fix.prompt_l1 ?? fix.spanish_text}</span>
                                       <span>➔</span>
-                                      <span>{fix.english_text}</span>
+                                      <span>{fix.l2_text ?? fix.answer_l2 ?? fix.english_text}</span>
                                     </span>
-                                    {fix.definition_en ? (
-                                      <span className="ai-mismatch-fix__def">{fix.definition_en}</span>
+                                    {fix.l2_definition ?? fix.definition_en ? (
+                                      <span className="ai-mismatch-fix__def">{fix.l2_definition ?? fix.definition_en}</span>
                                     ) : null}
                                   </div>
                                 </label>
@@ -223,7 +223,9 @@ export default function ProposedChangeList({
                                 return 'Fix #1 (target term) will update this card. Fix #2 will be added as a new flashcard in your deck.';
                               }
                               if (selectedFixes.length === 1) {
-                                return `This card will be updated to “${selectedFixes[0].spanish_text} ➔ ${selectedFixes[0].english_text}”.`;
+                                const fixL1 = selectedFixes[0].l1_text ?? selectedFixes[0].spanish_text;
+                                const fixL2 = selectedFixes[0].l2_text ?? selectedFixes[0].english_text;
+                                return `This card will be updated to “${fixL1} ➔ ${fixL2}”.`;
                               }
                               return 'No pair fixes selected. Original word pair will remain unchanged.';
                             })()}

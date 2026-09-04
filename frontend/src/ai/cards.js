@@ -23,9 +23,9 @@ export function normList(value) {
   return out;
 }
 
-// Example sentence pairs (migration 0019): [{ es, en }], deduped by English
-// sentence. Accepts the storage keys ({es, en}) and the LLM output keys
-// ({example_es, example_en}).
+// Example sentence pairs (migration 0019 & 0034): [{ l1, l2 }], deduped by L2
+// sentence. Accepts the storage keys ({l1, l2}, {es, en}) and the LLM output keys
+// ({example_l1, example_l2}, {example_es, example_en}).
 export function normExamplePairs(value, legacyEs, legacyEn) {
   const out = [];
   const seen = new Set();
@@ -36,12 +36,15 @@ export function normExamplePairs(value, legacyEs, legacyEn) {
     const key = en.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ es, en });
+    out.push({ l1: es, l2: en, es, en });
   };
   if (Array.isArray(value)) {
     for (const pair of value) {
       if (!pair || typeof pair !== 'object') continue;
-      push(pair.es ?? pair.example_es, pair.en ?? pair.example_en);
+      push(
+        pair.l1 ?? pair.example_l1 ?? pair.es ?? pair.example_es,
+        pair.l2 ?? pair.example_l2 ?? pair.en ?? pair.example_en
+      );
     }
   }
   if (!out.length) push(legacyEs, legacyEn);
@@ -63,26 +66,51 @@ function normAudits(v, genMeta) {
 // the pairs are the source of truth and the mirror is what pre-0019 consumers
 // (and the 0017 sync hash) read.
 export function normCard(card, deckTitle) {
-  const spanish = optText(card.spanish ?? card.spanish_text ?? card.prompt_es);
-  const english = optText(card.english ?? card.english_text ?? card.answer_en);
-  if (!spanish || !english) return null;
-  const examples = normExamplePairs(card.examples, card.example_es, card.example_en);
+  const prompt = optText(card.l1_text ?? card.prompt_l1 ?? card.spanish ?? card.spanish_text ?? card.prompt_es);
+  const answer = optText(card.l2_text ?? card.answer_l2 ?? card.english ?? card.english_text ?? card.answer_en);
+  if (!prompt || !answer) return null;
+  const examples = normExamplePairs(
+    card.examples,
+    card.example_l1 ?? card.example_es,
+    card.example_l2 ?? card.example_en
+  );
   const first = examples[0] ?? null;
+  const l2Definition = optText(card.l2_definition ?? card.definition_en);
+  const l1Translations = normList(card.l1_translations ?? card.main_translations_es);
+  const l2Synonyms = normList(card.l2_synonyms ?? card.synonyms_en);
+  const collocations = normList(card.collocations);
+  const exampleSentence = first ? (first.l2 ?? first.en) : optText(card.example_sentence);
+  const exampleL1 = first ? (first.l1 ?? first.es) : optText(card.example_l1 ?? card.example_es);
+  const exampleL2 = first ? (first.l2 ?? first.en) : optText(card.example_l2 ?? card.example_en);
+  const l2Mnemonic = optText(card.l2_mnemonic ?? card.mnemonic_en);
+  const l2ClozeDistractors = normList(card.l2_cloze_distractors ?? card.cloze_distractors_en);
+
   return {
-    spanish_text: spanish,
-    english_text: english,
+    l1_text: prompt,
+    l2_text: answer,
+    prompt_l1: prompt,
+    answer_l2: answer,
+    spanish_text: prompt,
+    english_text: answer,
     section_name: optText(card.section_name) ?? deckTitle ?? null,
     part_of_speech: optText(card.part_of_speech),
-    definition_en: optText(card.definition_en),
-    main_translations_es: normList(card.main_translations_es),
-    collocations: normList(card.collocations),
-    synonyms_en: normList(card.synonyms_en),
+    l2_definition: l2Definition,
+    definition_en: l2Definition,
+    l1_translations: l1Translations,
+    main_translations_es: l1Translations,
+    collocations,
+    l2_synonyms: l2Synonyms,
+    synonyms_en: l2Synonyms,
     examples,
-    example_sentence: first ? first.en : optText(card.example_sentence),
-    example_es: first ? first.es : optText(card.example_es),
-    example_en: first ? first.en : optText(card.example_en),
-    mnemonic_en: optText(card.mnemonic_en),
-    cloze_distractors_en: normList(card.cloze_distractors_en),
+    example_sentence: exampleSentence,
+    example_l1: exampleL1,
+    example_l2: exampleL2,
+    example_es: exampleL1,
+    example_en: exampleL2,
+    l2_mnemonic: l2Mnemonic,
+    mnemonic_en: l2Mnemonic,
+    l2_cloze_distractors: l2ClozeDistractors,
+    cloze_distractors_en: l2ClozeDistractors,
     _audits: normAudits(card._audits, card.generation_metadata),
   };
 }

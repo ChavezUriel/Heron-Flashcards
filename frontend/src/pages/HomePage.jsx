@@ -134,12 +134,20 @@ function sortDecksBySmartPractice(decks) {
 }
 
 function buildDeckWordIndex(preview) {
-  return preview.cards
+  return (preview.cards || [])
     .flatMap((card) => [
-      card.answer_en, card.prompt_es, card.section_name, card.definition_en,
-      ...(card.main_translations_es || []), ...(card.collocations || []),
+      card.answer_l2, card.prompt_l1,
+      card.answer_en, card.prompt_es,
+      card.section_name,
+      card.l2_definition, card.definition_en,
+      ...(card.l1_translations || []),
+      ...(card.main_translations_es || []),
+      ...(card.collocations || []),
+      ...(card.l2_synonyms || []),
       ...(card.synonyms_en || []),
-      card.example_sentence, card.example_en, card.example_es,
+      card.example_sentence,
+      card.example_l1, card.example_l2,
+      card.example_en, card.example_es,
     ])
     .filter(Boolean)
     .join(' ');

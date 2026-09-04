@@ -122,8 +122,8 @@ export function usableBoundaryCards(cards) {
   const seenAnswers = new Set();
   const seenPrompts = new Set();
   for (const card of cards ?? []) {
-    const prompt = (card?.prompt_es ?? '').trim();
-    const answer = (card?.answer_en ?? '').trim();
+    const prompt = (card?.prompt_l1 ?? card?.prompt_es ?? '').trim();
+    const answer = (card?.answer_l2 ?? card?.answer_en ?? '').trim();
     if (!prompt || !answer) {
       continue;
     }
@@ -136,6 +136,8 @@ export function usableBoundaryCards(cards) {
     seenPrompts.add(promptKey);
     out.push({
       card_id: card.card_id,
+      prompt_l1: prompt,
+      answer_l2: answer,
       prompt_es: prompt,
       answer_en: answer,
       section_name: card.section_name ?? null,
@@ -185,10 +187,13 @@ function preferenceFor(placement, seed) {
 // A card's distinct English synonyms, excluding any that just restate the answer —
 // the correct picks for a Synonym-match round (docs/minigames.md §9 Phase 6).
 function usableSynonyms(card) {
-  const answerKey = normalizeKey(card?.answer_en);
+  const answerKey = normalizeKey(card?.answer_l2 ?? card?.answer_en);
   const seen = new Set(answerKey ? [answerKey] : []);
   const out = [];
-  for (const raw of Array.isArray(card?.synonyms_en) ? card.synonyms_en : []) {
+  const synonyms = Array.isArray(card?.l2_synonyms ?? card?.synonyms_en)
+    ? (card?.l2_synonyms ?? card?.synonyms_en)
+    : [];
+  for (const raw of synonyms) {
     const text = typeof raw === 'string' ? raw.trim() : '';
     const norm = normalizeKey(text);
     if (!norm || seen.has(norm)) {
@@ -204,7 +209,7 @@ function usableSynonyms(card) {
 // synonyms plus a set of other cards to source distractor answers from. Returns
 // { cards: [anchor, ...distractorCards] } (SynonymMatch reads cards[0] as the anchor
 // and the rest as the distractor pool) or null when the pool can't supply a fair
-// round. Uses the RAW pool (which carries synonyms_en) rather than the slimmed
+// round. Uses the RAW pool (which carries l2_synonyms) rather than the slimmed
 // boundary pool. See §9 Phase 6.
 function chooseDepthRound(cards) {
   // One entry per distinct answer so a repeated word can't be both anchor and distractor.
@@ -214,7 +219,7 @@ function chooseDepthRound(cards) {
     if (!card || card.card_id == null) {
       continue;
     }
-    const answerKey = normalizeKey(card.answer_en);
+    const answerKey = normalizeKey(card.answer_l2 ?? card.answer_en);
     if (!answerKey || seenAnswers.has(answerKey)) {
       continue;
     }
@@ -227,7 +232,7 @@ function chooseDepthRound(cards) {
     return null;
   }
   const anchor = sample(anchors, 1)[0];
-  const anchorAnswerKey = normalizeKey(anchor.answer_en);
+  const anchorAnswerKey = normalizeKey(anchor.answer_l2 ?? anchor.answer_en);
   const anchorSynonymKeys = new Set(usableSynonyms(anchor).map(normalizeKey));
 
   // Distractors: other answers that are neither the anchor's answer nor a synonym.
@@ -235,7 +240,7 @@ function chooseDepthRound(cards) {
     if (card.card_id === anchor.card_id) {
       return false;
     }
-    const key = normalizeKey(card.answer_en);
+    const key = normalizeKey(card.answer_l2 ?? card.answer_en);
     return key !== anchorAnswerKey && !anchorSynonymKeys.has(key);
   });
   if (distractors.length < DEPTH_MIN_DISTRACTORS) {

@@ -27,8 +27,12 @@ function RecallFromDefinition({ card, onResolve, onOpenDetails }) {
   const [confirmSkip, setConfirmSkip] = useState(false);
   const inputRef = useRef(null);
   const autoAdvance = useAutoAdvance();
-  // Two-step hint ladder (shape, then Spanish); revealing refocuses the input.
+  // Two-step hint ladder (shape, then prompt); revealing refocuses the input.
   const hints = useHints(inputRef);
+
+  const definition = card.l2_definition ?? card.definition_en;
+  const answer = card.answer_l2 ?? card.answer_en;
+  const prompt = card.prompt_l1 ?? card.prompt_es;
 
   // Focus the input while typing; once submitted, MinigameFeedback owns focus (its
   // Continue button, shown if the learner stays the auto-advance).
@@ -88,16 +92,16 @@ function RecallFromDefinition({ card, onResolve, onOpenDetails }) {
 
       <div className="typegame__body">
         <p className="flashcard__label">Recall from definition</p>
-        <p className="recallgame__definition">{card.definition_en}</p>
+        <p className="recallgame__definition">{definition}</p>
 
         {/* Hint reveals under the definition: first the answer's shape (an underscore
-            per character, word gaps visible), then the Spanish side of the card. */}
+            per character, word gaps visible), then the prompt side of the card. */}
         {!isRevealed && hints.level >= 1 ? (
           <p className="typegame__hint-line">
-            <AnswerShape answer={card.answer_en} />
+            <AnswerShape answer={answer} />
           </p>
         ) : null}
-        {!isRevealed && hints.level >= 2 ? <TranslationHint text={card.prompt_es} /> : null}
+        {!isRevealed && hints.level >= 2 ? <TranslationHint text={prompt} /> : null}
 
         <form className="typegame__form" onSubmit={handleSubmit}>
           <input
@@ -112,8 +116,8 @@ function RecallFromDefinition({ card, onResolve, onOpenDetails }) {
                 setConfirmSkip(false);
               }
             }}
-            placeholder="Type the English word"
-            aria-label="Type the English word that matches this definition"
+            placeholder="Type the word"
+            aria-label="Type the word that matches this definition"
             autoComplete="off"
             autoCapitalize="off"
             autoCorrect="off"
@@ -138,7 +142,7 @@ function RecallFromDefinition({ card, onResolve, onOpenDetails }) {
               ) : null}
               <p className="typegame__answer">
                 <span className="typegame__answer-label">Answer</span>
-                <span className="typegame__answer-text">{card.answer_en}</span>
+                <span className="typegame__answer-text">{answer}</span>
               </p>
             </MinigameFeedback>
           ) : (

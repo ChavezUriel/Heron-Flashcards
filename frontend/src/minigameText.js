@@ -105,7 +105,9 @@ export function classifyGuess(guess, card) {
     return 'wrong';
   }
 
-  const candidates = [card.answer_en, ...(card.synonyms_en ?? [])]
+  const answer = card.answer_l2 ?? card.answer_en;
+  const synonyms = card.l2_synonyms ?? card.synonyms_en ?? [];
+  const candidates = [answer, ...synonyms]
     .map(normalizeAnswer)
     .filter(Boolean);
 
@@ -133,36 +135,45 @@ export function classifyGuess(guess, card) {
 // "don't" and "hold-up" stay single tokens.
 const WORD_RE = /\p{L}[\p{L}\p{M}'’-]*/gu;
 
-// Extract all valid example sentence pairs ({ es, en }) from a card.
-// Falls back to legacy example_es/example_en/example_sentence when examples is empty.
+// Extract all valid example sentence pairs ({ l1, l2 } with legacy { es, en }) from a card.
+// Falls back to legacy example_l1/example_l2/example_sentence when examples is empty.
 export function getCardExamplePairs(card) {
   const pairs = [
     ...(Array.isArray(card?.examples)
       ? card.examples.map((p) => ({
-          en: p?.en ?? p?.example_en ?? '',
-          es: p?.es ?? p?.example_es ?? '',
+          l2: p?.l2 ?? p?.en ?? p?.example_l2 ?? p?.example_en ?? '',
+          l1: p?.l1 ?? p?.es ?? p?.example_l1 ?? p?.example_es ?? '',
+          en: p?.l2 ?? p?.en ?? p?.example_l2 ?? p?.example_en ?? '',
+          es: p?.l1 ?? p?.es ?? p?.example_l1 ?? p?.example_es ?? '',
         }))
       : []),
     {
-      en: card?.example_en ?? card?.example_sentence ?? '',
-      es: card?.example_es ?? '',
+      l2: card?.example_l2 ?? card?.example_en ?? card?.example_sentence ?? '',
+      l1: card?.example_l1 ?? card?.example_es ?? '',
+      en: card?.example_l2 ?? card?.example_en ?? card?.example_sentence ?? '',
+      es: card?.example_l1 ?? card?.example_es ?? '',
     },
   ];
 
   const out = [];
   const seen = new Set();
   for (const pair of pairs) {
-    const en = typeof pair.en === 'string' ? pair.en.trim() : '';
-    const es = typeof pair.es === 'string' ? pair.es.trim() : '';
-    if (!en && !es) {
+    const l2 = typeof pair.l2 === 'string' ? pair.l2.trim() : '';
+    const l1 = typeof pair.l1 === 'string' ? pair.l1.trim() : '';
+    if (!l2 && !l1) {
       continue;
     }
-    const key = `${normalizeAnswer(es)}|${normalizeAnswer(en)}`;
+    const key = `${normalizeAnswer(l1)}|${normalizeAnswer(l2)}`;
     if (seen.has(key)) {
       continue;
     }
     seen.add(key);
-    out.push({ en: en || null, es: es || null });
+    out.push({
+      l2: l2 || null,
+      l1: l1 || null,
+      en: l2 || null,
+      es: l1 || null,
+    });
   }
   return out;
 }
@@ -172,45 +183,63 @@ export function getCardExamplePairs(card) {
 export function pickCardExample(card) {
   const pairs = getCardExamplePairs(card);
   if (pairs.length === 0) {
+    const l1 = card?.example_l1 ?? card?.example_es ?? null;
+    const l2 = card?.example_l2 ?? card?.example_en ?? card?.example_sentence ?? null;
     return {
-      es: card?.example_es ?? null,
-      en: card?.example_en ?? card?.example_sentence ?? null,
+      l1,
+      l2,
+      es: l1,
+      en: l2,
     };
   }
   const idx = sentenceIndex(card, pairs.length);
   return pairs[idx] ?? pairs[0];
 }
 
-// Every sentence a card offers the cloze games: the primary example_en plus
-// the additional `examples` pairs (migration 0019), deduped by normalized
-// English text and filtered to the ones where the answer is actually
+// Every sentence a card offers the cloze games: the primary example_l2 plus
+// the additional `examples` pairs (migration 0019 / 0034), deduped by normalized
+// L2 text and filtered to the ones where the answer is actually
 // blankable. Each candidate carries its located span so callers never
 // re-derive it against a different sentence. Cards that predate 0019 simply
 // yield [primary] — exactly the old behavior.
 export function clozeCandidates(card) {
   const pairs = [
-    { en: card?.example_en, es: card?.example_es },
+    {
+      l2: card?.example_l2 ?? card?.example_en,
+      l1: card?.example_l1 ?? card?.example_es,
+    },
     ...(Array.isArray(card?.examples)
-      ? card.examples.map((p) => ({ en: p?.en ?? p?.example_en, es: p?.es ?? p?.example_es }))
+      ? card.examples.map((p) => ({
+          l2: p?.l2 ?? p?.en ?? p?.example_l2 ?? p?.example_en,
+          l1: p?.l1 ?? p?.es ?? p?.example_l1 ?? p?.example_es,
+        }))
       : []),
   ];
   const out = [];
   const seen = new Set();
+  const answer = card?.answer_l2 ?? card?.answer_en;
   for (const pair of pairs) {
-    const en = typeof pair.en === 'string' ? pair.en : '';
-    if (!en) {
+    const l2 = typeof pair.l2 === 'string' ? pair.l2 : '';
+    if (!l2) {
       continue;
     }
-    const key = normalizeAnswer(en);
+    const key = normalizeAnswer(l2);
     if (seen.has(key)) {
       continue;
     }
     seen.add(key);
-    const span = locateAnswerInExample(en, card?.answer_en);
+    const span = locateAnswerInExample(l2, answer);
     if (!span) {
       continue;
     }
-    out.push({ en, es: typeof pair.es === 'string' ? pair.es : null, span });
+    const l1 = typeof pair.l1 === 'string' ? pair.l1 : null;
+    out.push({
+      l2,
+      l1,
+      en: l2,
+      es: l1,
+      span,
+    });
   }
   return out;
 }

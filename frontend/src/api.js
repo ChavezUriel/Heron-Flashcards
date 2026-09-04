@@ -306,18 +306,18 @@ export function deleteCards(cardIds) {
 export function updateCard(cardId, payload) {
   return rpc('update_card', {
     p_card_id: cardId,
-    p_prompt_es: payload.prompt_es,
-    p_answer_en: payload.answer_en,
+    p_prompt_l1: payload.prompt_l1 ?? payload.prompt_es,
+    p_answer_l2: payload.answer_l2 ?? payload.answer_en,
     p_section_name: payload.section_name ?? null,
     p_part_of_speech: payload.part_of_speech ?? null,
-    p_definition_en: payload.definition_en ?? null,
-    p_main_translations_es: payload.main_translations_es ?? [],
+    p_l2_definition: payload.l2_definition ?? payload.definition_en ?? null,
+    p_l1_translations: payload.l1_translations ?? payload.main_translations_es ?? [],
     p_collocations: payload.collocations ?? [],
-    p_synonyms_en: payload.synonyms_en ?? [],
+    p_l2_synonyms: payload.l2_synonyms ?? payload.synonyms_en ?? [],
     p_example_sentence: payload.example_sentence ?? null,
-    p_example_es: payload.example_es ?? null,
-    p_example_en: payload.example_en ?? null,
-    p_mnemonic_en: payload.mnemonic_en ?? null,
+    p_example_l1: payload.example_l1 ?? payload.example_es ?? null,
+    p_example_l2: payload.example_l2 ?? payload.example_en ?? null,
+    p_l2_mnemonic: payload.l2_mnemonic ?? payload.mnemonic_en ?? null,
     p_examples: payload.examples ?? null,
   });
 }
@@ -427,20 +427,13 @@ export function undoSmartPracticeReview(sessionId) {
 
 // Plausible wrong answers for a recognition minigame. Returns an array of option
 // strings; the caller shuffles them together with the real answer. `side` picks
-// the flavor: 'en' (default, sibling english_text — multiple choice), 'es'
-// (sibling spanish_text — reverse MC), or 'cloze' (word-bank cloze — the card's
-// curated cloze_distractors_en, verified so only the real answer fits the blank,
-// falling back to sibling english_text; migration 0018).
-//
-// The 'es' side needs migration 0014's p_side parameter and 'cloze' needs 0018,
-// both live paths degrade: pre-0018 servers normalize 'cloze' to 'en', and a
-// remote that predates 0014 simply errors on the 'es' fetch, which
-// resolveModality degrades away cleanly. We still omit p_side on the 'en' path
-// so the default resolves against any older two-argument function too.
-// See docs/minigames.md §8.3, §4 #5–#6.
-export function getMinigameDistractors(cardId, n = 3, side = 'en') {
+// the flavor: 'l2' (default, sibling l2_text — multiple choice), 'l1'
+// (sibling l1_text — reverse MC), or 'cloze' (word-bank cloze — the card's
+// curated l2_cloze_distractors, verified so only the real answer fits the blank,
+// falling back to sibling l2_text). Legacy 'en' and 'es' aliases remain supported.
+export function getMinigameDistractors(cardId, n = 3, side = 'l2') {
   const args = { p_card_id: cardId, p_n: n };
-  if (side && side !== 'en') {
+  if (side && side !== 'l2' && side !== 'en') {
     args.p_side = side;
   }
   return rpc('get_minigame_distractors', args);

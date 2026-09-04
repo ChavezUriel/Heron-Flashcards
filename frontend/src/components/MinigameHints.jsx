@@ -11,7 +11,7 @@ export const MAX_HINT_LEVEL = 2;
 
 // The button always advertises what the NEXT press reveals, so the learner knows
 // what they're spending a hint on before committing.
-const NEXT_HINT_LABEL = ['Hint: word shape', 'Hint: in Spanish'];
+const NEXT_HINT_LABEL = ['Hint: word shape', 'Hint: translation'];
 
 // Hint state for one round. `reveal` bumps the level and hands focus straight back
 // to the answer input: the button sits immediately after the input in DOM order
@@ -108,15 +108,15 @@ export function AnswerShape({ answer }) {
   );
 }
 
-// Step-2 hint: the word on the other side of the card (prompt_es for these en-answer
+// Step-2 hint: the word on the other side of the card (prompt for these target-answer
 // games), labeled like the reveal's answer block so the visual language matches.
-export function TranslationHint({ text }) {
+export function TranslationHint({ text, label = 'Translation' }) {
   if (!text) {
     return null;
   }
   return (
     <p className="typegame__hint-translation">
-      <span className="typegame__answer-label">In Spanish</span>
+      <span className="typegame__answer-label">{label}</span>
       <span className="typegame__hint-word">{text}</span>
     </p>
   );

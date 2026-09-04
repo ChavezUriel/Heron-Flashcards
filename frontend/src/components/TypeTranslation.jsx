@@ -20,6 +20,8 @@ const FEEDBACK_MS = { known: 1100, almost: 2000, unknown: 2000 };
 function TypeTranslation({ card, onResolve, onOpenDetails }) {
   const [guess, setGuess] = useState('');
   const activeExample = pickCardExample(card);
+  const prompt = card.prompt_l1 ?? card.prompt_es;
+  const answer = card.answer_l2 ?? card.answer_en;
   // null while typing; 'known' | 'almost' | 'unknown' once submitted (drives the reveal).
   const [outcome, setOutcome] = useState(null);
   // First empty submit arms a "Sure?" skip confirmation; the second one skips.
@@ -86,8 +88,10 @@ function TypeTranslation({ card, onResolve, onOpenDetails }) {
 
       <div className="typegame__body">
         <p className="flashcard__label">Type the translation</p>
-        <h2 className="typegame__prompt">{card.prompt_es}</h2>
-        {activeExample.example_es ?? activeExample.es ? <p className="flashcard__example typegame__example">{activeExample.example_es ?? activeExample.es}</p> : null}
+        <h2 className="typegame__prompt">{prompt}</h2>
+        {activeExample.example_l1 ?? activeExample.l1 ?? activeExample.example_es ?? activeExample.es ? (
+          <p className="flashcard__example typegame__example">{activeExample.example_l1 ?? activeExample.l1 ?? activeExample.example_es ?? activeExample.es}</p>
+        ) : null}
 
         <form className="typegame__form" onSubmit={handleSubmit}>
           <input
@@ -102,8 +106,8 @@ function TypeTranslation({ card, onResolve, onOpenDetails }) {
                 setConfirmSkip(false);
               }
             }}
-            placeholder="Type the English answer"
-            aria-label="Type the English translation"
+            placeholder="Type the answer"
+            aria-label="Type the translation"
             autoComplete="off"
             autoCapitalize="off"
             autoCorrect="off"
@@ -128,7 +132,7 @@ function TypeTranslation({ card, onResolve, onOpenDetails }) {
               ) : null}
               <p className="typegame__answer">
                 <span className="typegame__answer-label">Answer</span>
-                <span className="typegame__answer-text">{card.answer_en}</span>
+                <span className="typegame__answer-text">{answer}</span>
               </p>
             </MinigameFeedback>
           ) : (

@@ -35,10 +35,12 @@ function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
 
   // The raw span of the answer inside the chosen example, so the sentence can be
   // split into "before ___ after". The gate guarantees a match; guard defensively.
-  const example = clozeExample?.en ?? card.example_en ?? '';
+  const example = clozeExample?.l2 ?? clozeExample?.en ?? card.example_l2 ?? card.example_en ?? '';
+  const answer = card.answer_l2 ?? card.answer_en;
+  const prompt = card.prompt_l1 ?? card.prompt_es;
   const span = useMemo(
-    () => clozeExample?.span ?? locateAnswerInExample(example, card.answer_en),
-    [clozeExample, example, card.answer_en],
+    () => clozeExample?.span ?? locateAnswerInExample(example, answer),
+    [clozeExample, example, answer],
   );
   const before = span ? example.slice(0, span.start) : '';
   const after = span ? example.slice(span.end) : '';
@@ -105,12 +107,12 @@ function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
         <p className="clozegame__sentence">
           {before}
           {isRevealed ? (
-            <span className={`clozegame__slot clozegame__slot--${outcome}`}>{card.answer_en}</span>
+            <span className={`clozegame__slot clozegame__slot--${outcome}`}>{answer}</span>
           ) : hints.level >= 1 ? (
             // First hint: the anonymous blank becomes the answer's shape — an
             // underscore per character, word gaps visible (AnswerShape labels itself).
             <span className="clozegame__slot clozegame__slot--blank">
-              <AnswerShape answer={card.answer_en} />
+              <AnswerShape answer={answer} />
             </span>
           ) : (
             <span className="clozegame__slot clozegame__slot--blank clozegame__slot--line" aria-label="missing word" />
@@ -118,7 +120,7 @@ function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
           {after}
         </p>
 
-        {!isRevealed && hints.level >= 2 ? <TranslationHint text={card.prompt_es} /> : null}
+        {!isRevealed && hints.level >= 2 ? <TranslationHint text={prompt} /> : null}
 
         <form className="typegame__form" onSubmit={handleSubmit}>
           <input
@@ -159,7 +161,7 @@ function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
               ) : null}
               <p className="typegame__answer">
                 <span className="typegame__answer-label">Answer</span>
-                <span className="typegame__answer-text">{card.answer_en}</span>
+                <span className="typegame__answer-text">{answer}</span>
               </p>
             </MinigameFeedback>
           ) : (

@@ -22,37 +22,42 @@ const FILTERS = [
 ];
 
 function CardDetail({ card }) {
+  const definition = card.l2_definition ?? card.definition_en;
+  const translations = card.l1_translations ?? card.main_translations_es ?? [];
+  const synonyms = card.l2_synonyms ?? card.synonyms_en ?? [];
+  const distractors = card.l2_cloze_distractors ?? card.cloze_distractors_en ?? [];
+
   return (
     <div className="ai-card__detail">
-      {card.definition_en ? (
+      {definition ? (
         <p className="ai-card__definition">
-          <span className="st-chip st-chip--muted">{card.part_of_speech}</span> {card.definition_en}
+          <span className="st-chip st-chip--muted">{card.part_of_speech}</span> {definition}
         </p>
       ) : null}
 
       {(card.examples ?? []).length > 0 ? (
         <ul className="ai-card__examples">
-          {card.examples.map((pair) => (
-            <li key={pair.en}>
-              <span className="ai-card__example-en">{pair.en}</span>
-              <span className="ai-card__example-es">{pair.es}</span>
+          {card.examples.map((pair, idx) => (
+            <li key={idx}>
+              <span className="ai-card__example-en">{pair.l2 ?? pair.en}</span>
+              <span className="ai-card__example-es">{pair.l1 ?? pair.es}</span>
             </li>
           ))}
         </ul>
       ) : null}
 
       <dl className="ai-card__meta">
-        {(card.main_translations_es ?? []).length > 0 ? (
-          <div><dt>Spanish</dt><dd>{card.main_translations_es.join(' · ')}</dd></div>
+        {translations.length > 0 ? (
+          <div><dt>Translations</dt><dd>{translations.join(' · ')}</dd></div>
         ) : null}
-        {(card.synonyms_en ?? []).length > 0 ? (
-          <div><dt>Synonyms</dt><dd>{card.synonyms_en.join(' · ')}</dd></div>
+        {synonyms.length > 0 ? (
+          <div><dt>Synonyms</dt><dd>{synonyms.join(' · ')}</dd></div>
         ) : null}
         {(card.collocations ?? []).length > 0 ? (
           <div><dt>Collocations</dt><dd>{card.collocations.join(' · ')}</dd></div>
         ) : null}
-        {(card.cloze_distractors_en ?? []).length > 0 ? (
-          <div><dt>Word bank</dt><dd>{card.cloze_distractors_en.join(' · ')}</dd></div>
+        {distractors.length > 0 ? (
+          <div><dt>Word bank</dt><dd>{distractors.join(' · ')}</dd></div>
         ) : null}
       </dl>
 
@@ -100,7 +105,9 @@ function GeneratedCardList({ job }) {
 
       <ul className="ai-card-list">
         {visible.map((card) => {
-          const key = `${card.spanish_text}|${card.english_text}`;
+          const prompt = card.l1_text ?? card.prompt_l1 ?? card.spanish_text ?? card.prompt_es;
+          const answer = card.l2_text ?? card.answer_l2 ?? card.english_text ?? card.answer_en;
+          const key = `${prompt}|${answer}`;
           const isOpen = openId === key;
           return (
             <li key={key} className={`ai-card ai-card--${card._status}`}>
@@ -112,8 +119,8 @@ function GeneratedCardList({ job }) {
               >
                 <span className="ai-card__status" aria-hidden="true" />
                 <span className="ai-card__text">
-                  <span className="ai-card__prompt">{card.spanish_text}</span>
-                  <span className="ai-card__answer">{card.english_text}</span>
+                  <span className="ai-card__prompt">{prompt}</span>
+                  <span className="ai-card__answer">{answer}</span>
                 </span>
                 <span className="ai-card__tags">
                   {card.section_name ? <span className="st-chip st-chip--muted">{card.section_name}</span> : null}

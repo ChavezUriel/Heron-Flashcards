@@ -18,6 +18,7 @@ import DeckPublishModal from '../components/DeckPublishModal';
 import DeckSyncModal from '../components/DeckSyncModal';
 import ProposeChangesModal from '../components/ProposeChangesModal';
 import { buildHighlightSegments, normalizeSearchText, scoreFieldMatch } from '../textSearch';
+import { getLanguage } from '../languages';
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'All' },
@@ -26,8 +27,8 @@ const STATUS_FILTERS = [
 ];
 
 const SORT_ACCESSORS = {
-  word: (card) => card.prompt_es ?? '',
-  translation: (card) => card.answer_en ?? '',
+  word: (card) => card.prompt_l1 ?? card.prompt_es ?? '',
+  translation: (card) => card.answer_l2 ?? card.answer_en ?? '',
   section: (card) => card.section_name ?? '',
 };
 
@@ -182,23 +183,27 @@ function OverflowMenu({ label, items, triggerText = null, hasPending = false }) 
 // only ever break ties. `matchedIn` names the field that carried the match
 // when the headline pair itself did not hit.
 function scoreCardMatch(card, query) {
+  const prompt = card.prompt_l1 ?? card.prompt_es;
+  const answer = card.answer_l2 ?? card.answer_en;
   const wordScore = Math.max(
-    scoreFieldMatch(card.prompt_es, query),
-    scoreFieldMatch(card.answer_en, query),
+    scoreFieldMatch(prompt, query),
+    scoreFieldMatch(answer, query),
   );
 
-  const translationsScore = (card.main_translations_es ?? [])
+  const l1Translations = card.l1_translations ?? card.main_translations_es ?? [];
+  const translationsScore = l1Translations
     .reduce((best, value) => Math.max(best, scoreFieldMatch(value, query)), 0);
-  const synonymsScore = (card.synonyms_en ?? [])
+  const l2Synonyms = card.l2_synonyms ?? card.synonyms_en ?? [];
+  const synonymsScore = l2Synonyms
     .reduce((best, value) => Math.max(best, scoreFieldMatch(value, query)), 0);
   const altWordScore = Math.max(translationsScore, synonymsScore);
 
   const secondaryFields = [
     ['section', card.section_name],
     ['part of speech', card.part_of_speech],
-    ['definition', card.definition_en],
+    ['definition', card.l2_definition ?? card.definition_en],
     ['collocations', (card.collocations ?? []).join(' ')],
-    ['examples', [card.example_sentence, card.example_es, card.example_en].filter(Boolean).join(' ')],
+    ['examples', [card.example_sentence, card.example_l1, card.example_l2, card.example_es, card.example_en].filter(Boolean).join(' ')],
   ];
   let secondaryScore = 0;
   let secondaryLabel = null;
@@ -440,6 +445,8 @@ function DeckWordsPage() {
   const totalCards = preview.cards.length;
   const hiddenCount = preview.cards.filter((card) => !card.is_enabled).length;
   const isFiltered = Boolean(normalizedQuery) || statusFilter !== 'all';
+  const promptLabel = getLanguage(preview?.language_from ?? 'es')?.name ?? 'Prompt';
+  const answerLabel = getLanguage(preview?.language_to ?? 'en')?.name ?? 'Translation';
 
   // How many of the rows currently on screen each bulk action would actually
   // change — drives whether the menu item is worth offering.
@@ -863,8 +870,8 @@ function DeckWordsPage() {
                 <table className="deck-table">
                   <thead>
                     <tr>
-                      <SortableHeader label="Spanish" sortKey="word" sort={sort} onSort={handleSort} className="deck-table__col--word" />
-                      <SortableHeader label="English" sortKey="translation" sort={sort} onSort={handleSort} className="deck-table__col--translation" />
+                      <SortableHeader label={promptLabel} sortKey="word" sort={sort} onSort={handleSort} className="deck-table__col--word" />
+                      <SortableHeader label={answerLabel} sortKey="translation" sort={sort} onSort={handleSort} className="deck-table__col--translation" />
                       <SortableHeader label="Section" sortKey="section" sort={sort} onSort={handleSort} className="deck-table__col--section" />
                       <th className="deck-table__col--pos">Part of speech</th>
                       {canEdit ? <th className="deck-table__col--actions">Visible</th> : null}
@@ -1028,6 +1035,8 @@ function DeckWordsPage() {
 
 function DeckWordRow({ card, canEdit = true, isPending, matchedIn, highlightQuery, onToggle, onOpenDetails }) {
   const toggleTitle = card.is_enabled ? 'Hide card from deck' : 'Show card in deck again';
+  const prompt = card.prompt_l1 ?? card.prompt_es;
+  const answer = card.answer_l2 ?? card.answer_en;
 
   return (
     <tr
@@ -1035,12 +1044,12 @@ function DeckWordRow({ card, canEdit = true, isPending, matchedIn, highlightQuer
       onClick={onOpenDetails}
     >
       <td className="deck-table__cell deck-table__cell--word">
-        <strong><HighlightText text={card.prompt_es} query={highlightQuery} /></strong>
+        <strong><HighlightText text={prompt} query={highlightQuery} /></strong>
         {!card.is_enabled ? <span className="deck-table__state-chip">Hidden</span> : null}
         {matchedIn ? <span className="deck-table__match-chip">Matched in {matchedIn}</span> : null}
       </td>
       <td className="deck-table__cell deck-table__cell--translation">
-        <HighlightText text={card.answer_en} query={highlightQuery} />
+        <HighlightText text={answer} query={highlightQuery} />
       </td>
       <td className="deck-table__cell deck-table__cell--section">
         {card.section_name
@@ -1058,7 +1067,7 @@ function DeckWordRow({ card, canEdit = true, isPending, matchedIn, highlightQuer
               type="button"
               role="switch"
               aria-checked={card.is_enabled}
-              aria-label={`Card ${card.prompt_es} visible in deck`}
+              aria-label={`Card ${prompt} visible in deck`}
               title={toggleTitle}
               onClick={(event) => { event.stopPropagation(); onToggle(); }}
               disabled={isPending}
