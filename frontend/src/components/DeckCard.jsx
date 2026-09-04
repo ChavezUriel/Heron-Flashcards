@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { DECK_ORIGIN_CONFIG, DeckOriginIcon, getDeckOriginType } from './DeckOriginBadge';
+import { DeckPairBadge } from './DeckPairBadge';
 
 function percentage(value) {
   return Math.round(value * 100);
@@ -214,7 +215,15 @@ function DeckCard({
               deck.is_owner ? t('deck.origin_managing_tooltip') : t('deck.origin_public_tooltip')
             )}
           </div>
-          <div className="h-market-card__meta">{t('market.cards_count_upper', { count: deck.total_cards })}</div>
+          <div className="h-market-card__meta">
+            <span>{t('market.cards_count_upper', { count: deck.total_cards })}</span>
+            {deck.language_from && deck.language_to ? (
+              <>
+                <span className="h-market-card__meta-sep">·</span>
+                <DeckPairBadge deck={deck} />
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
 

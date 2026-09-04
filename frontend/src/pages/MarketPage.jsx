@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { claimMarketDeck, fetchMarketDecks, updateDeckHomeSelection } from '../api';
+import { claimMarketDeck, fetchHomeDecks, fetchMarketDecks, updateDeckHomeSelection } from '../api';
 import DeckCard from '../components/DeckCard';
+import { PairIcon } from '../components/DeckPairBadge';
 import { useLocale } from '../context/LocaleContext';
 import { normalizeSearchText } from '../textSearch';
 
@@ -43,12 +44,69 @@ function MarketPage() {
   const [pendingDeckIds, setPendingDeckIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Pair facet states
+  const [activePairKeys, setActivePairKeys] = useState(['es->en']);
+  const [availableMarketPairs, setAvailableMarketPairs] = useState([]);
+  const [selectedPair, setSelectedPair] = useState('es->en');
+  const [initialized, setInitialized] = useState(false);
+
+  // Initial load: discover active pairs and market pairs
   useEffect(() => {
+    let cancelled = false;
+
+    async function loadInitial() {
+      try {
+        const [homeDecks, allMarket] = await Promise.all([
+          fetchHomeDecks().catch(() => []),
+          fetchMarketDecks('all').catch(() => []),
+        ]);
+
+        if (cancelled) return;
+
+        const homePairs = Array.from(new Set(
+          (homeDecks || [])
+            .filter((d) => d.language_from && d.language_to)
+            .map((d) => `${d.language_from}->${d.language_to}`)
+        ));
+
+        const marketPairs = Array.from(new Set(
+          (allMarket || [])
+            .filter((d) => d.language_from && d.language_to)
+            .map((d) => `${d.language_from}->${d.language_to}`)
+        ));
+
+        const activeList = homePairs.length > 0 ? homePairs : ['es->en'];
+        setActivePairKeys(activeList);
+        setAvailableMarketPairs(marketPairs);
+
+        // Default market to learner's active pair
+        const initialSelected = activeList[0] || 'es->en';
+        setSelectedPair(initialSelected);
+        setInitialized(true);
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError.message);
+          setStatus('error');
+        }
+      }
+    }
+
+    loadInitial();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch decks when selectedPair changes or on initialization
+  useEffect(() => {
+    if (!initialized) return;
     let cancelled = false;
 
     async function loadDecks() {
       try {
-        const nextDecks = await fetchMarketDecks();
+        setStatus('loading');
+        const nextDecks = await fetchMarketDecks(selectedPair);
         if (!cancelled) {
           setDecks(sortDecks(nextDecks, localeCompare));
           setStatus('ready');
@@ -66,7 +124,20 @@ function MarketPage() {
     return () => {
       cancelled = true;
     };
-  }, [localeCompare]);
+  }, [initialized, selectedPair, localeCompare]);
+
+  // Combined facet pairs: active pairs first, then any other market pairs
+  const facetPairs = useMemo(() => {
+    const pairs = new Set();
+    for (const p of activePairKeys) {
+      pairs.add(p);
+    }
+    for (const p of availableMarketPairs) {
+      pairs.add(p);
+    }
+    pairs.add('es->en');
+    return Array.from(pairs);
+  }, [activePairKeys, availableMarketPairs]);
 
   const normalizedSearchQuery = normalizeSearchText(searchQuery);
   const visibleDecks = useMemo(() => {
@@ -86,8 +157,6 @@ function MarketPage() {
 
     try {
       await updateDeckHomeSelection(deckId, isSelectedOnHome);
-      // Update selection state but do NOT re-sort while the market page is open.
-      // The ordering should be generated when the market screen is opened.
       setDecks((current) => current.map((deck) => (deck.id === deckId ? { ...deck, is_selected_on_home: isSelectedOnHome } : deck)));
     } catch (requestError) {
       setError(requestError.message);
@@ -116,7 +185,7 @@ function MarketPage() {
   const openProposalsToReview = decks.reduce((sum, deck) => sum + (deck.is_owner ? (deck.open_proposals ?? 0) : 0), 0);
   const hasProposalActivity = decks.some((deck) => deck.is_owner || (deck.my_open_proposals ?? 0) > 0);
 
-  if (status === 'loading') {
+  if (status === 'loading' && !initialized) {
     return <p className="h-empty-state">{t('market.loading_market')}</p>;
   }
 
@@ -158,10 +227,64 @@ function MarketPage() {
         </label>
       </div>
 
-      {visibleDecks.length === 0 ? (
+      <div className="h-market__facets" role="tablist" aria-label={t('market.pair_filter_aria')}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={selectedPair === 'all'}
+          className={`h-market__facet-btn ${selectedPair === 'all' ? 'h-market__facet-btn--active' : ''}`}
+          onClick={() => setSelectedPair('all')}
+        >
+          <span>{t('market.all_pairs')}</span>
+        </button>
+
+        {facetPairs.map((pairKey) => {
+          const [from, to] = pairKey.split('->');
+          const isActiveLearnerPair = activePairKeys.includes(pairKey);
+          const isSelected = selectedPair === pairKey;
+          const label = `${String(from).toUpperCase()} → ${String(to).toUpperCase()}`;
+
+          return (
+            <button
+              key={pairKey}
+              type="button"
+              role="tab"
+              aria-selected={isSelected}
+              className={`h-market__facet-btn ${isSelected ? 'h-market__facet-btn--active' : ''}`}
+              onClick={() => setSelectedPair(pairKey)}
+            >
+              <PairIcon size={12} />
+              <span>{label}</span>
+              {isActiveLearnerPair ? (
+                <span className="h-market__facet-active-indicator">
+                  {t('market.active_pair_badge')}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {status === 'loading' ? (
+        <p className="h-empty-state">{t('market.loading_market')}</p>
+      ) : visibleDecks.length === 0 ? (
         <div className="h-empty-panel panel">
-          <p>{decks.length === 0 ? t('market.all_decks_on_home') : t('market.no_matches')}</p>
-          <Link to="/" className="button button--primary">{t('market.back_home_btn')}</Link>
+          <p>
+            {decks.length === 0
+              ? (selectedPair !== 'all' ? t('market.no_decks_for_pair') : t('market.all_decks_on_home'))
+              : t('market.no_matches')}
+          </p>
+          {selectedPair !== 'all' ? (
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={() => setSelectedPair('all')}
+            >
+              {t('market.all_pairs')}
+            </button>
+          ) : (
+            <Link to="/" className="button button--primary">{t('market.back_home_btn')}</Link>
+          )}
         </div>
       ) : (
         <div className="h-market-grid">

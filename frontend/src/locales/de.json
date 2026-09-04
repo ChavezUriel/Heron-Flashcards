@@ -148,7 +148,8 @@
     "search_matches_aria": "Suchtreffer für {title}",
     "review_updates_aria": "{count, plural, one {1 Markt-Aktualisierung für {title} prüfen} other {# Markt-Aktualisierungen für {title} prüfen}}",
     "review_updates_title": "Die Marktquelle dieses Decks wurde geändert — Aktualisierungen prüfen und abrufen",
-    "market_updates_count": "{count, plural, one {1 Markt-Aktualisierung} other {# Markt-Aktualisierungen}}"
+    "market_updates_count": "{count, plural, one {1 Markt-Aktualisierung} other {# Markt-Aktualisierungen}}",
+    "pair_badge_tooltip": "{from} nach {to}"
   },
   "home": {
     "search_placeholder": "Decks und Wörter suchen…",
@@ -265,7 +266,11 @@
     "your_proposals_link": "Deine Änderungsvorschläge →",
     "all_decks_on_home": "Alle Decks befinden sich bereits auf deinem Startbildschirm.",
     "no_matches": "Keine Markt-Decks entsprechen deiner Suche.",
-    "back_home_btn": "Zurück zur Startseite"
+    "back_home_btn": "Zurück zur Startseite",
+    "pair_filter_aria": "Nach Sprachpaar filtern",
+    "all_pairs": "Alle Sprachen",
+    "active_pair_badge": "Dein Paar",
+    "no_decks_for_pair": "Keine Markt-Decks für dieses Sprachpaar gefunden."
   },
   "proposals": {
     "kicker": "COMMUNITY-BEITRÄGE",

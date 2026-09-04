@@ -148,7 +148,8 @@
     "search_matches_aria": "Coincidencias de búsqueda para {title}",
     "review_updates_aria": "{count, plural, one {Revisar 1 actualización del mercado para {title}} other {Revisar # actualizaciones del mercado para {title}}}",
     "review_updates_title": "La fuente del mercado de este mazo cambió: revisa y obtén las actualizaciones",
-    "market_updates_count": "{count, plural, one {1 actualización del mercado} other {# actualizaciones del mercado}}"
+    "market_updates_count": "{count, plural, one {1 actualización del mercado} other {# actualizaciones del mercado}}",
+    "pair_badge_tooltip": "{from} a {to}"
   },
   "home": {
     "search_placeholder": "Buscar mazos y palabras…",
@@ -265,7 +266,11 @@
     "your_proposals_link": "Tus propuestas de cambio →",
     "all_decks_on_home": "Todos los mazos ya están en tu pantalla de inicio.",
     "no_matches": "Ningún mazo del mercado coincide con tu búsqueda.",
-    "back_home_btn": "Volver al inicio"
+    "back_home_btn": "Volver al inicio",
+    "pair_filter_aria": "Filtrar por par de idiomas",
+    "all_pairs": "Todos los idiomas",
+    "active_pair_badge": "Tu par",
+    "no_decks_for_pair": "No se encontraron barajas del mercado para este par de idiomas."
   },
   "proposals": {
     "kicker": "CONTRIBUCIONES DE LA COMUNIDAD",

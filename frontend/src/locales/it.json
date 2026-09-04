@@ -148,7 +148,8 @@
     "search_matches_aria": "Corrispondenze di ricerca per {title}",
     "review_updates_aria": "{count, plural, one {Controlla 1 aggiornamento del mercato per {title}} other {Controlla # aggiornamenti del mercato per {title}}}",
     "review_updates_title": "La fonte di questo mazzo nel mercato è cambiata: controlla e applica gli aggiornamenti",
-    "market_updates_count": "{count, plural, one {1 aggiornamento del mercado} other {# aggiornamenti del mercato}}"
+    "market_updates_count": "{count, plural, one {1 aggiornamento del mercado} other {# aggiornamenti del mercato}}",
+    "pair_badge_tooltip": "{from} a {to}"
   },
   "home": {
     "search_placeholder": "Cerca mazzi e parole…",
@@ -265,7 +266,11 @@
     "your_proposals_link": "Le tue proposte di modifica →",
     "all_decks_on_home": "Tutti i mazzi sono già nella tua schermata iniziale.",
     "no_matches": "Nessun mazzo del mercato corrisponde alla tua ricerca.",
-    "back_home_btn": "Torna alla home"
+    "back_home_btn": "Torna alla home",
+    "pair_filter_aria": "Filtra per coppia linguistica",
+    "all_pairs": "Tutte le lingue",
+    "active_pair_badge": "La tua coppia",
+    "no_decks_for_pair": "Nessun mazzo del mercato trovato per questa coppia linguistica."
   },
   "proposals": {
     "kicker": "CONTRIBUTI DELLA COMMUNITY",

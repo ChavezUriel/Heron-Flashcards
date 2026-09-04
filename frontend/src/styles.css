@@ -364,6 +364,12 @@ html {
   color: #7c3aed;
 }
 
+.deck-type-badge--pair {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  color: #059669;
+}
+
 .deck-grid__status {
   margin: 0 0 1rem;
 }
@@ -4464,6 +4470,59 @@ html {
   justify-self: flex-start;
 }
 
+/* Market language pair facets */
+.h-market__facets {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.h-market__facet-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 160ms ease;
+  font-family: inherit;
+}
+
+.h-market__facet-btn:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.h-market__facet-btn--active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.h-market__facet-active-indicator {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  margin-left: 2px;
+}
+
 .h-market-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -4515,11 +4574,19 @@ html {
 }
 
 .h-market-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   font-family: var(--mono-font);
   font-size: 10px;
   letter-spacing: 0.12em;
   color: var(--muted);
   margin-top: 8px;
+}
+
+.h-market-card__meta-sep {
+  opacity: 0.5;
 }
 
 .h-market-card__badge {

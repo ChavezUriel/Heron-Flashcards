@@ -148,7 +148,8 @@
     "search_matches_aria": "Correspondances de recherche pour {title}",
     "review_updates_aria": "{count, plural, one {Examiner 1 mise à jour du marché pour {title}} other {Examiner # mises à jour du marché pour {title}}}",
     "review_updates_title": "La source de ce paquet sur le marché a changé — examinez et appliquez les mises à jour",
-    "market_updates_count": "{count, plural, one {1 mise à jour du marché} other {# mises à jour du marché}}"
+    "market_updates_count": "{count, plural, one {1 mise à jour du marché} other {# mises à jour du marché}}",
+    "pair_badge_tooltip": "{from} vers {to}"
   },
   "home": {
     "search_placeholder": "Rechercher des decks et des mots…",
@@ -265,7 +266,11 @@
     "your_proposals_link": "Vos propositions de modification →",
     "all_decks_on_home": "Tous les decks sont déjà sur votre écran d'accueil.",
     "no_matches": "Aucun deck du marché ne correspond à votre recherche.",
-    "back_home_btn": "Retour à l'accueil"
+    "back_home_btn": "Retour à l'accueil",
+    "pair_filter_aria": "Filtrer par paire de langues",
+    "all_pairs": "Toutes les langues",
+    "active_pair_badge": "Votre paire",
+    "no_decks_for_pair": "Aucun paquet du marché trouvé pour cette paire de langues."
   },
   "proposals": {
     "kicker": "CONTRIBUTIONS COMMUNAUTAIRES",

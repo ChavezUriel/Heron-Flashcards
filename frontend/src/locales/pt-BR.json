@@ -148,7 +148,8 @@
     "search_matches_aria": "Correspondências de busca para {title}",
     "review_updates_aria": "{count, plural, one {Revisar 1 atualização do mercado para {title}} other {Revisar # atualizações do mercado para {title}}}",
     "review_updates_title": "A fonte de mercado deste baralho mudou — revise e obtenha as atualizações",
-    "market_updates_count": "{count, plural, one {1 atualização do mercado} other {# atualizações do mercado}}"
+    "market_updates_count": "{count, plural, one {1 atualização do mercado} other {# atualizações do mercado}}",
+    "pair_badge_tooltip": "{from} para {to}"
   },
   "home": {
     "search_placeholder": "Buscar baralhos e palavras…",
@@ -265,7 +266,11 @@
     "your_proposals_link": "Suas propostas de alteração →",
     "all_decks_on_home": "Todos os baralhos já estão na sua tela inicial.",
     "no_matches": "Nenhum baralho do mercado corresponde à sua busca.",
-    "back_home_btn": "Voltar ao início"
+    "back_home_btn": "Voltar ao início",
+    "pair_filter_aria": "Filtrar por par de idiomas",
+    "all_pairs": "Todos os idiomas",
+    "active_pair_badge": "Seu par",
+    "no_decks_for_pair": "Nenhum baralho do mercado encontrado para este par de idiomas."
   },
   "proposals": {
     "kicker": "CONTRIBUIÇÕES DA COMUNIDADE",

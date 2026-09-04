@@ -219,8 +219,24 @@ export function fetchHomeDecks() {
   return rpc('get_home_decks');
 }
 
-export function fetchMarketDecks() {
-  return rpc('get_market_decks');
+export function fetchMarketDecks(pairFilter = null) {
+  if (!pairFilter || pairFilter === 'all') {
+    return rpc('get_market_decks');
+  }
+  const language_from = typeof pairFilter === 'string'
+    ? pairFilter.split('->')[0]
+    : (pairFilter.language_from || pairFilter.l1 || null);
+  const language_to = typeof pairFilter === 'string'
+    ? pairFilter.split('->')[1]
+    : (pairFilter.language_to || pairFilter.l2 || null);
+
+  if (!language_from && !language_to) {
+    return rpc('get_market_decks');
+  }
+  return rpc('get_market_decks', {
+    p_language_from: language_from === 'all' ? null : language_from,
+    p_language_to: language_to === 'all' ? null : language_to,
+  });
 }
 
 export function updateDeckSmartPracticeInclusion(deckId, isEnabledInSmartPractice) {

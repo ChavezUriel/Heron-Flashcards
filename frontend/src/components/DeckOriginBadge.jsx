@@ -186,4 +186,5 @@ export function DeckOriginBadge({
   );
 }
 
+export { DeckPairBadge, PairIcon } from './DeckPairBadge';
 export default DeckOriginBadge;

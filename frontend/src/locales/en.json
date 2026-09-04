@@ -148,7 +148,8 @@
     "search_matches_aria": "Search matches for {title}",
     "review_updates_aria": "{count, plural, one {Review 1 market update for {title}} other {Review # market updates for {title}}}",
     "review_updates_title": "This deck's market source changed — review and pull the updates",
-    "market_updates_count": "{count, plural, one {1 market update} other {# market updates}}"
+    "market_updates_count": "{count, plural, one {1 market update} other {# market updates}}",
+    "pair_badge_tooltip": "{from} to {to}"
   },
   "home": {
     "search_placeholder": "Search decks and words…",
@@ -265,7 +266,11 @@
     "your_proposals_link": "Your change proposals →",
     "all_decks_on_home": "All decks are already on your home screen.",
     "no_matches": "No market decks match your search.",
-    "back_home_btn": "Back home"
+    "back_home_btn": "Back home",
+    "pair_filter_aria": "Filter by language pair",
+    "all_pairs": "All languages",
+    "active_pair_badge": "Your pair",
+    "no_decks_for_pair": "No market decks found for this language pair."
   },
   "proposals": {
     "kicker": "COMMUNITY CONTRIBUTIONS",
