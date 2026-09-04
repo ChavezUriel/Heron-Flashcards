@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getEffectiveAiCredential,
   reviewSingleCard,
@@ -17,6 +18,7 @@ function CardDetailsModal({
   onDelete = undefined,
   deck = undefined,
 }) {
+  const { t } = useTranslation();
   const sourceLang = getLanguage(deck?.language_from ?? card?.language_from ?? 'es');
   const targetLang = getLanguage(deck?.language_to ?? card?.language_to ?? 'en');
   const sourceLabel = sourceLang?.name ?? 'Prompt';
@@ -24,7 +26,7 @@ function CardDetailsModal({
   const canEdit = typeof onSave === 'function';
   const canToggle = typeof onToggle === 'function' && typeof card.is_enabled === 'boolean';
   const canDelete = typeof onDelete === 'function';
-  const toggleLabel = card.is_enabled ? 'Hide card' : 'Show card';
+  const toggleLabel = card.is_enabled ? t('card_details.hide_card') : t('card_details.show_card');
   const [isEditing, setIsEditing] = useState(startInEditMode && canEdit);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -146,7 +148,7 @@ function CardDetailsModal({
         setAiStage('idle');
         return;
       }
-      setAiError(err?.message || 'Error occurred while reviewing card with AI.');
+      setAiError(err?.message || t('card_details.ai_error_review'));
       setAiStage('error');
     }
   }
@@ -175,7 +177,7 @@ function CardDetailsModal({
         setAiStage('reviewed');
         return;
       }
-      setAiError(err?.message || 'Failed to generate AI fixes.');
+      setAiError(err?.message || t('card_details.ai_error_fix'));
       setAiStage('error');
     }
   }
@@ -222,20 +224,20 @@ function CardDetailsModal({
         const saved = await onSave(updatedPayload);
         if (saved) {
           setFormValues(buildFormValues(saved));
-          setAiNotification('✓ AI fixes approved and saved to flashcard!');
+          setAiNotification(t('card_details.ai_saved_toast'));
         } else {
           setFormValues(buildFormValues({ ...card, ...updatedPayload }));
-          setAiNotification('✓ AI fixes applied to card form.');
+          setAiNotification(t('card_details.ai_applied_toast'));
         }
       } else {
         setFormValues(buildFormValues({ ...card, ...updatedPayload }));
-        setAiNotification('✓ AI fixes applied to card view.');
+        setAiNotification(t('card_details.ai_applied_view_toast'));
       }
       setAiStage('idle');
       setAiProposedFix(null);
       setAiResult(null);
     } catch (err) {
-      setSaveError(err?.message || 'Unable to save approved fixes.');
+      setSaveError(err?.message || t('card_details.ai_error_save_fixes'));
     } finally {
       setIsSavingAiFixes(false);
     }
@@ -245,7 +247,7 @@ function CardDetailsModal({
     setAiStage('idle');
     setAiProposedFix(null);
     setAiResult(null);
-    setAiNotification('Proposed AI fixes were disapproved and discarded.');
+    setAiNotification(t('card_details.ai_discarded_toast'));
   }
 
   function handleCancelAi() {
@@ -308,7 +310,7 @@ function CardDetailsModal({
       return;
     }
 
-    setSaveError('Unable to save changes.');
+    setSaveError(t('card_details.save_error'));
   }
 
   function handleCancelEdit() {
@@ -323,16 +325,16 @@ function CardDetailsModal({
     : [];
 
   return (
-    <div className="details-modal" role="dialog" aria-modal="true" aria-label="Flashcard metadata">
+    <div className="details-modal" role="dialog" aria-modal="true" aria-label={t('card_details.modal_aria')}>
       <button
-        aria-label="Close flashcard metadata"
+        aria-label={t('card_details.close_dialog')}
         className="details-modal__backdrop"
         type="button"
         onClick={onClose}
       />
       <div className="details-modal__panel">
         <button
-          aria-label="Close flashcard metadata"
+          aria-label={t('card_details.close_dialog')}
           className="details-modal__close"
           type="button"
           onClick={onClose}
@@ -346,8 +348,8 @@ function CardDetailsModal({
         <div className="details-modal__header">
           <div className="details-modal__header-row">
             <div className="details-modal__header-content">
-              <p className="flashcard__label">Flashcard metadata</p>
-              <h3>{isEditing ? (formValues.answer_l2 || 'Flashcard') : (card.answer_l2 || 'Flashcard')}</h3>
+              <p className="flashcard__label">{t('card_details.metadata_label')}</p>
+              <h3>{isEditing ? (formValues.answer_l2 || t('card_details.flashcard_fallback')) : (card.answer_l2 || t('card_details.flashcard_fallback'))}</h3>
             </div>
             <div className="details-modal__header-actions">
               <button
@@ -355,12 +357,12 @@ function CardDetailsModal({
                 className="button button--secondary button--ai-review"
                 onClick={handleStartAiReview}
                 disabled={isPending || aiStage === 'reviewing' || aiStage === 'fixing' || isSavingAiFixes}
-                title="Review card quality with AI"
+                title={t('card_details.ai_review_tooltip')}
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" className="button--ai-icon">
                   <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span>{aiStage === 'reviewing' ? 'Reviewing…' : aiStage === 'fixing' ? 'Fixing…' : 'AI Review'}</span>
+                <span>{aiStage === 'reviewing' ? t('card_details.ai_reviewing') : aiStage === 'fixing' ? t('card_details.ai_fixing') : t('card_details.ai_review_btn_short')}</span>
               </button>
             </div>
           </div>
@@ -371,7 +373,7 @@ function CardDetailsModal({
             <span>{aiNotification}</span>
             <button
               type="button"
-              aria-label="Dismiss notification"
+              aria-label={t('card_details.dismiss_notification')}
               style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'inherit', fontWeight: 'bold', fontSize: '1rem', padding: '0 0.25rem' }}
               onClick={() => setAiNotification('')}
             >
@@ -385,11 +387,11 @@ function CardDetailsModal({
           <div className="card-ai-panel card-ai-panel--loading">
             <div className="card-ai-spinner" />
             <div className="card-ai-panel__content" style={{ flex: 1 }}>
-              <h4>Reviewing Flashcard with AI…</h4>
-              <p>Analyzing translation accuracy, definitions, collocations, synonyms, and example sentences.</p>
+              <h4>{t('card_details.ai_reviewing_title')}</h4>
+              <p>{t('card_details.ai_reviewing_desc')}</p>
             </div>
             <button type="button" className="button button--secondary st-button--compact" onClick={handleCancelAi}>
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         )}
@@ -398,15 +400,15 @@ function CardDetailsModal({
           <div className="card-ai-panel card-ai-panel--warning">
             <div className="card-ai-panel__head">
               <div className="card-ai-panel__head-title">
-                <span className="card-ai-badge card-ai-badge--warning">⚠️ AI Provider Key Required</span>
+                <span className="card-ai-badge card-ai-badge--warning">{t('card_details.ai_no_key_badge')}</span>
                 <p className="card-ai-panel__summary">
-                  No active AI provider API key found. Please configure your API key in the AI Deck Builder or Settings to use AI card review.
+                  {t('card_details.ai_no_key_desc')}
                 </p>
               </div>
             </div>
             <div className="card-ai-panel__actions">
               <button type="button" className="button button--secondary st-button--compact" onClick={handleDismissAi}>
-                Dismiss
+                {t('card_details.dismiss')}
               </button>
             </div>
           </div>
@@ -416,16 +418,16 @@ function CardDetailsModal({
           <div className="card-ai-panel card-ai-panel--error">
             <div className="card-ai-panel__head">
               <div className="card-ai-panel__head-title">
-                <span className="card-ai-badge card-ai-badge--warning">Error</span>
-                <p className="card-ai-panel__summary">{aiError || 'Failed to complete AI review.'}</p>
+                <span className="card-ai-badge card-ai-badge--warning">{t('common.error')}</span>
+                <p className="card-ai-panel__summary">{aiError || t('card_details.ai_error_default')}</p>
               </div>
             </div>
             <div className="card-ai-panel__actions">
               <button type="button" className="button button--secondary st-button--compact" onClick={handleStartAiReview}>
-                Retry
+                {t('card_details.retry')}
               </button>
               <button type="button" className="button button--secondary st-button--compact" onClick={handleDismissAi}>
-                Dismiss
+                {t('card_details.dismiss')}
               </button>
             </div>
           </div>
@@ -435,11 +437,11 @@ function CardDetailsModal({
           <div className="card-ai-panel card-ai-panel--passed">
             <div className="card-ai-panel__icon--passed">✓</div>
             <div className="card-ai-panel__content" style={{ flex: 1 }}>
-              <h4>AI Review: Card Looks Great!</h4>
-              <p>{aiResult.summary || 'No issues detected. Card meets high quality and accuracy standards.'}</p>
+              <h4>{t('card_details.ai_passed_title')}</h4>
+              <p>{aiResult.summary || t('card_details.ai_passed_desc')}</p>
             </div>
             <button type="button" className="button button--secondary st-button--compact" onClick={handleDismissAi}>
-              Done
+              {t('common.done')}
             </button>
           </div>
         )}
@@ -449,7 +451,7 @@ function CardDetailsModal({
             <div className="card-ai-panel__head">
               <div className="card-ai-panel__head-title">
                 <span className="card-ai-badge card-ai-badge--warning">
-                  ⚠️ Issues Detected ({aiResult.issues.length})
+                  {t('card_details.ai_issues_badge', { count: aiResult.issues.length })}
                 </span>
                 <p className="card-ai-panel__summary">{aiResult.summary}</p>
               </div>
@@ -459,7 +461,7 @@ function CardDetailsModal({
               {aiResult.issues.map((issue, idx) => (
                 <li key={idx} className={`card-ai-issue-item card-ai-issue-item--${issue.severity}`}>
                   <div className="card-ai-issue-item__header">
-                    <span className="card-ai-field-tag">{fieldLabel(issue.field)}</span>
+                    <span className="card-ai-field-tag">{fieldLabel(issue.field, t)}</span>
                     <span className="card-ai-severity-tag">{issue.severity}</span>
                   </div>
                   <p className="card-ai-issue-item__msg">{issue.message}</p>
@@ -480,10 +482,10 @@ function CardDetailsModal({
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" className="button--ai-icon">
                   <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" fill="none" stroke="currentColor" strokeWidth="1.8" />
                 </svg>
-                <span>Generate Fixes</span>
+                <span>{t('card_details.ai_generate_fixes_btn')}</span>
               </button>
               <button type="button" className="button button--secondary" onClick={handleDismissAi}>
-                Dismiss
+                {t('card_details.dismiss')}
               </button>
             </div>
           </div>
@@ -493,11 +495,11 @@ function CardDetailsModal({
           <div className="card-ai-panel card-ai-panel--loading">
             <div className="card-ai-spinner" />
             <div className="card-ai-panel__content" style={{ flex: 1 }}>
-              <h4>Generating AI Fixes…</h4>
-              <p>Generating corrected translations, definitions, and examples based on the audit.</p>
+              <h4>{t('card_details.ai_generating_fixes_title')}</h4>
+              <p>{t('card_details.ai_generating_fixes_desc')}</p>
             </div>
             <button type="button" className="button button--secondary st-button--compact" onClick={handleCancelAi}>
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         )}
@@ -506,7 +508,7 @@ function CardDetailsModal({
           <div className="card-ai-panel card-ai-panel--fixes">
             <div className="card-ai-panel__head">
               <div className="card-ai-panel__head-title">
-                <span className="card-ai-badge card-ai-badge--success">✨ Proposed AI Fixes</span>
+                <span className="card-ai-badge card-ai-badge--success">{t('card_details.ai_proposed_fixes_badge')}</span>
                 {aiProposedFix.explanation ? (
                   <p className="card-ai-panel__summary">{aiProposedFix.explanation}</p>
                 ) : null}
@@ -517,30 +519,30 @@ function CardDetailsModal({
               <table className="card-ai-diff-table">
                 <thead>
                   <tr>
-                    <th>Field</th>
-                    <th>Current</th>
-                    <th>Proposed Fix</th>
+                    <th>{t('common.field')}</th>
+                    <th>{t('common.current')}</th>
+                    <th>{t('card_details.proposed_fix_header')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {aiDiffs.map((diff) => (
                     <tr key={diff.key} className={diff.isChanged ? 'card-ai-diff-row--changed' : ''}>
                       <td className="card-ai-diff-col-field">
-                        <strong>{diff.label}</strong>
-                        {diff.isChanged ? <span className="card-ai-change-pill">Changed</span> : null}
+                        <strong>{getDiffFieldLabel(diff.key, diff.label, t, sourceLabel, targetLabel)}</strong>
+                        {diff.isChanged ? <span className="card-ai-change-pill">{t('card_details.diff_changed')}</span> : null}
                       </td>
                       <td className="card-ai-diff-col-from">
                         {diff.from ? (
                           <span className="card-ai-diff-text card-ai-diff-text--from">{diff.from}</span>
                         ) : (
-                          <em className="card-ai-diff-empty">(empty)</em>
+                          <em className="card-ai-diff-empty">{t('card_details.diff_empty')}</em>
                         )}
                       </td>
                       <td className="card-ai-diff-col-to">
                         {diff.to ? (
                           <span className="card-ai-diff-text card-ai-diff-text--to">{diff.to}</span>
                         ) : (
-                          <em className="card-ai-diff-empty">(empty)</em>
+                          <em className="card-ai-diff-empty">{t('card_details.diff_empty')}</em>
                         )}
                       </td>
                     </tr>
@@ -559,7 +561,7 @@ function CardDetailsModal({
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M5 12.5 9.2 16.7 19 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span>{isSavingAiFixes ? 'Saving…' : 'Approve Fixes'}</span>
+                <span>{isSavingAiFixes ? t('common.saving') : t('card_details.approve_fixes_btn')}</span>
               </button>
               <button
                 type="button"
@@ -570,14 +572,14 @@ function CardDetailsModal({
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M7 7 17 17M17 7 7 17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
-                <span>Disapprove</span>
+                <span>{t('card_details.disapprove_fixes_btn')}</span>
               </button>
             </div>
           </div>
         )}
 
         <div className="flashcard-details">
-          <Field label={`${sourceLabel} prompt`}>
+          <Field label={t('card_details.prompt_label', { language: sourceLabel })}>
             {isEditing ? (
               <input value={formValues.prompt_l1 ?? ''} onChange={(event) => updateField('prompt_l1', event.target.value)} />
             ) : (
@@ -585,7 +587,7 @@ function CardDetailsModal({
             )}
           </Field>
 
-          <Field label={`${targetLabel} answer`}>
+          <Field label={t('card_details.answer_label', { language: targetLabel })}>
             {isEditing ? (
               <input value={formValues.answer_l2 ?? ''} onChange={(event) => updateField('answer_l2', event.target.value)} />
             ) : (
@@ -593,31 +595,31 @@ function CardDetailsModal({
             )}
           </Field>
 
-          <Field label="Section">
+          <Field label={t('card_details.section_label')}>
             {isEditing ? (
               <input value={formValues.section_name} onChange={(event) => updateField('section_name', event.target.value)} />
             ) : (
-              <p>{card.section_name || 'Unassigned'}</p>
+              <p>{card.section_name || t('card_details.unassigned')}</p>
             )}
           </Field>
 
-          <Field label="Part of speech">
+          <Field label={t('card_details.part_of_speech_label')}>
             {isEditing ? (
               <input value={formValues.part_of_speech} onChange={(event) => updateField('part_of_speech', event.target.value)} />
             ) : (
-              <p>{card.part_of_speech || 'Not set'}</p>
+              <p>{card.part_of_speech || t('card_details.not_set')}</p>
             )}
           </Field>
 
-          <Field label={`Definition in ${targetLabel}`} wide>
+          <Field label={t('card_details.definition_in_lang', { language: targetLabel })} wide>
             {isEditing ? (
               <textarea value={formValues.l2_definition ?? formValues.definition_en} onChange={(event) => updateField('l2_definition', event.target.value)} rows={2} />
             ) : (
-              <p>{(card.l2_definition ?? card.definition_en) || 'Not set'}</p>
+              <p>{(card.l2_definition ?? card.definition_en) || t('card_details.not_set')}</p>
             )}
           </Field>
 
-          <Field label="Main translations">
+          <Field label={t('card_details.main_translations_label')}>
             {isEditing ? (
               <textarea value={formValues.l1_translations ?? formValues.main_translations_es} onChange={(event) => updateField('l1_translations', event.target.value)} rows={3} />
             ) : (card.l1_translations ?? card.main_translations_es)?.length ? (
@@ -627,11 +629,11 @@ function CardDetailsModal({
                 ))}
               </ul>
             ) : (
-              <p>Not set</p>
+              <p>{t('card_details.not_set')}</p>
             )}
           </Field>
 
-          <Field label="Collocations">
+          <Field label={t('card_details.collocations_label')}>
             {isEditing ? (
               <textarea value={formValues.collocations} onChange={(event) => updateField('collocations', event.target.value)} rows={3} />
             ) : card.collocations?.length ? (
@@ -641,11 +643,11 @@ function CardDetailsModal({
                 ))}
               </ul>
             ) : (
-              <p>Not set</p>
+              <p>{t('card_details.not_set')}</p>
             )}
           </Field>
 
-          <Field label={`Synonyms (${targetLabel})`}>
+          <Field label={t('card_details.synonyms_in_lang', { language: targetLabel })}>
             {isEditing ? (
               <textarea value={formValues.l2_synonyms ?? formValues.synonyms_en} onChange={(event) => updateField('l2_synonyms', event.target.value)} rows={3} />
             ) : (card.l2_synonyms ?? card.synonyms_en)?.length ? (
@@ -655,43 +657,43 @@ function CardDetailsModal({
                 ))}
               </ul>
             ) : (
-              <p>Not set</p>
+              <p>{t('card_details.not_set')}</p>
             )}
           </Field>
 
           {isEditing ? (
-            <Field label="Example sentences (3 standard)" wide>
+            <Field label={t('card_details.examples_editing_label')} wide>
               <div className="flashcard-details__examples-edit">
                 {[0, 1, 2].map((idx) => (
                   <div key={idx} className="flashcard-details__example-edit-group">
-                    <span className="flashcard-details__example-edit-label">Example {idx + 1}</span>
+                    <span className="flashcard-details__example-edit-label">{t('card_details.example_num', { num: idx + 1 })}</span>
                     <input
                       type="text"
                       value={formValues.examples[idx]?.l1 ?? formValues.examples[idx]?.es ?? ''}
                       onChange={(event) => updateExamplePair(idx, 'l1', event.target.value)}
-                      placeholder={`${sourceLabel} sentence ${idx + 1}`}
-                      aria-label={`Example ${idx + 1} ${sourceLabel}`}
+                      placeholder={t('card_details.example_placeholder', { language: sourceLabel, num: idx + 1 })}
+                      aria-label={t('card_details.example_aria', { num: idx + 1, language: sourceLabel })}
                     />
                     <input
                       type="text"
                       value={formValues.examples[idx]?.l2 ?? formValues.examples[idx]?.en ?? ''}
                       onChange={(event) => updateExamplePair(idx, 'l2', event.target.value)}
-                      placeholder={`${targetLabel} sentence ${idx + 1}`}
-                      aria-label={`Example ${idx + 1} ${targetLabel}`}
+                      placeholder={t('card_details.example_placeholder', { language: targetLabel, num: idx + 1 })}
+                      aria-label={t('card_details.example_aria', { num: idx + 1, language: targetLabel })}
                     />
                   </div>
                 ))}
               </div>
             </Field>
           ) : card.examples && card.examples.length > 0 ? (
-            <Field label="Example sentences" wide>
+            <Field label={t('card_details.examples_label')} wide>
               <ul className="flashcard-details__examples-list">
                 {card.examples.map((pair, idx) => {
                   const l1 = pair.l1 ?? pair.example_l1 ?? pair.es ?? pair.example_es;
                   const l2 = pair.l2 ?? pair.example_l2 ?? pair.en ?? pair.example_en;
                   return (
                     <li key={idx} className="flashcard-details__example-item">
-                      <span className="flashcard-details__example-num">Example {idx + 1}</span>
+                      <span className="flashcard-details__example-num">{t('card_details.example_num', { num: idx + 1 })}</span>
                       {l1 ? <p className="flashcard-details__example-es">{l1}</p> : null}
                       {l2 ? <p className="flashcard-details__example-en">{l2}</p> : null}
                     </li>
@@ -701,11 +703,11 @@ function CardDetailsModal({
             </Field>
           ) : (
             <>
-              <Field label={`Example in ${sourceLabel}`}>
-                <p>{card.example_l1 || card.example_es || 'Not set'}</p>
+              <Field label={t('card_details.example_in_lang', { language: sourceLabel })}>
+                <p>{card.example_l1 || card.example_es || t('card_details.not_set')}</p>
               </Field>
-              <Field label={`Example in ${targetLabel}`}>
-                <p>{card.example_l2 || card.example_en || card.example_sentence || 'Not set'}</p>
+              <Field label={t('card_details.example_in_lang', { language: targetLabel })}>
+                <p>{card.example_l2 || card.example_en || card.example_sentence || t('card_details.not_set')}</p>
               </Field>
             </>
           )}
@@ -718,10 +720,10 @@ function CardDetailsModal({
             {isConfirmingDelete ? (
               <div className="details-modal__confirm-delete">
                 <div className="details-modal__confirm-message">
-                  <p className="details-modal__confirm-title">Delete this card from the deck?</p>
+                  <p className="details-modal__confirm-title">{t('card_details.confirm_delete_title')}</p>
                   {card.base_card_id != null ? (
                     <p className="details-modal__confirm-note">
-                      You can propose this deletion to the market deck.
+                      {t('card_details.confirm_delete_market_note')}
                     </p>
                   ) : null}
                 </div>
@@ -732,7 +734,7 @@ function CardDetailsModal({
                     onClick={onDelete}
                     disabled={isPending}
                   >
-                    Confirm delete
+                    {t('deck_words.confirm_delete_btn')}
                   </button>
                   <button
                     className="button button--secondary"
@@ -740,7 +742,7 @@ function CardDetailsModal({
                     onClick={() => setIsConfirmingDelete(false)}
                     disabled={isPending}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>
@@ -751,7 +753,7 @@ function CardDetailsModal({
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <path d="M5 12.5 9.2 16.7 19 7" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    <span>Save</span>
+                    <span>{t('common.save')}</span>
                   </button>
                 ) : canDelete ? (
                   <button
@@ -765,7 +767,7 @@ function CardDetailsModal({
                       <line x1="10" y1="11" x2="10" y2="17" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
                       <line x1="14" y1="11" x2="14" y2="17" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
                     </svg>
-                    <span>Delete card</span>
+                    <span>{t('card_details.delete_card_btn')}</span>
                   </button>
                 ) : (
                   <span />
@@ -808,7 +810,7 @@ function CardDetailsModal({
                           </>
                         )}
                       </svg>
-                      <span>{isEditing ? 'Cancel' : 'Edit'}</span>
+                      <span>{isEditing ? t('common.cancel') : t('card_details.edit')}</span>
                     </button>
                   ) : null}
                 </div>
@@ -886,20 +888,84 @@ function nullableText(value) {
   return normalized || null;
 }
 
-function fieldLabel(field) {
+function getDiffFieldLabel(key, fallback, t, sourceLabel, targetLabel) {
+  if (!t) return fallback;
+  switch (key) {
+    case 'prompt_es':
+    case 'prompt_l1':
+      return t('card_details.prompt_label', { language: sourceLabel });
+    case 'answer_en':
+    case 'answer_l2':
+      return t('card_details.answer_label', { language: targetLabel });
+    case 'section_name':
+      return t('diff.section_name');
+    case 'part_of_speech':
+      return t('diff.part_of_speech');
+    case 'definition_en':
+    case 'l2_definition':
+      return t('card_details.definition_in_lang', { language: targetLabel });
+    case 'main_translations_es':
+    case 'l1_translations':
+      return t('diff.l1_translations');
+    case 'collocations':
+      return t('diff.collocations');
+    case 'synonyms_en':
+    case 'l2_synonyms':
+      return t('card_details.synonyms_in_lang', { language: targetLabel });
+    case 'examples':
+      return t('diff.examples');
+    default:
+      return fallback;
+  }
+}
+
+function fieldLabel(field, t) {
   const map = {
+    prompt_l1: 'prompt',
+    prompt_es: 'prompt',
+    prompt: 'prompt',
+    answer_l2: 'answer',
+    answer_en: 'answer',
+    answer: 'answer',
+    section_name: 'section_name',
+    part_of_speech: 'part_of_speech',
+    l2_definition: 'l2_definition',
+    definition_en: 'l2_definition',
+    definition: 'l2_definition',
+    l1_translations: 'l1_translations',
+    main_translations_es: 'l1_translations',
+    collocations: 'collocations',
+    l2_synonyms: 'l2_synonyms',
+    synonyms_en: 'l2_synonyms',
+    examples: 'examples',
+  };
+  const fallbackMap = {
     prompt_l1: 'Prompt',
+    prompt_es: 'Prompt',
+    prompt: 'Prompt',
     answer_l2: 'Answer',
+    answer_en: 'Answer',
+    answer: 'Answer',
     section_name: 'Section',
     part_of_speech: 'Part of speech',
     l2_definition: 'Definition',
+    definition_en: 'Definition',
+    definition: 'Definition',
     l1_translations: 'Translations',
+    main_translations_es: 'Translations',
     collocations: 'Collocations',
     l2_synonyms: 'Synonyms',
+    synonyms_en: 'Synonyms',
     examples: 'Examples',
     general: 'General',
   };
-  return map[field] || field;
+  if (t) {
+    const key = map[field];
+    if (key) {
+      return t(`diff.${key}`);
+    }
+  }
+  return fallbackMap[field] || field;
 }
 
 export default CardDetailsModal;

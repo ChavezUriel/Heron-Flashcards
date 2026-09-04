@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabaseClient';
 import {
   deleteAccount,
@@ -25,6 +26,8 @@ import { loadPracticeSettings, savePracticeSettings } from '../practiceSettings'
 import { loadDepthStat, resetDepthStat } from '../depthStat';
 import AiProviderPanel from '../components/AiProviderPanel';
 import { loadBuilderPrefs, saveBuilderPrefs } from '../ai/keyStore';
+import { useLocale, SUPPORTED_LOCALES } from '../context/LocaleContext';
+import { getLanguage } from '../languages';
 
 // OAuth failures (e.g. Google linking) come back appended to the redirect URL.
 function readOAuthErrorFromUrl() {
@@ -34,9 +37,13 @@ function readOAuthErrorFromUrl() {
 }
 
 function AccountSection({ me, onNicknameSaved }) {
+  const { t } = useTranslation();
+  const { profileLocale, setProfileLocale, formatDate } = useLocale();
   const [nickname, setNickname] = useState(me.full_name);
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
+  const [localeStatus, setLocaleStatus] = useState('idle');
+  const [localeError, setLocaleError] = useState('');
 
   const trimmedNickname = nickname.trim();
   const isDirty = trimmedNickname !== me.full_name;
@@ -59,22 +66,22 @@ function AccountSection({ me, onNicknameSaved }) {
   }
 
   const memberSince = me.created_at
-    ? new Date(me.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })
+    ? formatDate(me.created_at, { year: 'numeric', month: 'long' })
     : null;
 
   return (
     <section className="panel st-section" aria-labelledby="st-account-title">
       <div>
-        <h2 className="st-section__title" id="st-account-title">Account</h2>
+        <h2 className="st-section__title" id="st-account-title">{t('settings.account.title')}</h2>
         <p className="st-section__hint">
-          Signed in as <strong>{me.email}</strong>
-          {memberSince ? ` · member since ${memberSince}` : ''}.
+          {t('settings.account.signed_in_as')} <strong>{me.email}</strong>
+          {memberSince ? ` · ${t('settings.account.member_since', { date: memberSince })}` : ''}.
         </p>
       </div>
 
       <form className="st-form" onSubmit={handleSubmit}>
         <label className="st-field">
-          <span className="st-field__label">Nickname</span>
+          <span className="st-field__label">{t('settings.account.nickname_label')}</span>
           <input
             className="st-input"
             type="text"
@@ -94,17 +101,58 @@ function AccountSection({ me, onNicknameSaved }) {
             className="button button--primary"
             disabled={status === 'saving' || !trimmedNickname || !isDirty}
           >
-            {status === 'saving' ? 'Saving…' : 'Save nickname'}
+            {status === 'saving' ? t('settings.account.saving') : t('settings.account.save_nickname')}
           </button>
-          {status === 'saved' ? <span className="st-success">Nickname updated.</span> : null}
+          {status === 'saved' ? <span className="st-success">{t('settings.account.nickname_updated')}</span> : null}
           {status === 'error' ? <span className="st-error">{error}</span> : null}
         </div>
       </form>
+
+      <div className="st-form" style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))', paddingTop: '1.5rem' }}>
+        <label className="st-field">
+          <span className="st-field__label">{t('settings.account.language_label')}</span>
+          <select
+            className="st-input"
+            value={profileLocale || ''}
+            onChange={async (event) => {
+              const nextVal = event.target.value || null;
+              setLocaleStatus('saving');
+              setLocaleError('');
+              try {
+                await setProfileLocale(nextVal);
+                setLocaleStatus('saved');
+              } catch (err) {
+                setLocaleError(err?.message || 'Failed to update UI language');
+                setLocaleStatus('error');
+              }
+            }}
+          >
+            <option value="">{t('settings.account.language_follow_deck')}</option>
+            {SUPPORTED_LOCALES.map((loc) => {
+              const lang = getLanguage(loc);
+              const label = lang ? (lang.endonym !== lang.name ? `${lang.name} (${lang.endonym})` : lang.name) : loc;
+              return (
+                <option key={loc} value={loc}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+          <span className="st-section__hint" style={{ marginTop: '0.25rem' }}>
+            {!profileLocale
+              ? t('settings.account.language_auto_hint')
+              : t('settings.account.language_explicit_hint')}
+          </span>
+        </label>
+        {localeStatus === 'saved' ? <span className="st-success">{t('settings.account.language_updated')}</span> : null}
+        {localeStatus === 'error' ? <span className="st-error">{localeError}</span> : null}
+      </div>
     </section>
   );
 }
 
 function SecuritySection({ me, identities, hasPassword, onIdentitiesChanged, onPasswordChanged }) {
+  const { t } = useTranslation();
   const googleIdentity = identities.find((identity) => identity.provider === 'google');
   const emailIdentity = identities.find((identity) => identity.provider === 'email');
   // A password is a valid second way to sign in even when Supabase never created
@@ -155,7 +203,7 @@ function SecuritySection({ me, identities, hasPassword, onIdentitiesChanged, onP
   async function handlePasswordSubmit(event) {
     event.preventDefault();
     if (passwordForm.password !== passwordForm.confirmPassword) {
-      setPasswordError('Passwords do not match');
+      setPasswordError(t('auth.passwords_dont_match'));
       setPasswordStatus('error');
       return;
     }
@@ -193,82 +241,82 @@ function SecuritySection({ me, identities, hasPassword, onIdentitiesChanged, onP
   return (
     <section className="panel st-section" aria-labelledby="st-security-title">
       <div>
-        <h2 className="st-section__title" id="st-security-title">Sign-in &amp; security</h2>
-        <p className="st-section__hint">Manage the ways you sign in to your account.</p>
+        <h2 className="st-section__title" id="st-security-title">{t('settings.security.title')}</h2>
+        <p className="st-section__hint">{t('settings.security.hint')}</p>
       </div>
 
       <ul className="st-identity-list">
         <li className="st-identity">
           <div className="st-identity__info">
-            <span className="st-identity__name">Email &amp; password</span>
+            <span className="st-identity__name">{t('settings.security.email_password')}</span>
             <span className="st-identity__meta">
-              {hasPassword ? me.email : 'Not set up — add a password below'}
+              {hasPassword ? me.email : t('settings.security.not_set_up')}
             </span>
           </div>
           {hasPassword
-            ? <span className="st-chip">Active</span>
-            : <span className="st-chip st-chip--muted">Off</span>}
+            ? <span className="st-chip">{t('settings.security.active')}</span>
+            : <span className="st-chip st-chip--muted">{t('settings.security.off')}</span>}
         </li>
         <li className="st-identity">
           <div className="st-identity__info">
-            <span className="st-identity__name">Google</span>
+            <span className="st-identity__name">{t('settings.security.google')}</span>
             <span className="st-identity__meta">
-              {googleIdentity ? (googleIdentity.identity_data?.email || 'Connected') : 'Not linked'}
+              {googleIdentity ? (googleIdentity.identity_data?.email || t('settings.security.connected')) : t('settings.security.not_linked')}
             </span>
           </div>
           {googleIdentity ? (
             <div className="st-actions">
-              <span className="st-chip">Linked</span>
+              <span className="st-chip">{t('settings.security.linked')}</span>
               <button
                 type="button"
                 className="button button--secondary st-button--compact"
                 onClick={handleUnlinkGoogle}
                 disabled={!canUnlinkGoogle || isUnlinking}
               >
-                {isUnlinking ? 'Unlinking…' : 'Unlink'}
+                {isUnlinking ? t('settings.security.unlinking') : t('settings.security.unlink')}
               </button>
             </div>
           ) : (
-            <GoogleButton onClick={handleLinkGoogle} label={isLinking ? 'Redirecting…' : 'Link Google'} />
+            <GoogleButton onClick={handleLinkGoogle} label={isLinking ? t('settings.security.redirecting') : t('settings.security.link_google')} />
           )}
         </li>
       </ul>
       {googleIdentity && !canUnlinkGoogle ? (
-        <p className="st-note">Google is your only way to sign in. Set a password below before unlinking it.</p>
+        <p className="st-note">{t('settings.security.google_only_note')}</p>
       ) : null}
       {linkError ? <p className="st-error">{linkError}</p> : null}
 
       <form className="st-form" onSubmit={handlePasswordSubmit}>
         <div>
-          <h3 className="st-subtitle">{hasPassword ? 'Change password' : 'Set a password'}</h3>
+          <h3 className="st-subtitle">{hasPassword ? t('settings.security.change_password_title') : t('settings.security.set_password_title')}</h3>
           {!hasPassword ? (
             <p className="st-section__hint">
-              You sign in with Google. Adding a password also lets you sign in with your email.
+              {t('settings.security.google_add_password_hint')}
             </p>
           ) : null}
         </div>
         <div className="st-form__grid">
           <label className="st-field">
-            <span className="st-field__label">New password</span>
+            <span className="st-field__label">{t('settings.security.new_password_label')}</span>
             <input
               className="st-input"
               type="password"
               value={passwordForm.password}
               onChange={(event) => setPasswordForm((current) => ({ ...current, password: event.target.value }))}
-              placeholder="Minimum 6 characters"
+              placeholder={t('settings.security.password_placeholder')}
               minLength={6}
               autoComplete="new-password"
               required
             />
           </label>
           <label className="st-field">
-            <span className="st-field__label">Confirm password</span>
+            <span className="st-field__label">{t('settings.security.confirm_password_label')}</span>
             <input
               className="st-input"
               type="password"
               value={passwordForm.confirmPassword}
               onChange={(event) => setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))}
-              placeholder="Repeat the new password"
+              placeholder={t('settings.security.confirm_password_placeholder')}
               minLength={6}
               autoComplete="new-password"
               required
@@ -277,7 +325,7 @@ function SecuritySection({ me, identities, hasPassword, onIdentitiesChanged, onP
         </div>
         <div className="st-actions">
           <button type="submit" className="button button--primary" disabled={passwordStatus === 'saving'}>
-            {passwordStatus === 'saving' ? 'Updating…' : hasPassword ? 'Update password' : 'Set password'}
+            {passwordStatus === 'saving' ? t('settings.security.updating') : hasPassword ? t('settings.security.update_password') : t('settings.security.set_password')}
           </button>
           <button
             type="button"
@@ -286,21 +334,22 @@ function SecuritySection({ me, identities, hasPassword, onIdentitiesChanged, onP
             disabled={resetStatus === 'sending' || resetStatus === 'sent'}
           >
             {resetStatus === 'sent'
-              ? `Reset link sent to ${me.email}`
+              ? t('settings.security.reset_link_sent', { email: me.email })
               : resetStatus === 'sending'
-                ? 'Sending…'
-                : 'Or email me a reset link'}
+                ? t('settings.security.sending_reset')
+                : t('settings.security.or_email_reset')}
           </button>
         </div>
-        {passwordStatus === 'saved' ? <p className="st-success">Password updated.</p> : null}
+        {passwordStatus === 'saved' ? <p className="st-success">{t('settings.security.password_updated')}</p> : null}
         {passwordStatus === 'error' ? <p className="st-error">{passwordError}</p> : null}
-        {resetStatus === 'error' ? <p className="st-error">Could not send the reset email. Try again.</p> : null}
+        {resetStatus === 'error' ? <p className="st-error">{t('settings.security.could_not_send_reset')}</p> : null}
       </form>
     </section>
   );
 }
 
 function NotificationsSection() {
+  const { t } = useTranslation();
   const supported = isNotificationSupported();
   const [reminderSettings, setReminderSettings] = useState(() => loadReminderSettings());
   const [permission, setPermission] = useState(supported ? Notification.permission : 'unsupported');
@@ -327,15 +376,15 @@ function NotificationsSection() {
   return (
     <section className="panel st-section" aria-labelledby="st-notifications-title">
       <div>
-        <h2 className="st-section__title" id="st-notifications-title">Notifications</h2>
-        <p className="st-section__hint">More notification options are on the way — this is the first one.</p>
+        <h2 className="st-section__title" id="st-notifications-title">{t('settings.notifications.title')}</h2>
+        <p className="st-section__hint">{t('settings.notifications.hint')}</p>
       </div>
 
       <div className="st-row">
         <div className="st-row__info">
-          <span className="st-row__label">Daily review reminder</span>
+          <span className="st-row__label">{t('settings.notifications.daily_reminder_label')}</span>
           <span className="st-row__meta">
-            One browser notification per day when cards are due. It only fires while the app is open in a tab.
+            {t('settings.notifications.daily_reminder_meta')}
           </span>
         </div>
         <label className="st-switch">
@@ -344,18 +393,18 @@ function NotificationsSection() {
             checked={reminderSettings.enabled}
             onChange={handleToggleReminder}
             disabled={!supported}
-            aria-label="Toggle daily review reminder"
+            aria-label={t('settings.notifications.toggle_reminder_aria')}
           />
           <span className="st-switch__track" aria-hidden="true" />
         </label>
       </div>
 
       {!supported ? (
-        <p className="st-note">This browser does not support notifications.</p>
+        <p className="st-note">{t('settings.notifications.unsupported')}</p>
       ) : null}
       {supported && permission === 'denied' ? (
         <p className="st-note">
-          Notifications are blocked for this site. Allow them in your browser's site settings, then flip the toggle again.
+          {t('settings.notifications.denied')}
         </p>
       ) : null}
     </section>
@@ -436,6 +485,7 @@ const MINIGAME_META = {
 };
 
 function MinigamesSection() {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState(() => loadPracticeSettings());
   const [depthStat, setDepthStat] = useState(() => loadDepthStat());
   const minigames = settings.minigames;
@@ -458,18 +508,17 @@ function MinigamesSection() {
   return (
     <section className="panel st-section" aria-labelledby="st-minigames-title">
       <div>
-        <h2 className="st-section__title" id="st-minigames-title">Minigames</h2>
+        <h2 className="st-section__title" id="st-minigames-title">{t('settings.minigames.title')}</h2>
         <p className="st-section__hint">
-          Vary how you answer during Smart Practice. Games marked <strong>“Counts toward scheduling”</strong> can change
-          when a card is next due; <strong>“Practice only”</strong> games never touch your schedule.
+          {t('settings.minigames.hint')}
         </p>
       </div>
 
       <div className="st-row">
         <div className="st-row__info">
-          <span className="st-row__label">Enable minigames</span>
+          <span className="st-row__label">{t('settings.minigames.enable_label')}</span>
           <span className="st-row__meta">
-            When off, Smart Practice uses the classic flashcard for every card — exactly as it works today.
+            {t('settings.minigames.enable_meta')}
           </span>
         </div>
         <label className="st-switch">
@@ -477,14 +526,14 @@ function MinigamesSection() {
             type="checkbox"
             checked={minigames.enabled}
             onChange={() => persistMinigames({ ...minigames, enabled: !minigames.enabled })}
-            aria-label="Toggle minigames"
+            aria-label={t('settings.minigames.toggle_minigames_aria')}
           />
           <span className="st-switch__track" aria-hidden="true" />
         </label>
       </div>
 
       <label className="st-field">
-        <span className="st-field__label">How often games appear</span>
+        <span className="st-field__label">{t('settings.minigames.frequency_label')}</span>
         <select
           className="st-input"
           value={minigames.frequency}
@@ -492,29 +541,38 @@ function MinigamesSection() {
           disabled={!minigames.enabled}
         >
           {MINIGAME_FREQUENCY_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+            <option key={option.value} value={option.value}>
+              {option.value === 'off'
+                ? t('settings.minigames.freq_off')
+                : option.value === 'light'
+                ? t('settings.minigames.freq_light')
+                : option.value === 'balanced'
+                ? t('settings.minigames.freq_balanced')
+                : t('settings.minigames.freq_heavy')}
+            </option>
           ))}
         </select>
       </label>
 
       <div>
-        <h3 className="st-subtitle">Games</h3>
+        <h3 className="st-subtitle">{t('settings.minigames.games_subtitle')}</h3>
         {gameEntries.length === 0 ? (
           <p className="st-note">
-            No minigames yet — they’ll appear here as they’re added, each labeled with whether it counts toward
-            scheduling. Your preferences are saved and ready.
+            {t('settings.minigames.no_games')}
           </p>
         ) : (
           <ul className={`st-minigame-list${minigames.enabled ? '' : ' st-minigame-list--disabled'}`}>
             {gameEntries.map(([key, isOn]) => {
               const meta = MINIGAME_META[key] ?? { label: key, description: '', counts: false };
+              const gameLabel = t(`settings.minigames.meta.${key}_label`, { defaultValue: meta.label });
+              const gameDesc = t(`settings.minigames.meta.${key}_desc`, { defaultValue: meta.description });
               return (
                 <li className="st-row" key={key}>
                   <div className="st-row__info">
-                    <span className="st-row__label">{meta.label}</span>
-                    {meta.description ? <span className="st-row__meta">{meta.description}</span> : null}
+                    <span className="st-row__label">{gameLabel}</span>
+                    {gameDesc ? <span className="st-row__meta">{gameDesc}</span> : null}
                     <span className={`st-chip st-minigame-badge${meta.counts ? '' : ' st-chip--muted'}`}>
-                      {meta.counts ? 'Counts toward scheduling' : 'Practice only'}
+                      {meta.counts ? t('settings.minigames.counts_badge') : t('settings.minigames.practice_only_badge')}
                     </span>
                   </div>
                   <label className="st-switch">
@@ -528,7 +586,7 @@ function MinigamesSection() {
                           games: { ...minigames.games, [key]: !isOn },
                         })
                       }
-                      aria-label={`Toggle ${meta.label}`}
+                      aria-label={t('settings.minigames.toggle_game_aria', { name: gameLabel })}
                     />
                     <span className="st-switch__track" aria-hidden="true" />
                   </label>
@@ -540,24 +598,21 @@ function MinigamesSection() {
       </div>
 
       <div className="st-depth">
-        <h3 className="st-subtitle">Vocabulary depth</h3>
+        <h3 className="st-subtitle">{t('settings.minigames.depth_subtitle')}</h3>
         {depthStat.rounds > 0 ? (
           <>
             <p className="st-section__hint">
-              You’ve matched <strong>{depthStat.matched}</strong> related word{depthStat.matched === 1 ? '' : 's'} across{' '}
-              {depthStat.rounds} Synonym-match round{depthStat.rounds === 1 ? '' : 's'}. This depth score tracks the words
-              you can connect — it’s separate from your review schedule and never changes when a card is next due.
+              {t('settings.minigames.depth_hint', { matched: depthStat.matched, rounds: depthStat.rounds })}
             </p>
             <div className="st-actions">
               <button type="button" className="button button--secondary st-button--compact" onClick={handleResetDepth}>
-                Reset depth stat
+                {t('settings.minigames.reset_depth_btn')}
               </button>
             </div>
           </>
         ) : (
           <p className="st-section__hint">
-            Play the Synonym-match cool-down to start building a vocabulary-depth score — it tracks related words you know,
-            separately from your review schedule.
+            {t('settings.minigames.depth_hint_empty')}
           </p>
         )}
       </div>
@@ -568,16 +623,15 @@ function MinigamesSection() {
 // Provider keys live here as well as in the builder — both edit the same store,
 // so a key added on either screen is available on the other.
 function AiSection() {
+  const { t } = useTranslation();
   const [prefs, setPrefs] = useState(() => loadBuilderPrefs());
 
   return (
     <section className="panel st-section" aria-labelledby="st-ai-title">
       <div>
-        <h2 className="st-section__title" id="st-ai-title">AI deck builder</h2>
+        <h2 className="st-section__title" id="st-ai-title">{t('settings.ai.title')}</h2>
         <p className="st-section__hint">
-          Generate your own decks with your own provider account. Keys are kept in this browser —
-          never uploaded, never shared with other devices — and requests are billed by the provider,
-          not by this app.
+          {t('settings.ai.hint')}
         </p>
       </div>
 
@@ -591,13 +645,14 @@ function AiSection() {
       />
 
       <div className="st-actions">
-        <Link className="button button--primary st-button--compact" to="/decks/new">Build a deck</Link>
+        <Link className="button button--primary st-button--compact" to="/decks/new">{t('settings.ai.build_deck_btn')}</Link>
       </div>
     </section>
   );
 }
 
 function DataSection() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
 
@@ -625,9 +680,9 @@ function DataSection() {
   return (
     <section className="panel st-section" aria-labelledby="st-data-title">
       <div>
-        <h2 className="st-section__title" id="st-data-title">Your data</h2>
+        <h2 className="st-section__title" id="st-data-title">{t('settings.data.title')}</h2>
         <p className="st-section__hint">
-          Download a copy of your decks, cards and learning progress as a JSON file.
+          {t('settings.data.hint')}
         </p>
       </div>
       <div className="st-actions">
@@ -637,9 +692,9 @@ function DataSection() {
           onClick={handleExport}
           disabled={status === 'working'}
         >
-          {status === 'working' ? 'Preparing export…' : 'Export my data'}
+          {status === 'working' ? t('settings.data.preparing') : t('settings.data.export_btn')}
         </button>
-        {status === 'done' ? <span className="st-success">Export downloaded.</span> : null}
+        {status === 'done' ? <span className="st-success">{t('settings.data.downloaded')}</span> : null}
         {status === 'error' ? <span className="st-error">{error}</span> : null}
       </div>
     </section>
@@ -647,6 +702,7 @@ function DataSection() {
 }
 
 function DangerSection({ email }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
@@ -676,23 +732,22 @@ function DangerSection({ email }) {
   return (
     <section className="panel st-section st-section--danger" aria-labelledby="st-danger-title">
       <div>
-        <h2 className="st-section__title st-section__title--danger" id="st-danger-title">Danger zone</h2>
+        <h2 className="st-section__title st-section__title--danger" id="st-danger-title">{t('settings.danger.title')}</h2>
         <p className="st-section__hint">
-          Deleting your account removes your profile, decks, cards and all learning progress
-          for <strong>{email}</strong>. This cannot be undone — consider exporting your data first.
+          {t('settings.danger.hint', { email })}
         </p>
       </div>
 
       {isConfirmOpen ? (
         <div className="st-confirm">
           <label className="st-field">
-            <span className="st-field__label">Type DELETE to confirm</span>
+            <span className="st-field__label">{t('settings.danger.confirm_label')}</span>
             <input
               className="st-input"
               type="text"
               value={confirmText}
               onChange={(event) => setConfirmText(event.target.value)}
-              placeholder="DELETE"
+              placeholder={t('settings.danger.confirm_placeholder')}
               autoComplete="off"
             />
           </label>
@@ -703,7 +758,7 @@ function DangerSection({ email }) {
               onClick={handleDeleteAccount}
               disabled={!isConfirmed || status === 'deleting'}
             >
-              {status === 'deleting' ? 'Deleting…' : 'Permanently delete my account'}
+              {status === 'deleting' ? t('settings.danger.deleting') : t('settings.danger.permanently_delete')}
             </button>
             <button
               type="button"
@@ -715,14 +770,14 @@ function DangerSection({ email }) {
               }}
               disabled={status === 'deleting'}
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </div>
       ) : (
         <div className="st-actions">
           <button type="button" className="button button--danger" onClick={() => setIsConfirmOpen(true)}>
-            Delete account…
+            {t('settings.danger.delete_account_btn')}
           </button>
         </div>
       )}
@@ -805,6 +860,7 @@ const SECTIONS = [
 ];
 
 function SettingsPage() {
+  const { t } = useTranslation();
   const [me, setMe] = useState(null);
   const [identities, setIdentities] = useState([]);
   const [passwordSet, setPasswordSet] = useState(false);
@@ -855,11 +911,11 @@ function SettingsPage() {
   }
 
   if (status === 'loading') {
-    return <p className="h-empty-state">Loading your settings…</p>;
+    return <p className="h-empty-state">{t('settings.loading')}</p>;
   }
 
   if (status === 'error') {
-    return <p className="h-empty-state h-empty-state--error">Unable to load settings: {error}</p>;
+    return <p className="h-empty-state h-empty-state--error">{t('settings.load_error', { error })}</p>;
   }
 
   function renderSection() {
@@ -899,16 +955,16 @@ function SettingsPage() {
   return (
     <div className="st-page">
       <div className="st-header">
-        <p className="st-kicker">YOUR ACCOUNT</p>
-        <h1 className="st-header__title">Settings</h1>
+        <p className="st-kicker">{t('settings.kicker')}</p>
+        <h1 className="st-header__title">{t('settings.title')}</h1>
       </div>
 
       {oauthError ? (
-        <p className="st-banner st-banner--error">Sign-in linking failed: {oauthError}</p>
+        <p className="st-banner st-banner--error">{t('settings.oauth_error', { error: oauthError })}</p>
       ) : null}
 
       <div className="st-layout">
-        <nav className="st-nav panel" aria-label="Settings sections">
+        <nav className="st-nav panel" aria-label={t('settings.nav_aria')}>
           {SECTIONS.map((section) => {
             const isActive = activeSection === section.id;
             return (
@@ -922,7 +978,7 @@ function SettingsPage() {
                 aria-current={isActive ? 'page' : undefined}
               >
                 <span className="st-nav__icon" aria-hidden="true">{SECTION_ICONS[section.id]}</span>
-                <span>{section.label}</span>
+                <span>{t(`settings.sections.${section.id}`)}</span>
               </button>
             );
           })}
