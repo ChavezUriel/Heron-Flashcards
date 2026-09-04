@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useLocale } from '../context/LocaleContext';
 import { fetchDeckPreview, fetchDueSummary, fetchHomeDecks, updateDeckSmartPracticeInclusion } from '../api';
 import DeckCard from '../components/DeckCard';
 import DeckSyncModal from '../components/DeckSyncModal';
@@ -46,25 +48,25 @@ function planRecommendedSession(dueSummary) {
 
 // Human-readable label + one-line rationale for the recommended session, shown
 // read-only on the Auto card so the ruleset's choice is visible.
-function describeRecommendedSession(plan) {
+function describeRecommendedSession(plan, t) {
   if (!plan) return null;
   switch (plan.shape) {
     case 'front_loaded':
-      return { tag: 'Warm-up', blurb: 'New cards in a block first, then reviews — gentler while your base is still small.' };
+      return { tag: t('home.auto_card_warmup_tag'), blurb: t('home.auto_card_warmup_blurb') };
     case 'spread':
-      return { tag: 'Spread', blurb: 'New cards woven evenly through a heavier review load.' };
+      return { tag: t('home.auto_card_spread_tag'), blurb: t('home.auto_card_spread_blurb') };
     case 'interleaved':
-      return { tag: 'Interleaved', blurb: 'New cards and reviews fully mixed to sharpen recall.' };
+      return { tag: t('home.auto_card_interleaved_tag'), blurb: t('home.auto_card_interleaved_blurb') };
     default:
       break;
   }
   switch (plan.mode) {
     case 'review':
-      return { tag: 'Review', blurb: 'Clearing the cards due back today.' };
+      return { tag: t('home.auto_card_review_tag'), blurb: t('home.auto_card_review_blurb') };
     case 'new_material':
-      return { tag: 'New', blurb: "Fresh cards you haven't met yet." };
+      return { tag: t('home.auto_card_new_tag'), blurb: t('home.auto_card_new_blurb') };
     default:
-      return { tag: 'Auto', blurb: 'Add or study cards to build a session.' };
+      return { tag: t('home.auto_card_tag'), blurb: t('home.auto_card_default_blurb') };
   }
 }
 
@@ -72,7 +74,7 @@ function describeRecommendedSession(plan) {
 // card. Counts mirror what the builder actually queues: up to new_block_size
 // new cards and up to review_batch_size mastered cards, capped by what's
 // available. Returns null until the due summary has loaded.
-function recommendedSessionMeta(plan, dueSummary, settings) {
+function recommendedSessionMeta(plan, dueSummary, settings, t) {
   if (!plan || !dueSummary) {
     return null;
   }
@@ -84,17 +86,17 @@ function recommendedSessionMeta(plan, dueSummary, settings) {
   const reviewCount = modeHasReview ? Math.min(learnedTotal, settings.review_batch_size) : 0;
   const totalCards = newCount + reviewCount;
   if (totalCards === 0) {
-    return 'Nothing to practice right now';
+    return t('home.session_nothing_due');
   }
 
   const parts = [];
-  if (newCount > 0) parts.push(`${newCount} new`);
-  if (reviewCount > 0) parts.push(`${reviewCount} review`);
-  parts.push(`~${Math.max(1, Math.ceil(totalCards / 2))} min`);
+  if (newCount > 0) parts.push(t('home.session_new_count', { count: newCount }));
+  if (reviewCount > 0) parts.push(t('home.session_review_count', { count: reviewCount }));
+  parts.push(t('home.session_min_estimate', { minutes: Math.max(1, Math.ceil(totalCards / 2)) }));
   return parts.join(' · ');
 }
 
-function formatNextDue(nextDueAt) {
+function formatNextDue(nextDueAt, t) {
   if (!nextDueAt) {
     return null;
   }
@@ -106,22 +108,22 @@ function formatNextDue(nextDueAt) {
 
   const hoursAway = (dueDate.getTime() - Date.now()) / 3_600_000;
   if (hoursAway <= 0) {
-    return 'now';
+    return t('home.next_due_now');
   }
   if (hoursAway < 1) {
-    return 'in less than an hour';
+    return t('home.next_due_under_hour');
   }
   if (hoursAway < 24) {
-    return `in ${Math.round(hoursAway)} h`;
+    return t('home.next_due_hours', { count: Math.round(hoursAway) });
   }
-  return `in ${Math.round(hoursAway / 24)} d`;
+  return t('home.next_due_days', { count: Math.round(hoursAway / 24) });
 }
 
 function uniqueDeckIds(deckIds) {
   return [...new Set(deckIds)];
 }
 
-function sortDecksBySmartPractice(decks) {
+function sortDecksBySmartPractice(decks, localeCompare) {
   return [...decks].sort((leftDeck, rightDeck) => {
     if (leftDeck.is_enabled_in_smart_practice !== rightDeck.is_enabled_in_smart_practice) {
       return leftDeck.is_enabled_in_smart_practice ? -1 : 1;
@@ -129,7 +131,7 @@ function sortDecksBySmartPractice(decks) {
     if (leftDeck.completion_ratio !== rightDeck.completion_ratio) {
       return rightDeck.completion_ratio - leftDeck.completion_ratio;
     }
-    return leftDeck.title.localeCompare(rightDeck.title);
+    return localeCompare ? localeCompare(leftDeck.title, rightDeck.title) : leftDeck.title.localeCompare(rightDeck.title);
   });
 }
 
@@ -153,15 +155,15 @@ function buildDeckWordIndex(preview) {
     .join(' ');
 }
 
-function buildSearchMatchReasons(titleScore, descriptionScore, wordsScore) {
+function buildSearchMatchReasons(titleScore, descriptionScore, wordsScore, t) {
   const reasons = [];
-  if (titleScore > 0) reasons.push('Title');
-  if (descriptionScore > 0) reasons.push('Description');
-  if (wordsScore > 0) reasons.push('Deck words');
+  if (titleScore > 0) reasons.push(t('home.match_title'));
+  if (descriptionScore > 0) reasons.push(t('home.match_description'));
+  if (wordsScore > 0) reasons.push(t('home.match_words'));
   if (reasons.length === 0) return [];
-  if (reasons.length === 1) return [`${reasons[0]} match`];
-  if (reasons.length === 2) return [`${reasons[0]} & ${reasons[1]} match`];
-  return [`${reasons.slice(0, -1).join(', ')} & ${reasons[reasons.length - 1]} match`];
+  if (reasons.length === 1) return [t('home.match_single', { field: reasons[0] })];
+  if (reasons.length === 2) return [t('home.match_double', { field1: reasons[0], field2: reasons[1] })];
+  return [t('home.match_multiple', { fields: reasons.slice(0, -1).join(', '), last: reasons[reasons.length - 1] })];
 }
 
 function ModeStepper({ value, range, onStep, decrementLabel, incrementLabel }) {
@@ -190,7 +192,7 @@ function ModeStepper({ value, range, onStep, decrementLabel, incrementLabel }) {
   );
 }
 
-function rankDeckSearchResults(decks, query, deckWordIndexById) {
+function rankDeckSearchResults(decks, query, deckWordIndexById, t) {
   if (!query) {
     return decks.map((deck) => ({ deck, searchScore: 0, searchDidMatch: false, searchMatchReasons: [] }));
   }
@@ -204,7 +206,7 @@ function rankDeckSearchResults(decks, query, deckWordIndexById) {
         deck, index, score,
         searchScore: score,
         searchDidMatch: score > 0,
-        searchMatchReasons: buildSearchMatchReasons(titleScore, descriptionScore, wordsScore),
+        searchMatchReasons: buildSearchMatchReasons(titleScore, descriptionScore, wordsScore, t),
       };
     })
     .sort((l, r) => {
@@ -215,6 +217,8 @@ function rankDeckSearchResults(decks, query, deckWordIndexById) {
 }
 
 function HomePage() {
+  const { t } = useTranslation();
+  const { localeCompare } = useLocale();
   const [decks, setDecks] = useState([]);
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
@@ -269,14 +273,14 @@ function HomePage() {
     async function loadDecks() {
       try {
         const nextDecks = await fetchHomeDecks();
-        if (!cancelled) { setDecks(sortDecksBySmartPractice(nextDecks)); setStatus('ready'); }
+        if (!cancelled) { setDecks(sortDecksBySmartPractice(nextDecks, localeCompare)); setStatus('ready'); }
       } catch (loadError) {
         if (!cancelled) { setError(loadError.message); setStatus('error'); }
       }
     }
     loadDecks();
     return () => { cancelled = true; };
-  }, [deckRefreshToken]);
+  }, [deckRefreshToken, localeCompare]);
 
   useEffect(() => {
     let cancelled = false;
@@ -321,8 +325,8 @@ function HomePage() {
 
   const normalizedSearchQuery = normalizeSearchText(searchQuery);
   const visibleDeckEntries = useMemo(
-    () => rankDeckSearchResults(decks, normalizedSearchQuery, deckWordIndexById),
-    [deckWordIndexById, decks, normalizedSearchQuery]
+    () => rankDeckSearchResults(decks, normalizedSearchQuery, deckWordIndexById, t),
+    [deckWordIndexById, decks, normalizedSearchQuery, t]
   );
 
   async function updateSmartPracticeInclusion(deckIds, isEnabled) {
@@ -345,7 +349,7 @@ function HomePage() {
         setActionError(
           failedResults.length === deckIds.length
             ? firstError.message
-            : 'Some decks could not be updated. Please try again.'
+            : t('home.action_error_partial')
         );
       }
     } catch (requestError) {
@@ -368,31 +372,31 @@ function HomePage() {
   }
 
   if (status === 'loading') {
-    return <p className="h-empty-state">Loading your home decks…</p>;
+    return <p className="h-empty-state">{t('home.loading_decks')}</p>;
   }
 
   if (status === 'error') {
-    return <p className="h-empty-state h-empty-state--error">Unable to load decks: {error}</p>;
+    return <p className="h-empty-state h-empty-state--error">{t('home.load_error', { error })}</p>;
   }
 
   if (decks.length === 0) {
     return (
       <div className="h-empty-panel panel">
-        <h2>No decks on home</h2>
-        <p>Add a deck from the market, or have AI build one around exactly what you need to learn.</p>
+        <h2>{t('home.no_decks_title')}</h2>
+        <p>{t('home.no_decks_desc')}</p>
         <div className="action-row">
-          <Link className="button button--primary" to="/market">Open market</Link>
-          <Link className="button button--secondary" to="/decks/new">Build one with AI</Link>
+          <Link className="button button--primary" to="/market">{t('home.open_market_action')}</Link>
+          <Link className="button button--secondary" to="/decks/new">{t('home.build_with_ai_action')}</Link>
         </div>
       </div>
     );
   }
 
   const dueNow = dueSummary?.due_now ?? 0;
-  const nextDueLabel = dueNow === 0 && dueSummary?.next_due_at ? formatNextDue(dueSummary.next_due_at) : null;
+  const nextDueLabel = dueNow === 0 && dueSummary?.next_due_at ? formatNextDue(dueSummary.next_due_at, t) : null;
   const recommendedPlan = planRecommendedSession(dueSummary);
-  const recommendedSession = describeRecommendedSession(recommendedPlan);
-  const recommendedMeta = recommendedSessionMeta(recommendedPlan, dueSummary, settings);
+  const recommendedSession = describeRecommendedSession(recommendedPlan, t);
+  const recommendedMeta = recommendedSessionMeta(recommendedPlan, dueSummary, settings, t);
 
   return (
     <>
@@ -405,33 +409,33 @@ function HomePage() {
             onClick={() => updateSettings({ focus_mode: 'auto' })}
           >
             <div className="h-mode-card__top">
-              <span className="h-action-kicker">RECOMMENDED</span>
+              <span className="h-action-kicker">{t('home.recommended_kicker')}</span>
               <span className="h-action-arrow">→</span>
             </div>
             <div>
-              <div className="h-mode-card__title">Smart session</div>
+              <div className="h-mode-card__title">{t('home.smart_session_title')}</div>
               <div className="h-mode-card__meta">
-                {recommendedMeta ?? 'Your recommended mix'}
+                {recommendedMeta ?? t('home.smart_session_fallback_meta')}
               </div>
             </div>
           </Link>
           <div className="h-mode-card__setting">
             <div className="h-mode-card__toggle-row">
               <div className="h-mode-card__toggle-info">
-                <span className="h-mode-card__setting-label">Simplified mode</span>
+                <span className="h-mode-card__setting-label">{t('home.simplified_mode_label')}</span>
                 <span className="h-mode-card__toggle-hint">
-                  {isSimplifiedMode ? 'Turning flashcards only' : 'Flashcards & mini-games'}
+                  {isSimplifiedMode ? t('home.simplified_flashcards_only') : t('home.simplified_flashcards_and_games')}
                 </span>
               </div>
               <label
                 className="h-toggle-switch"
-                title={isSimplifiedMode ? 'Simplified mode active: turning flashcards only' : 'Simplified mode inactive: mini-games enabled'}
+                title={isSimplifiedMode ? t('home.simplified_active_tooltip') : t('home.simplified_inactive_tooltip')}
               >
                 <input
                   type="checkbox"
                   checked={isSimplifiedMode}
                   onChange={handleToggleSimplifiedMode}
-                  aria-label="Simplified mode (turning flashcards only)"
+                  aria-label={t('home.simplified_aria')}
                 />
                 <span className="h-toggle-switch__track" aria-hidden="true">
                   <span className="h-toggle-switch__thumb" />
@@ -454,22 +458,22 @@ function HomePage() {
             onClick={() => updateSettings({ focus_mode: 'new_material' })}
           >
             <div className="h-mode-card__top">
-              <span className="h-action-kicker h-action-kicker--muted">SESSION</span>
+              <span className="h-action-kicker h-action-kicker--muted">{t('home.session_kicker')}</span>
               <span className="h-action-arrow h-action-arrow--muted">→</span>
             </div>
             <div>
-              <div className="h-mode-card__title">New material</div>
-              <div className="h-mode-card__meta">Fresh cards you haven't met yet.</div>
+              <div className="h-mode-card__title">{t('home.new_material_title')}</div>
+              <div className="h-mode-card__meta">{t('home.auto_card_new_blurb')}</div>
             </div>
           </Link>
           <div className="h-mode-card__setting">
-            <span className="h-mode-card__setting-label">Cards per session</span>
+            <span className="h-mode-card__setting-label">{t('home.cards_per_session')}</span>
             <ModeStepper
               value={settings.new_block_size}
               range={NEW_BLOCK_SIZE_RANGE}
               onStep={(delta) => stepSetting('new_block_size', delta, NEW_BLOCK_SIZE_RANGE)}
-              decrementLabel="Fewer new cards per session"
-              incrementLabel="More new cards per session"
+              decrementLabel={t('home.fewer_new_cards_aria')}
+              incrementLabel={t('home.more_new_cards_aria')}
             />
           </div>
         </article>
@@ -481,28 +485,28 @@ function HomePage() {
             onClick={() => updateSettings({ focus_mode: 'review' })}
           >
             <div className="h-mode-card__top">
-              <span className="h-action-kicker h-action-kicker--muted">SESSION</span>
+              <span className="h-action-kicker h-action-kicker--muted">{t('home.session_kicker')}</span>
               <span className="h-action-arrow h-action-arrow--muted">→</span>
             </div>
             <div>
-              <div className="h-mode-card__title">Review</div>
+              <div className="h-mode-card__title">{t('home.review_title')}</div>
               <div className="h-mode-card__meta">
                 {dueNow > 0
-                  ? `${dueNow} card${dueNow === 1 ? '' : 's'} due now`
+                  ? t('home.cards_due_now', { count: dueNow })
                   : nextDueLabel
-                    ? `Nothing due · next ${nextDueLabel}`
-                    : 'Settle the cards due back today.'}
+                    ? t('home.nothing_due_next', { next: nextDueLabel })
+                    : t('home.settle_cards_blurb')}
               </div>
             </div>
           </Link>
           <div className="h-mode-card__setting">
-            <span className="h-mode-card__setting-label">Cards per session</span>
+            <span className="h-mode-card__setting-label">{t('home.cards_per_session')}</span>
             <ModeStepper
               value={settings.review_batch_size}
               range={REVIEW_BATCH_SIZE_RANGE}
               onStep={(delta) => stepSetting('review_batch_size', delta, REVIEW_BATCH_SIZE_RANGE)}
-              decrementLabel="Fewer review cards per session"
-              incrementLabel="More review cards per session"
+              decrementLabel={t('home.fewer_review_cards_aria')}
+              incrementLabel={t('home.more_review_cards_aria')}
             />
           </div>
         </article>
@@ -512,9 +516,9 @@ function HomePage() {
       <section className="h-decks">
         <div className="h-decks__header">
           <div className="h-decks__header-left">
-            <h2 className="h-decks__title">Home decks</h2>
+            <h2 className="h-decks__title">{t('home.home_decks_title')}</h2>
             <div className="h-decks__meta">
-              <span>{enabledDeckCount} of {decks.length} in rotation</span>
+              <span>{t('home.decks_in_rotation', { enabled: enabledDeckCount, total: decks.length })}</span>
               <span aria-hidden="true">·</span>
               <button
                 type="button"
@@ -522,16 +526,16 @@ function HomePage() {
                 onClick={handleToggleAllDecks}
                 disabled={hasPendingDeckUpdates || decks.length === 0}
               >
-                {areAllDecksEnabledInSmartPractice ? 'Pause all' : 'Enable all'}
+                {areAllDecksEnabledInSmartPractice ? t('home.pause_all') : t('home.enable_all')}
               </button>
               <span aria-hidden="true">·</span>
-              <Link to="/market" className="h-decks__text-action">Open market</Link>
+              <Link to="/market" className="h-decks__text-action">{t('home.open_market_action')}</Link>
               <span aria-hidden="true">·</span>
-              <Link to="/decks/new" className="h-decks__text-action">Create with AI</Link>
+              <Link to="/decks/new" className="h-decks__text-action">{t('home.create_with_ai_action')}</Link>
             </div>
           </div>
 
-          <label className="h-deck-search" aria-label="Search home decks">
+          <label className="h-deck-search" aria-label={t('home.search_home_decks_aria')}>
             <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style={{ flexShrink: 0, color: 'var(--muted)' }}>
               <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.7" />
               <path d="m16 16 4 4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -540,7 +544,7 @@ function HomePage() {
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search home decks"
+              placeholder={t('home.search_home_decks_placeholder')}
             />
           </label>
         </div>

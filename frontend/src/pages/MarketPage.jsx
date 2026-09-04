@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { claimMarketDeck, fetchMarketDecks, updateDeckHomeSelection } from '../api';
 import DeckCard from '../components/DeckCard';
+import { useLocale } from '../context/LocaleContext';
 import { normalizeSearchText } from '../textSearch';
 
 function HomeIcon() {
@@ -14,7 +16,7 @@ function HomeIcon() {
   );
 }
 
-function sortDecks(decks) {
+function sortDecks(decks, localeCompare) {
   return [...decks].sort((leftDeck, rightDeck) => {
     const leftHome = leftDeck.is_selected_on_home ? 1 : 0;
     const rightHome = rightDeck.is_selected_on_home ? 1 : 0;
@@ -26,11 +28,15 @@ function sortDecks(decks) {
       return rightDeck.completion_ratio - leftDeck.completion_ratio;
     }
 
-    return leftDeck.title.localeCompare(rightDeck.title);
+    return localeCompare
+      ? localeCompare(leftDeck.title, rightDeck.title)
+      : String(leftDeck.title).localeCompare(String(rightDeck.title));
   });
 }
 
 function MarketPage() {
+  const { t } = useTranslation();
+  const { localeCompare } = useLocale();
   const [decks, setDecks] = useState([]);
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
@@ -44,7 +50,7 @@ function MarketPage() {
       try {
         const nextDecks = await fetchMarketDecks();
         if (!cancelled) {
-          setDecks(sortDecks(nextDecks));
+          setDecks(sortDecks(nextDecks, localeCompare));
           setStatus('ready');
         }
       } catch (loadError) {
@@ -60,7 +66,7 @@ function MarketPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [localeCompare]);
 
   const normalizedSearchQuery = normalizeSearchText(searchQuery);
   const visibleDecks = useMemo(() => {
@@ -111,11 +117,11 @@ function MarketPage() {
   const hasProposalActivity = decks.some((deck) => deck.is_owner || (deck.my_open_proposals ?? 0) > 0);
 
   if (status === 'loading') {
-    return <p className="h-empty-state">Loading deck market…</p>;
+    return <p className="h-empty-state">{t('market.loading_market')}</p>;
   }
 
   if (status === 'error') {
-    return <p className="h-empty-state h-empty-state--error">Unable to load market: {error}</p>;
+    return <p className="h-empty-state h-empty-state--error">{t('market.load_error', { error })}</p>;
   }
 
   return (
@@ -124,21 +130,21 @@ function MarketPage() {
         <div className="h-market__head-left">
           <Link to="/" className="back-link back-link--home back-link--button h-market__back">
             <HomeIcon />
-            <span>Home</span>
+            <span>{t('nav.home')}</span>
           </Link>
-          <p className="h-market__kicker">DECK MARKET</p>
-          <h1 className="h-market__title">Find your next deck.</h1>
-          <p className="h-market__copy">Add decks to your home screen to bring them into rotation. You can remove them later.</p>
+          <p className="h-market__kicker">{t('market.kicker')}</p>
+          <h1 className="h-market__title">{t('market.heading')}</h1>
+          <p className="h-market__copy">{t('market.copy')}</p>
           <Link to="/market/proposals" className="h-decks__text-action h-market__proposals-link">
             {openProposalsToReview > 0
-              ? `Review ${openProposalsToReview} open proposal${openProposalsToReview === 1 ? '' : 's'} →`
+              ? t('market.proposals_to_review', { count: openProposalsToReview })
               : hasProposalActivity
-                ? 'Change proposals →'
-                : 'Your change proposals →'}
+                ? t('market.change_proposals_link')
+                : t('market.your_proposals_link')}
           </Link>
         </div>
 
-        <label className="h-deck-search h-market__search" aria-label="Search market decks">
+        <label className="h-deck-search h-market__search" aria-label={t('market.search_aria')}>
           <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style={{ flexShrink: 0, color: 'var(--muted)' }}>
             <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.7" />
             <path d="m16 16 4 4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -147,15 +153,15 @@ function MarketPage() {
             type="search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search the market"
+            placeholder={t('market.search_placeholder')}
           />
         </label>
       </div>
 
       {visibleDecks.length === 0 ? (
         <div className="h-empty-panel panel">
-          <p>{decks.length === 0 ? 'All decks are already on your home screen.' : 'No market decks match your search.'}</p>
-          <Link to="/" className="button button--primary">Back home</Link>
+          <p>{decks.length === 0 ? t('market.all_decks_on_home') : t('market.no_matches')}</p>
+          <Link to="/" className="button button--primary">{t('market.back_home_btn')}</Link>
         </div>
       ) : (
         <div className="h-market-grid">
