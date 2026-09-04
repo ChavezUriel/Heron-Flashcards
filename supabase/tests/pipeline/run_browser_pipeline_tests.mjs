@@ -15,9 +15,12 @@ import {
 } from '../../../frontend/src/ai/enrich.js';
 import { validateCard, flatten } from '../../../frontend/src/ai/validate.js';
 import { locateAnswerInExample } from '../../../frontend/src/ai/cardText.js';
+import * as esmPrompts from '../../../frontend/src/ai/prompts.js';
+import { validateModelTier } from '../../../frontend/src/ai/providers.js';
 
 const require = createRequire(import.meta.url);
 const cjsEnrich = require('../../scripts/lib/enrich.cjs');
+const cjsPrompts = require('../../scripts/lib/prompts.cjs');
 const { normCard } = require('../../scripts/lib/cards.cjs');
 
 const DECK = { slug: 'travel', title: 'Travel Phrases', description: 'Short phrases for transport, directions, and common travel moments.' };
@@ -234,7 +237,7 @@ async function test(name, fn) {
     const { card, issues } = await processCard(legacy, { deck: DECK, runPrompt: spy });
     assert.deepStrictEqual(flatten(issues), [], flatten(issues).join('; '));
     assert.strictEqual(card.examples.length, 3);
-    assert.deepStrictEqual(sawExisting, [{ example_es: PAIRS[0].example_es, example_en: PAIRS[0].example_en }],
+    assert.deepStrictEqual(sawExisting, [{ example_l1: PAIRS[0].example_es, example_l2: PAIRS[0].example_en }],
       'prompt saw the legacy pair as keepable');
   });
 
@@ -523,6 +526,182 @@ async function test(name, fn) {
     };
 
     assert.deepStrictEqual(stripAuditTimestamp(esmResult.card), stripAuditTimestamp(cjsResult.card), 'resulting card must match across ESM and CJS');
+  });
+
+  await test('T20 browser/CLI prompt divergence check and pair-aware rules', async () => {
+    // 1. Verify prompt versions consistency
+    assert.deepStrictEqual(esmPrompts.PROMPT_VERSIONS, cjsPrompts.PROMPT_VERSIONS);
+    assert.deepStrictEqual(esmPrompts.BASE_PROMPT_VERSIONS, cjsPrompts.BASE_PROMPT_VERSIONS);
+
+    const esVersions = esmPrompts.getPromptVersions({ l1: 'es', l2: 'en' });
+    const cjsEsVersions = cjsPrompts.getPromptVersions({ l1: 'es', l2: 'en' });
+    assert.deepStrictEqual(esVersions, cjsEsVersions);
+    assert.strictEqual(esVersions.examples, 'enrich-examples-v3', 'es->en preserves base prompt versions');
+
+    const frVersions = esmPrompts.getPromptVersions({ l1: 'fr', l2: 'en' });
+    const cjsFrVersions = cjsPrompts.getPromptVersions({ l1: 'fr', l2: 'en' });
+    assert.deepStrictEqual(frVersions, cjsFrVersions);
+    assert.strictEqual(frVersions.examples, 'enrich-examples-v3:fr->en', 'fr->en encodes pair tag in version');
+
+    // 2. Cross-port divergence check across all prompt builders for multiple pairs
+    const pairsToTest = [
+      { l1: 'es', l2: 'en' },
+      { l1: 'fr', l2: 'en' },
+      { l1: 'en', l2: 'es' },
+    ];
+
+    const testSpec = { title: 'Gastronomy', description: 'Culinary traditions and recipes.', topic: 'Food' };
+    const testSection = { name: 'Cooking', communicative_goal: 'Order food', lexical_focus: ['knife', 'pan'] };
+    const testCard = {
+      l1_text: 'la pomme',
+      l2_text: 'the apple',
+      prompt_l1: 'la pomme',
+      answer_l2: 'the apple',
+      spanish_text: 'la manzana',
+      english_text: 'the apple',
+      part_of_speech: 'noun',
+      definition_en: 'A round fruit with red or green skin.',
+      l2_definition: 'A round fruit with red or green skin.',
+      main_translations_es: ['manzana'],
+      l1_translations: ['la pomme'],
+      collocations: ['apple tree'],
+      synonyms_en: ['orchard fruit'],
+      l2_synonyms: ['orchard fruit'],
+      examples: [{ l1: 'J’aime la pomme.', l2: 'I like the apple.' }],
+      cloze_distractors_en: ['pear', 'banana', 'orange'],
+      l2_cloze_distractors: ['pear', 'banana', 'orange'],
+    };
+    const pairItem = { l1: 'J’aime la pomme.', l2: 'I like the apple.' };
+
+    for (const pair of pairsToTest) {
+      // blueprintPrompt
+      assert.deepStrictEqual(
+        esmPrompts.blueprintPrompt(testSpec, pair),
+        cjsPrompts.blueprintPrompt(testSpec, pair),
+        `blueprintPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // wordSetPrompt
+      assert.deepStrictEqual(
+        esmPrompts.wordSetPrompt(testSpec, testSection, 5, [], pair),
+        cjsPrompts.wordSetPrompt(testSpec, testSection, 5, [], pair),
+        `wordSetPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // lexicalPrompt
+      assert.deepStrictEqual(
+        esmPrompts.lexicalPrompt(testCard, ['fix definition'], pair),
+        cjsPrompts.lexicalPrompt(testCard, ['fix definition'], pair),
+        `lexicalPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // equivalentsPrompt
+      assert.deepStrictEqual(
+        esmPrompts.equivalentsPrompt(testCard, undefined, pair),
+        cjsPrompts.equivalentsPrompt(testCard, undefined, pair),
+        `equivalentsPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // examplesPrompt
+      assert.deepStrictEqual(
+        esmPrompts.examplesPrompt(testCard, undefined, testSpec, pair),
+        cjsPrompts.examplesPrompt(testCard, undefined, testSpec, pair),
+        `examplesPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // exampleRewritePrompt
+      assert.deepStrictEqual(
+        esmPrompts.exampleRewritePrompt(testCard, testSpec, pairItem, ['improve context'], [], pair),
+        cjsPrompts.exampleRewritePrompt(testCard, testSpec, pairItem, ['improve context'], [], pair),
+        `exampleRewritePrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // synonymsPrompt
+      assert.deepStrictEqual(
+        esmPrompts.synonymsPrompt(testCard, undefined, pair),
+        cjsPrompts.synonymsPrompt(testCard, undefined, pair),
+        `synonymsPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // clozeDistractorsPrompt
+      assert.deepStrictEqual(
+        esmPrompts.clozeDistractorsPrompt(testCard, testSpec, undefined, pair),
+        cjsPrompts.clozeDistractorsPrompt(testCard, testSpec, undefined, pair),
+        `clozeDistractorsPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // exampleAuditPrompt
+      assert.deepStrictEqual(
+        esmPrompts.exampleAuditPrompt(testCard, testSpec, pairItem, pair),
+        cjsPrompts.exampleAuditPrompt(testCard, testSpec, pairItem, pair),
+        `exampleAuditPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // clozeSolvePrompt
+      assert.deepStrictEqual(
+        esmPrompts.clozeSolvePrompt('I like the ____.', ['the apple', 'pear', 'banana'], pair),
+        cjsPrompts.clozeSolvePrompt('I like the ____.', ['the apple', 'pear', 'banana'], pair),
+        `clozeSolvePrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // fieldAuditPrompt
+      assert.deepStrictEqual(
+        esmPrompts.fieldAuditPrompt(testCard, testSpec, pair),
+        cjsPrompts.fieldAuditPrompt(testCard, testSpec, pair),
+        `fieldAuditPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // cardSafetyAuditPrompt
+      assert.deepStrictEqual(
+        esmPrompts.cardSafetyAuditPrompt([testCard], testSpec, pair),
+        cjsPrompts.cardSafetyAuditPrompt([testCard], testSpec, pair),
+        `cardSafetyAuditPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // deckSafetyAuditPrompt
+      assert.deepStrictEqual(
+        esmPrompts.deckSafetyAuditPrompt(testSpec, [testCard], pair),
+        cjsPrompts.deckSafetyAuditPrompt(testSpec, [testCard], pair),
+        `deckSafetyAuditPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // cardSingleReviewPrompt
+      assert.deepStrictEqual(
+        esmPrompts.cardSingleReviewPrompt(testCard, testSpec, pair),
+        cjsPrompts.cardSingleReviewPrompt(testCard, testSpec, pair),
+        `cardSingleReviewPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // cardSingleFixPrompt
+      assert.deepStrictEqual(
+        esmPrompts.cardSingleFixPrompt(testCard, ['bad definition'], testSpec, pair),
+        cjsPrompts.cardSingleFixPrompt(testCard, ['bad definition'], testSpec, pair),
+        `cardSingleFixPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+    }
+
+    // 3. Verify French prompt-side rules specifically
+    const frBp = esmPrompts.blueprintPrompt(testSpec, { l1: 'fr', l2: 'en' });
+    assert.ok(frBp.system.includes('French to English'), 'French system prompt');
+    assert.ok(frBp.system.includes('French-speaking learners of English'), 'French learner profile');
+
+    const frEx = esmPrompts.examplesPrompt(testCard, undefined, testSpec, { l1: 'fr', l2: 'en' });
+    const frRules = JSON.parse(frEx.user).rules;
+    assert.ok(frRules.some((r) => r.includes('example_l2 must be in English; example_l1 is in French.')), 'French punctuation rule');
+    assert.ok(!frRules.some((r) => r.includes('no inverted ¿ ¡ punctuation')), 'No inverted punctuation rule for French prompt');
+
+    const esEx = esmPrompts.examplesPrompt(testCard, undefined, testSpec, { l1: 'es', l2: 'en' });
+    const esRules = JSON.parse(esEx.user).rules;
+    assert.ok(esRules.some((r) => r.includes('no inverted ¿ ¡ punctuation')), 'Inverted punctuation rule for Spanish prompt');
+
+    // 4. Model tier validation
+    assert.throws(
+      () => validateModelTier('gemini-2.5-flash-lite', { l1: 'es', l2: 'en', minModelTier: 'tier1' }),
+      /does not meet minimum model tier/
+    );
+    assert.doesNotThrow(
+      () => validateModelTier('gemini-2.5-flash', { l1: 'es', l2: 'en', minModelTier: 'tier1' })
+    );
   });
 
   console.log(`\nALL ${passed} BROWSER ESM PIPELINE STUB TESTS PASSED`);

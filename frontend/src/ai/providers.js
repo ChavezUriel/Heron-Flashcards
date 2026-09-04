@@ -92,3 +92,71 @@ export function maskKey(apiKey) {
   if (key.length <= 12) return `${key.slice(0, 2)}…${key.slice(-2)}`;
   return `${key.slice(0, 6)}…${key.slice(-4)}`;
 }
+
+// Model tier mapping for language pairs (P3):
+// tier1: models capable of multi-step linguistic reasoning, schema obedience, and audits
+// tier2: lighter models suitable for simple tasks
+export const MODEL_TIERS = {
+  // OpenAI
+  'gpt-4.1': 'tier1',
+  'gpt-4o': 'tier1',
+  'gpt-4.1-mini': 'tier1',
+  'gpt-4o-mini': 'tier1',
+
+  // Anthropic
+  'claude-sonnet-4-5-20250929': 'tier1',
+  'claude-opus-4-5-20251101': 'tier1',
+  'claude-haiku-4-5-20251001': 'tier1',
+
+  // Gemini
+  'gemini-2.5-pro': 'tier1',
+  'gemini-2.5-flash': 'tier1',
+  'gemini-2.5-flash-lite': 'tier2',
+
+  // OpenCode Zen
+  'gpt-5.6-luna': 'tier1',
+  'glm-5.2': 'tier1',
+  'kimi-k2.5': 'tier1',
+  'qwen3.7-plus': 'tier1',
+  'grok-4.5': 'tier1',
+  'minimax-m3': 'tier1',
+};
+
+const TIER_RANK = {
+  tier1: 1,
+  tier2: 2,
+  tier3: 3,
+};
+
+export function getQualifyingModels(minTier = 'tier1') {
+  const maxRank = TIER_RANK[minTier] ?? 1;
+  const qualifying = [];
+  for (const provider of Object.values(PROVIDERS)) {
+    for (const model of provider.models) {
+      const tier = MODEL_TIERS[model] || 'tier1';
+      const rank = TIER_RANK[tier] ?? 2;
+      if (rank <= maxRank && !qualifying.includes(model)) {
+        qualifying.push(model);
+      }
+    }
+  }
+  return qualifying;
+}
+
+export function validateModelTier(model, pair) {
+  if (!model) return;
+  const resolvedPair = pair || { l1: 'es', l2: 'en', minModelTier: 'tier1' };
+  const minTier = resolvedPair.minModelTier || 'tier1';
+  const maxRank = TIER_RANK[minTier] ?? 1;
+  const modelTier = MODEL_TIERS[model] || (model.includes('lite') || model.includes('nano') ? 'tier2' : 'tier1');
+  const modelRank = TIER_RANK[modelTier] ?? 2;
+
+  if (modelRank > maxRank) {
+    const pairTag = `${resolvedPair.l1 || 'es'}->${resolvedPair.l2 || 'en'}`;
+    const qualifying = getQualifyingModels(minTier);
+    throw new Error(
+      `Model "${model}" does not meet minimum model tier "${minTier}" for language pair ${pairTag}. Qualifying models: ${qualifying.join(', ')}.`
+    );
+  }
+}
+

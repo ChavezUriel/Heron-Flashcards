@@ -227,7 +227,7 @@ async function test(name, fn) {
     const { card, issues } = await processCard(legacy, { deck: DECK, runPrompt: spy });
     assert.deepStrictEqual(flatten(issues), [], flatten(issues).join('; '));
     assert.strictEqual(card.examples.length, 3);
-    assert.deepStrictEqual(sawExisting, [{ example_es: PAIRS[0].example_es, example_en: PAIRS[0].example_en }],
+    assert.deepStrictEqual(sawExisting, [{ example_l1: PAIRS[0].example_es, example_l2: PAIRS[0].example_en }],
       'prompt saw the legacy pair as keepable');
   });
 

@@ -29,25 +29,26 @@ export function normList(value) {
 export function normExamplePairs(value, legacyEs, legacyEn) {
   const out = [];
   const seen = new Set();
-  const push = (esRaw, enRaw) => {
-    const es = optText(esRaw);
-    const en = optText(enRaw);
-    if (!es || !en) return;
-    const key = en.toLowerCase();
+  const push = (l1Raw, l2Raw) => {
+    const l1 = optText(l1Raw);
+    const l2 = optText(l2Raw);
+    if (!l1 || !l2) return;
+    const key = l2.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    // l1/l2 are the real names. The es/en mirror stays until P3 renames the
-    // prompt schema: ai/prompts.js and ai/enrich.js still read pair.es / pair.en
-    // when they build and audit example sets, and a pair without them silently
-    // drops every example the model returns.
-    out.push({ l1: es, l2: en, es, en });
+    // Role-named keys only: each pair carries only l1 and l2 (P3).
+    // Non-enumerable getters preserve backward-compatibility for any legacy readers.
+    const pair = { l1, l2 };
+    Object.defineProperty(pair, 'es', { get() { return this.l1; }, configurable: true, enumerable: false });
+    Object.defineProperty(pair, 'en', { get() { return this.l2; }, configurable: true, enumerable: false });
+    out.push(pair);
   };
   if (Array.isArray(value)) {
     for (const pair of value) {
       if (!pair || typeof pair !== 'object') continue;
       push(
-        pair.l1 ?? pair.example_l1 ?? pair.es,
-        pair.l2 ?? pair.example_l2 ?? pair.en
+        pair.l1 ?? pair.example_l1 ?? pair.es ?? pair.example_es,
+        pair.l2 ?? pair.example_l2 ?? pair.en ?? pair.example_en
       );
     }
   }

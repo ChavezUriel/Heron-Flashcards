@@ -48,12 +48,15 @@ function normExamplePairs(v, legacyEs, legacyEn) {
     const k = en.toLowerCase();
     if (seen.has(k)) return;
     seen.add(k);
-    out.push({ es, en });
+    const pair = { l1: es, l2: en };
+    Object.defineProperty(pair, 'es', { get() { return this.l1; }, configurable: true, enumerable: false });
+    Object.defineProperty(pair, 'en', { get() { return this.l2; }, configurable: true, enumerable: false });
+    out.push(pair);
   };
   if (Array.isArray(v)) {
     for (const p of v) {
       if (!p || typeof p !== 'object') continue;
-      push(p.es ?? p.example_es, p.en ?? p.example_en);
+      push(p.l1 ?? p.example_l1 ?? p.es ?? p.example_es, p.l2 ?? p.example_l2 ?? p.en ?? p.example_en);
     }
   }
   if (!out.length) push(legacyEs, legacyEn);
