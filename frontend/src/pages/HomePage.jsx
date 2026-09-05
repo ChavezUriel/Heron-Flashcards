@@ -46,27 +46,28 @@ function planRecommendedSession(dueSummary) {
   return { mode, shape };
 }
 
-// Human-readable label + one-line rationale for the recommended session, shown
-// read-only on the Auto card so the ruleset's choice is visible.
+// Short label for the session Auto will build, shown read-only on the Auto
+// card so the ruleset's choice stays visible. Label only: the meta line above
+// it already says how many cards of each kind are coming.
 function describeRecommendedSession(plan, t) {
   if (!plan) return null;
   switch (plan.shape) {
     case 'front_loaded':
-      return { tag: t('home.auto_card_warmup_tag'), blurb: t('home.auto_card_warmup_blurb') };
+      return t('home.auto_card_warmup_tag');
     case 'spread':
-      return { tag: t('home.auto_card_spread_tag'), blurb: t('home.auto_card_spread_blurb') };
+      return t('home.auto_card_spread_tag');
     case 'interleaved':
-      return { tag: t('home.auto_card_interleaved_tag'), blurb: t('home.auto_card_interleaved_blurb') };
+      return t('home.auto_card_interleaved_tag');
     default:
       break;
   }
   switch (plan.mode) {
     case 'review':
-      return { tag: t('home.auto_card_review_tag'), blurb: t('home.auto_card_review_blurb') };
+      return t('home.auto_card_review_tag');
     case 'new_material':
-      return { tag: t('home.auto_card_new_tag'), blurb: t('home.auto_card_new_blurb') };
+      return t('home.auto_card_new_tag');
     default:
-      return { tag: t('home.auto_card_tag'), blurb: t('home.auto_card_default_blurb') };
+      return t('home.auto_card_tag');
   }
 }
 
@@ -243,15 +244,17 @@ function HomePage() {
     });
   }
 
-  const isSimplifiedMode = !(settings?.minigames?.enabled ?? true);
+  // Stated positively — on = mini-games — so the switch reads the same way
+  // round as its label. Simplified mode is what "off" means, not a second
+  // setting to reason about.
+  const areMinigamesEnabled = settings?.minigames?.enabled ?? true;
 
-  function handleToggleSimplifiedMode(event) {
+  function handleToggleMinigames(event) {
     event.stopPropagation();
-    const nextSimplified = !isSimplifiedMode;
     updateSettings({
       minigames: {
         ...(settings?.minigames || DEFAULT_PRACTICE_SETTINGS.minigames),
-        enabled: !nextSimplified,
+        enabled: !areMinigamesEnabled,
       },
     });
   }
@@ -419,35 +422,25 @@ function HomePage() {
               </div>
             </div>
           </Link>
-          <div className="h-mode-card__setting">
-            <div className="h-mode-card__toggle-row">
-              <div className="h-mode-card__toggle-info">
-                <span className="h-mode-card__setting-label">{t('home.simplified_mode_label')}</span>
-                <span className="h-mode-card__toggle-hint">
-                  {isSimplifiedMode ? t('home.simplified_flashcards_only') : t('home.simplified_flashcards_and_games')}
-                </span>
-              </div>
-              <label
-                className="h-toggle-switch"
-                title={isSimplifiedMode ? t('home.simplified_active_tooltip') : t('home.simplified_inactive_tooltip')}
-              >
+          <div className="h-mode-card__setting h-mode-card__setting--inline">
+            {recommendedSession ? <span className="h-plan__tag">{recommendedSession}</span> : null}
+            <label
+              className="h-games-toggle"
+              title={areMinigamesEnabled ? t('home.minigames_on_tooltip') : t('home.minigames_off_tooltip')}
+            >
+              <span className="h-games-toggle__label">{t('home.minigames_toggle_label')}</span>
+              <span className="h-toggle-switch">
                 <input
                   type="checkbox"
-                  checked={isSimplifiedMode}
-                  onChange={handleToggleSimplifiedMode}
-                  aria-label={t('home.simplified_aria')}
+                  checked={areMinigamesEnabled}
+                  onChange={handleToggleMinigames}
+                  aria-label={t('home.minigames_toggle_aria')}
                 />
                 <span className="h-toggle-switch__track" aria-hidden="true">
                   <span className="h-toggle-switch__thumb" />
                 </span>
-              </label>
-            </div>
-            {recommendedSession ? (
-              <div className="h-plan">
-                <span className="h-plan__tag">{recommendedSession.tag}</span>
-                <span className="h-plan__blurb">{recommendedSession.blurb}</span>
-              </div>
-            ) : null}
+              </span>
+            </label>
           </div>
         </article>
 

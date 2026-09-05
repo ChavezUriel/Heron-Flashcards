@@ -4010,12 +4010,15 @@ html {
   outline-offset: 2px;
 }
 
-/* Auto card: read-only descriptor of the auto-chosen session shape */
-.h-plan {
+/* Auto card footer: one thin row — the shape Auto picked on the left, the
+   mini-games switch on the right. */
+.h-mode-card__setting--inline {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 6px 10px;
+  gap: 8px 14px;
+  padding: 9px 20px 10px;
 }
 
 .h-plan__tag {
@@ -4029,51 +4032,39 @@ html {
   letter-spacing: 0.02em;
 }
 
-.h-plan__blurb {
-  font-size: 12.5px;
-  line-height: 1.4;
-  color: inherit;
-  opacity: 0.82;
-}
-
-/* Simplified mode toggle on mode cards */
-.h-mode-card__toggle-row {
-  display: flex;
+/* Mini-games switch: label and control on one line, stated positively so
+   "on" means games are in the session. */
+.h-games-toggle {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  margin-left: auto;
+  cursor: pointer;
 }
 
-.h-mode-card__toggle-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.h-mode-card__toggle-hint {
-  font-size: 11.5px;
-  line-height: 1.3;
+.h-games-toggle__label {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: inherit;
-  opacity: 0.85;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  opacity: 0.78;
 }
 
 .h-toggle-switch {
   position: relative;
   display: inline-flex;
   align-items: center;
-  width: 44px;
-  height: 26px;
+  width: 38px;
+  height: 22px;
   flex-shrink: 0;
   cursor: pointer;
 }
 
+/* Hit area padded out to the 44px touch minimum the visible track undercuts. */
 .h-toggle-switch input {
   position: absolute;
-  inset: -6px -8px;
+  inset: -11px -8px;
   width: auto;
   height: auto;
   margin: 0;
@@ -4095,8 +4086,8 @@ html {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #ffffff;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
@@ -4110,7 +4101,7 @@ html {
 }
 
 .h-toggle-switch input:checked + .h-toggle-switch__track .h-toggle-switch__thumb {
-  transform: translateX(18px);
+  transform: translateX(16px);
   background: var(--accent);
 }
 
@@ -5403,6 +5394,10 @@ html {
 
   .h-mode-card__setting {
     padding: 11px 16px 14px;
+  }
+
+  .h-mode-card__setting--inline {
+    padding: 8px 16px 9px;
   }
 
   .h-mode-card__title {
