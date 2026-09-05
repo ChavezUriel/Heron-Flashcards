@@ -114,6 +114,66 @@ end;
 $$;
 
 -- ===========================================================================
+-- 1b. Repair the content-hash helpers BEFORE the first write to cards
+-- ===========================================================================
+--
+-- public._card_sync_content(c public.cards) is defined in 0017 against the old
+-- column names. Renaming the columns above changes the public.cards composite
+-- type, so c.spanish_text no longer resolves as a field and Postgres rereads it
+-- as a table reference, failing with "missing FROM-clause entry for table c".
+--
+-- Section 4 below already recreates these three functions with the role names,
+-- but section 2's UPDATE fires the content trigger, which calls the still-stale
+-- function — so on a database that HAS rows the migration aborted here. It
+-- passed on an empty database because the UPDATE matched no rows and the
+-- trigger never fired. Defining them here first makes the order correct; the
+-- section 4 copies are then identical no-op replacements.
+
+create or replace function public._card_sync_content(c public.cards)
+returns jsonb
+language sql
+immutable
+set search_path = ''
+as $$
+    select jsonb_build_object(
+        'l1_text', c.l1_text,
+        'l2_text', c.l2_text,
+        'section_name', c.section_name,
+        'part_of_speech', c.part_of_speech,
+        'l2_definition', c.l2_definition,
+        'l1_translations', coalesce(c.l1_translations, '[]'::jsonb),
+        'collocations', coalesce(c.collocations, '[]'::jsonb),
+        'l2_synonyms', coalesce(c.l2_synonyms, '[]'::jsonb),
+        'example_sentence', c.example_sentence,
+        'example_l1', c.example_l1,
+        'example_l2', c.example_l2,
+        'l2_mnemonic', c.l2_mnemonic
+    )
+$$;
+
+create or replace function public._card_content_hash(c public.cards)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+    select md5(public._card_sync_content(c)::text)
+$$;
+
+create or replace function public._touch_card_content_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+    if public._card_sync_content(old) is distinct from public._card_sync_content(new) then
+        new.content_updated_at := now();
+    end if;
+    return new;
+end;
+$$;
+
+-- ===========================================================================
 -- 2. cards.examples jsonb array migration {es, en} -> {l1, l2}
 -- ===========================================================================
 
