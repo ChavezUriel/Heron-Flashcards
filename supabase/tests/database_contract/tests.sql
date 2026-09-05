@@ -257,6 +257,73 @@ begin
     raise notice 'PASS T6e: anon cannot UPDATE cards_legacy';
 end $$;
 
+-- 7: update_card accepts BOTH the role-named and the pre-0034 legacy parameter
+-- names (migration 0036). This is the deploy window: after 0034 is applied the
+-- already-deployed frontend still sends p_prompt_es / p_answer_en, and its card
+-- edits must keep working until the new frontend ships.
+do $$
+declare
+    alice constant uuid := '11111111-1111-1111-1111-111111111111';
+    v_card_id bigint;
+    v_result jsonb;
+begin
+    perform set_config('app.uid', alice::text, false);
+    select c.id into v_card_id
+    from public.cards c
+    join public.decks d on d.id = c.deck_id
+    where d.slug = 'alice-travel'
+    limit 1;
+
+    -- legacy call shape, exactly what the pre-0034 client sends
+    v_result := public.update_card(
+        p_card_id := v_card_id,
+        p_prompt_es := 'pasaporte legacy',
+        p_answer_en := 'passport legacy',
+        p_definition_en := 'A travel document.',
+        p_main_translations_es := array['pasaporte'],
+        p_synonyms_en := array['travel document'],
+        p_example_es := 'Necesito mi pasaporte.',
+        p_example_en := 'I need my passport.',
+        p_mnemonic_en := 'pass-port'
+    );
+    assert (select l1_text from public.cards where id = v_card_id) = 'pasaporte legacy',
+        'T7a: legacy p_prompt_es must write l1_text';
+    assert (select l2_definition from public.cards where id = v_card_id) = 'A travel document.',
+        'T7a: legacy p_definition_en must write l2_definition';
+    assert (select example_l1 from public.cards where id = v_card_id) = 'Necesito mi pasaporte.',
+        'T7a: legacy p_example_es must write example_l1';
+    raise notice 'PASS T7a: update_card accepts the pre-0034 legacy parameter names';
+
+    -- role-named call shape, what the post-0034 client sends
+    v_result := public.update_card(
+        p_card_id := v_card_id,
+        p_prompt_l1 := 'pasaporte',
+        p_answer_l2 := 'passport',
+        p_l2_definition := 'An official travel document.',
+        p_l1_translations := array['pasaporte'],
+        p_l2_synonyms := array['travel papers'],
+        p_example_l1 := 'Renove mi pasaporte.',
+        p_example_l2 := 'I renewed my passport.',
+        p_l2_mnemonic := 'port of passage'
+    );
+    assert (select l1_text from public.cards where id = v_card_id) = 'pasaporte',
+        'T7b: role-named p_prompt_l1 must write l1_text';
+    assert (select l2_definition from public.cards where id = v_card_id) = 'An official travel document.',
+        'T7b: role-named p_l2_definition must write l2_definition';
+    assert (select example_l2 from public.cards where id = v_card_id) = 'I renewed my passport.',
+        'T7b: role-named p_example_l2 must write example_l2';
+    raise notice 'PASS T7b: update_card accepts the role-named parameters';
+
+    -- a call carrying neither name still fails loudly rather than writing null
+    begin
+        v_result := public.update_card(p_card_id := v_card_id, p_section_name := 'x');
+        raise exception 'T7c: update_card with no prompt should have failed';
+    exception when others then
+        if sqlerrm like 'T7c:%' then raise; end if;
+    end;
+    raise notice 'PASS T7c: update_card still rejects a call with no prompt or answer';
+end $$;
+
 -- Final success line
 do $$ begin raise notice 'ALL DATABASE CONTRACT TESTS PASSED'; end $$;
 select 'ALL DATABASE CONTRACT TESTS PASSED' as result;
