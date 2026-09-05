@@ -46,7 +46,7 @@ export const DEFAULT_PRACTICE_SETTINGS = {
   },
 };
 
-const STORAGE_KEY = 'duocards.smartPracticeSettings';
+const STORAGE_KEY = 'heron.smartPracticeSettings';
 
 // Overlay a stored blob onto the defaults. Top-level keys are a shallow merge,
 // but `minigames` (and its nested `games` map) is merged one level deeper so a

@@ -4,8 +4,8 @@
 // push while the site is closed needs a service worker + push server. The
 // once-per-day guard lives in localStorage so reopening the app does not spam.
 
-const REMINDER_SETTINGS_KEY = 'duocards.reminderSettings';
-const LAST_NOTIFIED_KEY = 'duocards.lastDueNotificationDate';
+const REMINDER_SETTINGS_KEY = 'heron.reminderSettings';
+const LAST_NOTIFIED_KEY = 'heron.lastDueNotificationDate';
 
 export const DEFAULT_REMINDER_SETTINGS = {
   enabled: false,
@@ -84,9 +84,9 @@ export function maybeNotifyDueCards(dueSummary) {
 
   const cardsLabel = dueNow === 1 ? '1 card is' : `${dueNow} cards are`;
   try {
-    const notification = new Notification('DuoCards — time to review', {
+    const notification = new Notification('Heron — time to review', {
       body: `${cardsLabel} due for review. A short session now keeps them in memory.`,
-      tag: 'duocards-due-reminder',
+      tag: 'heron-due-reminder',
     });
     notification.onclick = () => {
       window.focus();

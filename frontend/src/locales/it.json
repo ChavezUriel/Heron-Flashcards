@@ -1136,7 +1136,7 @@
     "oauth_error": "Collegamento dell'accesso non riuscito: {error}"
   },
   "notifications": {
-    "due_title": "DuoCards — ora di ripassare",
+    "due_title": "Heron — ora di ripassare",
     "due_body": "{count, plural, one {1 carta è} other {# carte sono}} pronte per il ripasso. Una breve sessione adesso le fisserà nella memoria."
   },
   "sync": {
@@ -1161,7 +1161,7 @@
     "active_flashcards": "{count, plural, one {1 flashcard attiva} other {# flashcard attive}}",
     "creator_ownership": "Il creatore mantiene la titolarità",
     "guarantee_title": "Garanzia di sicurezza e qualità",
-    "guarantee_desc": "Prima della pubblicazione, DuoCards applica un controllo IA di sicurezza, etica e qualità per garantire il rispetto delle linee guida della community, l'accuratezza linguistica e la privacy.",
+    "guarantee_desc": "Prima della pubblicazione, Heron applica un controllo IA di sicurezza, etica e qualità per garantire il rispetto delle linee guida della community, l'accuratezza linguistica e la privacy.",
     "api_key_tip": "Suggerimento: configura una chiave API per l'IA qui sotto per un controllo semantico approfondito e l'analisi automatica dei falsi amici.",
     "show_provider_settings": "Configura chiave provider IA ⚙",
     "hide_provider_settings": "Nascondi impostazioni provider IA",

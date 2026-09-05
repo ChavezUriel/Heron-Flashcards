@@ -11,8 +11,8 @@
 
 import { DEFAULT_PROVIDER_ID, getProvider, PROVIDER_IDS } from './providers.js';
 
-const STORAGE_KEY = 'duocards.aiCredentials';
-const PREFS_KEY = 'duocards.aiBuilderPrefs';
+const STORAGE_KEY = 'heron.aiCredentials';
+const PREFS_KEY = 'heron.aiBuilderPrefs';
 
 function storageFor(scope) {
   if (typeof window === 'undefined') return null;

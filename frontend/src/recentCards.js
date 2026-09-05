@@ -6,7 +6,7 @@
 // prior words" across sessions. Only the fields a boundary game needs are stored,
 // and the list is capped, so the blob stays tiny. See the Phase 3 open decision on
 // the card pool (no backend change).
-const STORAGE_KEY = 'duocards.recentPracticeCards';
+const STORAGE_KEY = 'heron.recentPracticeCards';
 const CAP = 24;
 // Keep only a handful of synonyms per card so the blob stays small; the depth game
 // (Synonym match, §9 Phase 6) needs just a couple to build a round.

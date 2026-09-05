@@ -1,4 +1,4 @@
--- DuoCards Clone — initial Supabase schema
+-- Heron — initial Supabase schema
 -- Ported from the original SQLite schema (the original FastAPI/SQLite backend, since removed).
 -- Users now live in Supabase Auth (auth.users); app data references auth.users(id).
 

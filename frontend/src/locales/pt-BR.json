@@ -1136,7 +1136,7 @@
     "oauth_error": "Falha ao vincular login: {error}"
   },
   "notifications": {
-    "due_title": "DuoCards — hora de revisar",
+    "due_title": "Heron — hora de revisar",
     "due_body": "{count, plural, one {Você tem 1 cartão pendente} other {Você tem # cartões pendentes}} para revisão. Uma sessão curta agora vai mantê-los na memória."
   },
   "sync": {
@@ -1161,7 +1161,7 @@
     "active_flashcards": "{count, plural, one {1 cartão ativo} other {# cartões ativos}}",
     "creator_ownership": "O criador mantém a autoria",
     "guarantee_title": "Garantia de segurança e qualidade",
-    "guarantee_desc": "Antes de publicar, o DuoCards filtra o conteúdo com uma verificação de segurança, ética e qualidade por IA para garantir que as diretrizes da comunidade, a precisão linguística e a privacidade sejam respeitadas.",
+    "guarantee_desc": "Antes de publicar, o Heron filtra o conteúdo com uma verificação de segurança, ética e qualidade por IA para garantir que as diretrizes da comunidade, a precisão linguística e a privacidade sejam respeitadas.",
     "api_key_tip": "Dica: Configure uma chave de API de IA abaixo para uma verificação semântica profunda e detecção automatizada de falsos cognatos.",
     "show_provider_settings": "Configurar chave de IA ⚙",
     "hide_provider_settings": "Ocultar configurações de IA",

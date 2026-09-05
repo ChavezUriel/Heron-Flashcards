@@ -1,6 +1,14 @@
-# DuoCards Clone
+# Heron
 
-A DuoCards-inspired MVP for Spanish speakers learning English, deployed on **Supabase**.
+A quiet way to learn languages. Heron is a spaced-repetition flashcard app built
+on **Supabase**: an FSRS scheduler decides when each card comes back, eight
+optional minigames vary how a card is answered, learners generate their own
+decks with AI using their own provider key, and a deck market lets people share
+decks, pull updates, and propose edits back to the maintainer.
+
+The engine is language-agnostic. Tier 1 covers English, Spanish and French as
+target languages, with English, Spanish, French, Portuguese, German and Italian
+as source languages. The interface ships in six locales.
 
 ## Stack
 

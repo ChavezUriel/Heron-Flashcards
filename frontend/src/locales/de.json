@@ -1136,7 +1136,7 @@
     "oauth_error": "Anmeldeverknüpfung fehlgeschlagen: {error}"
   },
   "notifications": {
-    "due_title": "DuoCards — Zeit zum Wiederholen",
+    "due_title": "Heron — Zeit zum Wiederholen",
     "due_body": "{count, plural, one {1 Karte ist} other {# Karten sind}} zur Wiederholung fällig. Eine kurze Lerneinheit jetzt frischt dein Gedächtnis auf."
   },
   "sync": {
@@ -1161,7 +1161,7 @@
     "active_flashcards": "{count, plural, one {1 aktive Lernkarte} other {# aktive Lernkarten}}",
     "creator_ownership": "Ersteller behält die Urheberschaft",
     "guarantee_title": "Sicherheits- & Qualitätsgarantie",
-    "guarantee_desc": "Vor der Veröffentlichung filtert DuoCards Inhalte mit einer KI-Sicherheits-, Ethik- und Qualitätsprüfung, um Community-Richtlinien, sprachliche Genauigkeit und Datenschutz zu gewährleisten.",
+    "guarantee_desc": "Vor der Veröffentlichung filtert Heron Inhalte mit einer KI-Sicherheits-, Ethik- und Qualitätsprüfung, um Community-Richtlinien, sprachliche Genauigkeit und Datenschutz zu gewährleisten.",
     "api_key_tip": "Tipp: Konfiguriere unten einen KI-API-Schlüssel für tiefgehende semantische Prüfungen und automatische Falsche-Freunde-Erkennung.",
     "show_provider_settings": "KI-Anbieterschlüssel konfigurieren ⚙",
     "hide_provider_settings": "KI-Anbietereinstellungen ausblenden",

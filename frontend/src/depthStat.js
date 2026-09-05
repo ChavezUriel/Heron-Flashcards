@@ -7,7 +7,7 @@
 // graduation streak. Keeping the stat purely client-side (same pattern as
 // practiceSettings / recentCards) means the depth feature needs no backend beyond
 // the additive telemetry log. See docs/minigames.md §11.
-const STORAGE_KEY = 'duocards.depthStat';
+const STORAGE_KEY = 'heron.depthStat';
 
 const EMPTY = { plays: 0, rounds: 0, matched: 0, total: 0 };
 

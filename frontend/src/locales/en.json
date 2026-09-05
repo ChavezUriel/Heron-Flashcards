@@ -1136,7 +1136,7 @@
     "oauth_error": "Sign-in linking failed: {error}"
   },
   "notifications": {
-    "due_title": "DuoCards — time to review",
+    "due_title": "Heron — time to review",
     "due_body": "{count, plural, one {1 card is} other {# cards are}} due for review. A short session now keeps them in memory."
   },
   "sync": {
@@ -1161,7 +1161,7 @@
     "active_flashcards": "{count, plural, one {1 active flashcard} other {# active flashcards}}",
     "creator_ownership": "Creator maintains ownership",
     "guarantee_title": "Safety & Quality Guarantee",
-    "guarantee_desc": "Before publishing, DuoCards filters content with an AI security, ethics, and quality check to ensure community guidelines, language accuracy, and privacy are upheld.",
+    "guarantee_desc": "Before publishing, Heron filters content with an AI security, ethics, and quality check to ensure community guidelines, language accuracy, and privacy are upheld.",
     "api_key_tip": "Tip: Configure an AI API key below for deep semantic checking and automatic false-friend analysis.",
     "show_provider_settings": "Configure AI Provider Key ⚙",
     "hide_provider_settings": "Hide AI Provider Settings",

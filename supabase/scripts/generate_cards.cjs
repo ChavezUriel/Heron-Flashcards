@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// AI flashcard generator for DuoCards Clone (Ollama gpt-oss:20b).
+// AI flashcard generator for Heron (Ollama gpt-oss:20b).
 //
 // Produces / enriches Spanish->English flashcards in the enriched seed-JSON shape
 // that supabase/scripts/generate_seed.cjs consumes. Apply with:

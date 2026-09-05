@@ -56,7 +56,7 @@ A session is **one continuous FIFO queue**, built by `start_smart_practice_sessi
 **Gap:** `current_card` does **not** include `times_presented` or `last_result`, so the client can tell *new vs review* but not *first exposure vs later exposure vs just‑lapsed*. Closing this gap is a one‑line snapshot change (both columns already live on `practice_session_cards`).
 
 ### 2.5 Settings pattern
-Practice settings are **client‑side** in `localStorage` under `duocards.smartPracticeSettings` via [frontend/src/practiceSettings.js](../frontend/src/practiceSettings.js) (`DEFAULT_PRACTICE_SETTINGS` merged with stored overrides). Minigame preferences follow the same pattern.
+Practice settings are **client‑side** in `localStorage` under `heron.smartPracticeSettings` via [frontend/src/practiceSettings.js](../frontend/src/practiceSettings.js) (`DEFAULT_PRACTICE_SETTINGS` merged with stored overrides). Minigame preferences follow the same pattern.
 
 ---
 
@@ -329,7 +329,7 @@ enrichment aside. **Additive only: zero change to FSRS, the 2‑streak, or any m
   drawn from the seen‑cards pool — no fetch). It runs as a queue‑external **cool‑down**
   interstitial (like scramble/hangman), so it **never touches `due_at` or the graduation
   streak** and never calls a session RPC. Results feed a separate **client‑side depth stat**
-  (localStorage, `duocards.depthStat`) — a running count of related words matched, orthogonal to
+  (localStorage, `heron.depthStat`) — a running count of related words matched, orthogonal to
   the FSRS schedule — surfaced in Settings → Minigames and on the session‑complete screen.
 - **Deferred (unchanged):** the Hard(2) grade (§5.4) and active "type what you hear" dictation
   stay deferred — the count‑failures‑only model is FSRS‑safe without them, and graduation must

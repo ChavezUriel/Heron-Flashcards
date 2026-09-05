@@ -8,7 +8,7 @@
 // Only the most recent runs are kept, and a job's card payload is the bulk of
 // it, so the store prunes oldest-first when storage fills up.
 
-const STORAGE_KEY = 'duocards.aiDeckJobs';
+const STORAGE_KEY = 'heron.aiDeckJobs';
 const MAX_JOBS = 6;
 
 function readAll() {

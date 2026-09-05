@@ -73,7 +73,7 @@ export function specRefinePrompt(spec, instruction) {
   return { system, user, temperature: 0.3 };
 }
 
-const DECK_SPEC_CACHE_PREFIX = 'duocards.aiDeckCtx.';
+const DECK_SPEC_CACHE_PREFIX = 'heron.aiDeckCtx.';
 
 export function loadDeckContextCache(deckId) {
   if (!deckId) return null;

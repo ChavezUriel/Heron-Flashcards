@@ -199,7 +199,7 @@ export async function exportAccountData() {
   }
 
   return {
-    format: 'duocards-clone-export',
+    format: 'heron-export',
     version: 1,
     exported_at: new Date().toISOString(),
     account: { id: me.id, email: me.email, nickname: me.full_name },
