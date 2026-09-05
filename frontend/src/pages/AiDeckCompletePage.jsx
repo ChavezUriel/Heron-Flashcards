@@ -349,7 +349,7 @@ export default function AiDeckCompletePage() {
               <option value="">{t('builder.select_deck_placeholder')}</option>
               {decks.map((deck) => (
                 <option key={`${deck.isMarket ? 'market-' : 'home-'}${deck.id}`} value={deck.id}>
-                  {deck.title} ({t('home.cards_count', { count: deck.total_cards ?? 0 })}){deck.isMarket ? t('builder.deck_option_market_tag') : ''}
+                  {deck.title} ({t('deck.cards_count', { count: deck.total_cards ?? 0 })}){deck.isMarket ? t('builder.deck_option_market_tag') : ''}
                 </option>
               ))}
             </select>

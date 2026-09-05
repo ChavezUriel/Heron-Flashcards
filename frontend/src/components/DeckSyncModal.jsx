@@ -277,7 +277,7 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
                       <ul className="sync-diff">
                         {syncStatus.deck_meta.mine.title !== syncStatus.deck_meta.market.title ? (
                           <li>
-                            <span className="sync-diff__label">{t('diff.field_title', { defaultValue: 'Title' })}</span>
+                            <span className="sync-diff__label">{t('diff.field_title')}</span>
                             <span className="sync-diff__values">
                               <del>{syncStatus.deck_meta.mine.title}</del>
                               <span aria-hidden="true" className="sync-diff__arrow">→</span>
@@ -287,7 +287,7 @@ function DeckSyncModal({ deckId, onClose, onApplied }) {
                         ) : null}
                         {syncStatus.deck_meta.mine.description !== syncStatus.deck_meta.market.description ? (
                           <li>
-                            <span className="sync-diff__label">{t('diff.field_description', { defaultValue: 'Description' })}</span>
+                            <span className="sync-diff__label">{t('diff.field_description')}</span>
                             <span className="sync-diff__values">
                               <del>{syncStatus.deck_meta.mine.description}</del>
                               <span aria-hidden="true" className="sync-diff__arrow">→</span>

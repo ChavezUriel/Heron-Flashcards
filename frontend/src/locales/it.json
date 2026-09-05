@@ -917,7 +917,8 @@
     "card_visible_aria": "Carta {word} visibile nel mazzo",
     "failed_delete_deck": "Impossibile eliminare il mazzo",
     "failed_add_home": "Impossibile aggiungere il mazzo alla home",
-    "failed_remove_home": "Impossibile rimuovere il mazzo dalla home"
+    "failed_remove_home": "Impossibile rimuovere il mazzo dalla home",
+    "select_all": "Seleziona tutto"
   },
   "card_details": {
     "title_view": "Dettagli flashcard",
@@ -1207,6 +1208,8 @@
     "example_sentence": "Esempio",
     "example_l1": "Esempio (L1)",
     "example_l2": "Esempio (L2)",
-    "l2_cloze_distractors": "Opzioni per la banca parole"
+    "l2_cloze_distractors": "Opzioni per la banca parole",
+    "field_title": "Titolo",
+    "field_description": "Descrizione"
   }
 }

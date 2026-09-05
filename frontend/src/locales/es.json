@@ -917,7 +917,8 @@
     "card_visible_aria": "Tarjeta {word} visible en el mazo",
     "failed_delete_deck": "Error al eliminar el mazo",
     "failed_add_home": "Error al añadir el mazo al inicio",
-    "failed_remove_home": "Error al quitar el mazo del inicio"
+    "failed_remove_home": "Error al quitar el mazo del inicio",
+    "select_all": "Seleccionar todo"
   },
   "card_details": {
     "title_view": "Detalles de la tarjeta",
@@ -1207,6 +1208,8 @@
     "example_sentence": "Ejemplo",
     "example_l1": "Ejemplo (L1)",
     "example_l2": "Ejemplo (L2)",
-    "l2_cloze_distractors": "Opciones de banco de palabras"
+    "l2_cloze_distractors": "Opciones de banco de palabras",
+    "field_title": "Título",
+    "field_description": "Descripción"
   }
 }

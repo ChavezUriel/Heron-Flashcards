@@ -917,7 +917,8 @@
     "card_visible_aria": "Carte {word} visible dans le deck",
     "failed_delete_deck": "Échec de la suppression du paquet",
     "failed_add_home": "Échec de l'ajout du paquet à l'accueil",
-    "failed_remove_home": "Échec du retrait du paquet de l'accueil"
+    "failed_remove_home": "Échec du retrait du paquet de l'accueil",
+    "select_all": "Tout sélectionner"
   },
   "card_details": {
     "title_view": "Détails de la carte",
@@ -1207,6 +1208,8 @@
     "example_sentence": "Exemple",
     "example_l1": "Exemple (L1)",
     "example_l2": "Exemple (L2)",
-    "l2_cloze_distractors": "Options de banc de mots"
+    "l2_cloze_distractors": "Options de banc de mots",
+    "field_title": "Titre",
+    "field_description": "Description"
   }
 }

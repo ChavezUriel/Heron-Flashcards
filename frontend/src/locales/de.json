@@ -917,7 +917,8 @@
     "card_visible_aria": "Karte {word} im Deck sichtbar",
     "failed_delete_deck": "Fehler beim Löschen des Stapels",
     "failed_add_home": "Fehler beim Hinzufügen des Stapels zur Startseite",
-    "failed_remove_home": "Fehler beim Entfernen des Stapels von der Startseite"
+    "failed_remove_home": "Fehler beim Entfernen des Stapels von der Startseite",
+    "select_all": "Alle auswählen"
   },
   "card_details": {
     "title_view": "Lernkarten-Details",
@@ -1207,6 +1208,8 @@
     "example_sentence": "Beispielsatz",
     "example_l1": "Beispiel (L1)",
     "example_l2": "Beispiel (L2)",
-    "l2_cloze_distractors": "Wortspeicher-Optionen"
+    "l2_cloze_distractors": "Wortspeicher-Optionen",
+    "field_title": "Titel",
+    "field_description": "Beschreibung"
   }
 }

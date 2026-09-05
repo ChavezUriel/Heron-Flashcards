@@ -917,7 +917,8 @@
     "card_visible_aria": "Card {word} visible in deck",
     "failed_delete_deck": "Failed to delete deck",
     "failed_add_home": "Failed to add deck to home",
-    "failed_remove_home": "Failed to remove deck from home"
+    "failed_remove_home": "Failed to remove deck from home",
+    "select_all": "Select all"
   },
   "card_details": {
     "title_view": "Flashcard Details",
@@ -1207,6 +1208,8 @@
     "example_sentence": "Example",
     "example_l1": "Example (L1)",
     "example_l2": "Example (L2)",
-    "l2_cloze_distractors": "Word-bank options"
+    "l2_cloze_distractors": "Word-bank options",
+    "field_title": "Title",
+    "field_description": "Description"
   }
 }

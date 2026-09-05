@@ -816,10 +816,10 @@ function DeckWordsPage() {
             <DeckOriginIcon type={previewOriginType} size={12} />
             <span>
               {previewOriginType === 'personal'
-                ? t('home.origin_personal_scope')
+                ? t('deck.origin_personal_scope')
                 : previewOriginType === 'managing'
-                  ? t('home.origin_managing_scope')
-                  : t('home.origin_public_scope')}
+                  ? t('deck.origin_managing_scope')
+                  : t('deck.origin_public_scope')}
             </span>
           </span>
           {!canEdit ? <span className="deck-scope-chip deck-scope-chip--readonly">{t('deck_words.read_only_badge')}</span> : null}
@@ -894,7 +894,7 @@ function DeckWordsPage() {
             <p className="deck-table-controls__count" role="status">
               {isFiltered
                 ? t('deck_words.showing_count', { visible: tableRows.length, total: totalCards })
-                : t('home.cards_count', { count: totalCards })}
+                : t('deck.cards_count', { count: totalCards })}
               {hiddenCount > 0 ? ` · ${t('deck_words.hidden_count', { count: hiddenCount })}` : ''}
             </p>
           </div>

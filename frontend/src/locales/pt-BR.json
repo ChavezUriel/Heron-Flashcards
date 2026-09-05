@@ -917,7 +917,8 @@
     "card_visible_aria": "Card {word} visível no deck",
     "failed_delete_deck": "Falha ao excluir o baralho",
     "failed_add_home": "Falha ao adicionar o baralho ao início",
-    "failed_remove_home": "Falha ao remover o baralho do início"
+    "failed_remove_home": "Falha ao remover o baralho do início",
+    "select_all": "Selecionar tudo"
   },
   "card_details": {
     "title_view": "Detalhes do cartão",
@@ -1207,6 +1208,8 @@
     "example_sentence": "Exemplo",
     "example_l1": "Exemplo (L1)",
     "example_l2": "Exemplo (L2)",
-    "l2_cloze_distractors": "Opções do banco de palavras"
+    "l2_cloze_distractors": "Opções do banco de palavras",
+    "field_title": "Título",
+    "field_description": "Descrição"
   }
 }
