@@ -1,6 +1,6 @@
 # Minigames — Design & Implementation Plan
 
-Status: **proposal / not yet implemented**
+Status: **shipped** through Phase 6 (§9). All eleven games in the §4 catalog are live, plus the synonym-match depth game; the registry is `ALL_GAMES` ([frontend/src/languages.js:40](../frontend/src/languages.js)) and the orchestrator is [MinigameHost.jsx](../frontend/src/components/MinigameHost.jsx). Game #12 shipped in Phase 4 and was later cut with the memory-hook feature. This document is kept as the design record and the rationale behind the grading contract.
 Scope: add optional, fun answer modalities ("minigames") to Smart Practice **without corrupting the FSRS schedule**, and let each end‑user choose which games to enable.
 
 ---
