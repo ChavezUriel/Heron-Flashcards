@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabaseClient';
 import { updatePassword } from '../api';
 import AuthBrandPanel from '../components/AuthBrandPanel';
 
 function ResetPasswordPage() {
+  const { t } = useTranslation();
   const [ready, setReady] = useState(false);
   const [hasRecoverySession, setHasRecoverySession] = useState(false);
   const [formData, setFormData] = useState({ password: '', confirmPassword: '' });
@@ -37,7 +39,7 @@ function ResetPasswordPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('auth.passwords_dont_match'));
       return;
     }
     try {
@@ -46,7 +48,7 @@ function ResetPasswordPage() {
       await updatePassword(formData.password);
       setDone(true);
     } catch (err) {
-      setError(err.message || 'Could not update your password');
+      setError(err.message || t('auth.update_password_failed'));
     } finally {
       setIsLoading(false);
     }
@@ -56,63 +58,63 @@ function ResetPasswordPage() {
   if (!ready) {
     body = (
       <>
-        <h1 className="login-heading">One moment</h1>
-        <p className="login-body">Validating your reset link…</p>
+        <h1 className="login-heading">{t('auth.one_moment')}</h1>
+        <p className="login-body">{t('auth.validating_link')}</p>
       </>
     );
   } else if (done) {
     body = (
       <>
-        <h1 className="login-heading">Password updated</h1>
-        <p className="login-body">You're signed in and ready to go.</p>
-        <Link to="/" className="login-cta">Go to your decks</Link>
+        <h1 className="login-heading">{t('auth.password_updated')}</h1>
+        <p className="login-body">{t('auth.password_updated_body')}</p>
+        <Link to="/" className="login-cta">{t('auth.go_to_decks')}</Link>
       </>
     );
   } else if (!hasRecoverySession) {
     body = (
       <>
-        <h1 className="login-heading">Link expired</h1>
-        <p className="login-body">This reset link is invalid or has expired.</p>
-        <Link to="/forgot-password" className="login-cta">Request a new link</Link>
+        <h1 className="login-heading">{t('auth.link_expired')}</h1>
+        <p className="login-body">{t('auth.link_expired_body')}</p>
+        <Link to="/forgot-password" className="login-cta">{t('auth.request_new_link')}</Link>
       </>
     );
   } else {
     body = (
       <>
-        <h1 className="login-heading">Set a new password</h1>
-        <p className="login-subheading">Choose a new password for your account.</p>
+        <h1 className="login-heading">{t('auth.set_new_password_heading')}</h1>
+        <p className="login-subheading">{t('auth.set_new_password_subheading')}</p>
 
         {error && <p className="login-error">{error}</p>}
 
         <form onSubmit={handleSubmit} className="login-form-heron">
-          <label className="login-label-mono" htmlFor="reset-password">NEW PASSWORD</label>
+          <label className="login-label-mono" htmlFor="reset-password">{t('auth.new_password')}</label>
           <input
             id="reset-password"
             type="password"
             name="password"
             value={formData.password}
             onChange={handleChange}
-            placeholder="Minimum 6 characters"
+            placeholder={t('auth.password_min_placeholder')}
             className="login-input-heron"
             required
             minLength="6"
           />
 
-          <label className="login-label-mono" htmlFor="reset-confirm">CONFIRM PASSWORD</label>
+          <label className="login-label-mono" htmlFor="reset-confirm">{t('auth.confirm_password')}</label>
           <input
             id="reset-confirm"
             type="password"
             name="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleChange}
-            placeholder="Repeat your new password"
+            placeholder={t('auth.confirm_password_placeholder')}
             className="login-input-heron"
             required
             minLength="6"
           />
 
           <button type="submit" className="login-cta" disabled={isLoading}>
-            {isLoading ? 'Updating…' : 'Update password'}
+            {isLoading ? t('auth.updating_password') : t('auth.update_password_cta')}
           </button>
         </form>
       </>
@@ -122,8 +124,8 @@ function ResetPasswordPage() {
   return (
     <div className="login-split">
       <AuthBrandPanel
-        quote='"A fresh start is just another still morning by the water."'
-        tagline="A QUIET WAY TO LEARN ENGLISH"
+        quote={t('auth.brand_quote_reset')}
+        tagline={t('auth.brand_tagline')}
       />
 
       <div className="login-split__right">

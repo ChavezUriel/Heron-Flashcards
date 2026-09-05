@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CARD_COUNT_RANGE,
   DIFFICULTIES,
@@ -13,6 +14,8 @@ import {
 // YAML is pushed back into the spec on every keystroke.
 
 function SectionEditor({ sections, onChange }) {
+  const { t } = useTranslation();
+
   function updateSection(index, patch) {
     onChange(sections.map((section, i) => (i === index ? { ...section, ...patch } : section)));
   }
@@ -26,11 +29,11 @@ function SectionEditor({ sections, onChange }) {
               className="st-input ai-section-row__name"
               value={section.name}
               onChange={(event) => updateSection(index, { name: event.target.value })}
-              placeholder="Section name"
-              aria-label={`Section ${index + 1} name`}
+              placeholder={t('builder.section_name_placeholder')}
+              aria-label={t('builder.section_name_aria', { index: index + 1 })}
             />
             <label className="ai-section-row__count">
-              <span className="sr-only">Cards in section {index + 1}</span>
+              <span className="sr-only">{t('builder.cards_in_section_label', { index: index + 1 })}</span>
               <input
                 className="st-input"
                 type="number"
@@ -39,13 +42,13 @@ function SectionEditor({ sections, onChange }) {
                 value={section.target_card_count}
                 onChange={(event) => updateSection(index, { target_card_count: Number(event.target.value) })}
               />
-              <span aria-hidden="true">cards</span>
+              <span aria-hidden="true">{t('builder.cards_unit')}</span>
             </label>
             <button
               type="button"
               className="ai-icon-button"
               onClick={() => onChange(sections.filter((_, i) => i !== index))}
-              aria-label={`Remove section ${section.name || index + 1}`}
+              aria-label={t('builder.remove_section_aria', { name: section.name || index + 1 })}
             >
               ×
             </button>
@@ -54,8 +57,8 @@ function SectionEditor({ sections, onChange }) {
             className="st-input"
             value={section.communicative_goal}
             onChange={(event) => updateSection(index, { communicative_goal: event.target.value })}
-            placeholder="What a learner can do after this section"
-            aria-label={`Section ${index + 1} goal`}
+            placeholder={t('builder.section_goal_placeholder')}
+            aria-label={t('builder.section_goal_aria', { index: index + 1 })}
           />
           <input
             className="st-input"
@@ -63,8 +66,8 @@ function SectionEditor({ sections, onChange }) {
             onChange={(event) => updateSection(index, {
               lexical_focus: event.target.value.split(',').map((word) => word.trim()).filter(Boolean),
             })}
-            placeholder="Keywords, comma separated"
-            aria-label={`Section ${index + 1} keywords`}
+            placeholder={t('builder.section_keywords_placeholder')}
+            aria-label={t('builder.section_keywords_aria', { index: index + 1 })}
           />
         </div>
       ))}
@@ -73,13 +76,14 @@ function SectionEditor({ sections, onChange }) {
         className="button button--secondary st-button--compact"
         onClick={() => onChange([...sections, { name: '', communicative_goal: '', lexical_focus: [], target_card_count: 5 }])}
       >
-        Add section
+        {t('builder.add_section_btn')}
       </button>
     </div>
   );
 }
 
 function SpecForm({ spec, onChange }) {
+  const { t } = useTranslation();
   // A shallow merge on purpose: normalizeSpec trims strings, and running it on
   // every keystroke would eat the space the moment the user types it, making
   // multi-word titles impossible. The spec is normalized where it matters —
@@ -90,72 +94,76 @@ function SpecForm({ spec, onChange }) {
     <div className="st-form">
       <div className="st-form__grid">
         <label className="st-field">
-          <span className="st-field__label">Deck title</span>
+          <span className="st-field__label">{t('builder.deck_title_label')}</span>
           <input
             className="st-input"
             value={spec.title}
             onChange={(event) => patch({ title: event.target.value })}
-            placeholder="Pharmacy Basics"
+            placeholder={t('builder.deck_title_placeholder')}
           />
         </label>
         <label className="st-field">
-          <span className="st-field__label">Difficulty</span>
+          <span className="st-field__label">{t('builder.difficulty_label')}</span>
           <select
             className="st-input"
             value={spec.difficulty}
             onChange={(event) => patch({ difficulty: event.target.value })}
           >
             {DIFFICULTIES.map((level) => (
-              <option key={level} value={level}>{level}</option>
+              <option key={level} value={level}>
+                {t(`builder.difficulty_${level}`, { defaultValue: level })}
+              </option>
             ))}
           </select>
         </label>
       </div>
 
       <label className="st-field">
-        <span className="st-field__label">Description</span>
+        <span className="st-field__label">{t('builder.deck_desc_label')}</span>
         <input
           className="st-input"
           value={spec.description}
           onChange={(event) => patch({ description: event.target.value })}
-          placeholder="Practical English for buying medicine and describing simple symptoms."
+          placeholder={t('builder.deck_desc_spec_placeholder')}
         />
-        <span className="ai-provider__hint">Shown on the deck card — and given to the model as deck context.</span>
+        <span className="ai-provider__hint">{t('builder.deck_desc_hint')}</span>
       </label>
 
       <label className="st-field">
-        <span className="st-field__label">Topic</span>
+        <span className="st-field__label">{t('builder.topic_label')}</span>
         <input
           className="st-input"
           value={spec.topic}
           onChange={(event) => patch({ topic: event.target.value })}
-          placeholder="beginner English for pharmacy visits"
+          placeholder={t('builder.topic_spec_placeholder')}
         />
       </label>
 
       <label className="st-field">
-        <span className="st-field__label">Who is this for</span>
+        <span className="st-field__label">{t('builder.who_is_for_label')}</span>
         <input
           className="st-input"
           value={spec.learner_profile}
           onChange={(event) => patch({ learner_profile: event.target.value })}
-          placeholder="Spanish-speaking beginners who need practical English in a pharmacy"
+          placeholder={t('builder.learner_profile_spec_placeholder')}
         />
       </label>
 
       <label className="st-field">
-        <span className="st-field__label">Notes for the model (optional)</span>
+        <span className="st-field__label">{t('builder.notes_label')}</span>
         <textarea
           className="st-input ai-textarea"
           rows={2}
           value={spec.generation_notes}
           onChange={(event) => patch({ generation_notes: event.target.value })}
-          placeholder="Keep vocabulary concrete, high-frequency, and immediately useful. Latin American Spanish."
+          placeholder={t('builder.notes_spec_placeholder')}
         />
       </label>
 
       <label className="st-field">
-        <span className="st-field__label">Cards to generate — {spec.target_card_count}</span>
+        <span className="st-field__label">
+          {t('builder.cards_to_generate_label', { count: spec.target_card_count })}
+        </span>
         <input
           className="ai-range"
           type="range"
@@ -166,16 +174,16 @@ function SpecForm({ spec, onChange }) {
           onChange={(event) => patch({ target_card_count: Number(event.target.value) })}
         />
         <span className="ai-provider__hint">
-          Each card costs roughly 12–18 model calls (draft, enrich, then the audits that gate quality).
+          {t('builder.cards_cost_hint')}
         </span>
       </label>
 
       <div className="st-field">
-        <span className="st-field__label">Sections</span>
+        <span className="st-field__label">{t('builder.sections_title')}</span>
         {spec.sections.length === 0 ? (
           <div className="ai-empty-inline">
             <p className="st-section__hint">
-              The AI will plan 2–6 sections from the topic before drafting any words.
+              {t('builder.ai_plan_sections_hint')}
             </p>
             <button
               type="button"
@@ -184,7 +192,7 @@ function SpecForm({ spec, onChange }) {
                 sections: [{ name: '', communicative_goal: '', lexical_focus: [], target_card_count: 5 }],
               })}
             >
-              Plan them myself
+              {t('builder.plan_sections_myself_btn')}
             </button>
           </div>
         ) : (
@@ -195,21 +203,20 @@ function SpecForm({ spec, onChange }) {
               className="ai-link"
               onClick={() => patch({ sections: [] })}
             >
-              Let the AI plan the sections instead
+              {t('builder.let_ai_plan_sections_btn')}
             </button>
           </>
         )}
       </div>
 
       <details className="ai-details">
-        <summary>Quality gates and languages</summary>
+        <summary>{t('builder.quality_gates_summary')}</summary>
         <div className="ai-details__body">
           <div className="st-row">
             <div className="st-row__info">
-              <span className="st-row__label">Audit every example sentence</span>
+              <span className="st-row__label">{t('builder.audit_examples_label')}</span>
               <span className="st-row__meta">
-                A judge pass checks each example fits the deck and that the blanked answer is
-                actually inferable. Rejected sentences are rewritten.
+                {t('builder.audit_examples_meta')}
               </span>
             </div>
             <label className="st-switch">
@@ -217,17 +224,16 @@ function SpecForm({ spec, onChange }) {
                 type="checkbox"
                 checked={spec.quality.example_audit}
                 onChange={(event) => patch({ quality: { ...spec.quality, example_audit: event.target.checked } })}
-                aria-label="Audit every example sentence"
+                aria-label={t('builder.audit_examples_label')}
               />
               <span className="st-switch__track" aria-hidden="true" />
             </label>
           </div>
           <div className="st-row">
             <div className="st-row__info">
-              <span className="st-row__label">Curated word-bank options</span>
+              <span className="st-row__label">{t('builder.curated_options_label')}</span>
               <span className="st-row__meta">
-                Wrong answers written against this card's own sentences, then blind-solved so only
-                the real answer fits the blank.
+                {t('builder.curated_options_meta')}
               </span>
             </div>
             <label className="st-switch">
@@ -241,17 +247,16 @@ function SpecForm({ spec, onChange }) {
                     cloze_audit: event.target.checked && spec.quality.cloze_audit,
                   },
                 })}
-                aria-label="Curated word-bank options"
+                aria-label={t('builder.curated_options_label')}
               />
               <span className="st-switch__track" aria-hidden="true" />
             </label>
           </div>
           <div className="st-row">
             <div className="st-row__info">
-              <span className="st-row__label">Blind-solve the cloze options</span>
+              <span className="st-row__label">{t('builder.blind_solve_label')}</span>
               <span className="st-row__meta">
-                Costs one call per example sentence, and is what stops two options from both being
-                right. Turning it off makes runs noticeably cheaper.
+                {t('builder.blind_solve_meta')}
               </span>
             </div>
             <label className="st-switch">
@@ -260,14 +265,14 @@ function SpecForm({ spec, onChange }) {
                 checked={spec.quality.cloze_audit}
                 disabled={!spec.quality.cloze_options}
                 onChange={(event) => patch({ quality: { ...spec.quality, cloze_audit: event.target.checked } })}
-                aria-label="Blind-solve the cloze options"
+                aria-label={t('builder.blind_solve_label')}
               />
               <span className="st-switch__track" aria-hidden="true" />
             </label>
           </div>
           <div className="st-form__grid">
             <label className="st-field">
-              <span className="st-field__label">Repair attempts per failed audit</span>
+              <span className="st-field__label">{t('builder.repair_attempts_label')}</span>
               <input
                 className="st-input"
                 type="number"
@@ -278,7 +283,7 @@ function SpecForm({ spec, onChange }) {
               />
             </label>
             <label className="st-field">
-              <span className="st-field__label">Prompt language</span>
+              <span className="st-field__label">{t('builder.source_language_label')}</span>
               <input
                 className="st-input"
                 value={spec.language_from}
@@ -287,7 +292,7 @@ function SpecForm({ spec, onChange }) {
               />
             </label>
             <label className="st-field">
-              <span className="st-field__label">Answer language</span>
+              <span className="st-field__label">{t('builder.target_language_label')}</span>
               <input
                 className="st-input"
                 value={spec.language_to}
@@ -303,6 +308,7 @@ function SpecForm({ spec, onChange }) {
 }
 
 function SpecYaml({ spec, onChange }) {
+  const { t } = useTranslation();
   const [text, setText] = useState(() => specToYaml(spec));
   const [error, setError] = useState(null);
   const fileInput = useRef(null);
@@ -355,20 +361,20 @@ function SpecYaml({ spec, onChange }) {
         value={text}
         spellCheck="false"
         onChange={(event) => handleText(event.target.value)}
-        aria-label="Deck specification as YAML"
+        aria-label={t('builder.yaml_editor_aria')}
         aria-invalid={Boolean(error)}
       />
-      {error ? <p className="st-error">YAML error: {error}</p> : <p className="st-success">Valid — the form is in sync.</p>}
+      {error ? <p className="st-error">{t('builder.yaml_error', { error })}</p> : <p className="st-success">{t('builder.yaml_valid')}</p>}
       <div className="st-actions">
         <button type="button" className="button button--secondary st-button--compact" onClick={handleDownload}>
-          Download .yaml
+          {t('builder.download_yaml_btn')}
         </button>
         <button
           type="button"
           className="button button--secondary st-button--compact"
           onClick={() => fileInput.current?.click()}
         >
-          Load a file…
+          {t('builder.load_yaml_btn')}
         </button>
         <input
           ref={fileInput}
@@ -378,7 +384,7 @@ function SpecYaml({ spec, onChange }) {
           onChange={handleUpload}
         />
         <button type="button" className="ai-link" onClick={() => handleText(SPEC_TEMPLATE_YAML)}>
-          Start from the annotated template
+          {t('builder.template_yaml_btn')}
         </button>
       </div>
     </div>
@@ -386,12 +392,13 @@ function SpecYaml({ spec, onChange }) {
 }
 
 function DeckSpecEditor({ spec, onChange }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState('form');
 
   return (
     <div className="ai-spec-editor">
-      <div className="ai-tabs" role="tablist" aria-label="Specification view">
-        {[['form', 'Form'], ['yaml', 'YAML']].map(([id, label]) => (
+      <div className="ai-tabs" role="tablist" aria-label={t('builder.spec_view_aria')}>
+        {[['form', t('builder.spec_form_tab')], ['yaml', t('builder.spec_yaml_tab')]].map(([id, label]) => (
           <button
             key={id}
             type="button"

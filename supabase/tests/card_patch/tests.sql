@@ -15,9 +15,9 @@ insert into public.decks (slug, title, description, user_id)
 values ('alice-deck', 'Alice Deck', 'Personal', '11111111-1111-1111-1111-111111111111');
 
 insert into public.cards (
-    deck_id, spanish_text, english_text, section_name, part_of_speech, definition_en,
-    main_translations_es, collocations, synonyms_en, example_sentence, example_es,
-    example_en, mnemonic_en, examples, cloze_distractors_en, generation_metadata,
+    deck_id, l1_text, l2_text, section_name, part_of_speech, l2_definition,
+    l1_translations, collocations, l2_synonyms, example_sentence, example_l1,
+    example_l2, l2_mnemonic, examples, l2_cloze_distractors, generation_metadata,
     generation_phase, is_enabled
 )
 select
@@ -34,7 +34,7 @@ select
     'El perro ladra por la noche.',
     'The dog barks at night.',
     'Remember dog sounds like dig.',
-    '[{"es":"El perro ladra por la noche.","en":"The dog barks at night."}]'::jsonb,
+    '[{"l1":"El perro ladra por la noche.","l2":"The dog barks at night."}]'::jsonb,
     '["cat", "fox", "wolf"]'::jsonb,
     '{"_audits": {"example_quality": "pass"}, "custom_tag": "test_card"}'::jsonb,
     'refined',
@@ -42,9 +42,9 @@ select
 from public.decks d where d.slug = 'alice-deck';
 
 insert into public.cards (
-    deck_id, spanish_text, english_text, section_name, part_of_speech, definition_en,
-    main_translations_es, collocations, synonyms_en, example_sentence, example_es,
-    example_en, mnemonic_en, examples, cloze_distractors_en, generation_metadata,
+    deck_id, l1_text, l2_text, section_name, part_of_speech, l2_definition,
+    l1_translations, collocations, l2_synonyms, example_sentence, example_l1,
+    example_l2, l2_mnemonic, examples, l2_cloze_distractors, generation_metadata,
     generation_phase, is_enabled
 )
 select
@@ -61,7 +61,7 @@ select
     'El gato duerme en la alfombra.',
     'The cat sleeps on the mat.',
     'Cat sounds like cut.',
-    '[{"es":"El gato duerme en la alfombra.","en":"The cat sleeps on the mat."}]'::jsonb,
+    '[{"l1":"El gato duerme en la alfombra.","l2":"The cat sleeps on the mat."}]'::jsonb,
     '["dog", "mouse", "bird"]'::jsonb,
     '{"_audits": {"example_quality": "pass"}}'::jsonb,
     'refined',
@@ -73,9 +73,9 @@ insert into public.decks (slug, title, description, user_id, owner_id)
 values ('market-deck', 'Market Deck', 'Public Market Deck', null, '33333333-3333-3333-3333-333333333333');
 
 insert into public.cards (
-    deck_id, spanish_text, english_text, section_name, part_of_speech, definition_en,
-    main_translations_es, collocations, synonyms_en, example_sentence, example_es,
-    example_en, mnemonic_en, examples, cloze_distractors_en, generation_metadata,
+    deck_id, l1_text, l2_text, section_name, part_of_speech, l2_definition,
+    l1_translations, collocations, l2_synonyms, example_sentence, example_l1,
+    example_l2, l2_mnemonic, examples, l2_cloze_distractors, generation_metadata,
     generation_phase, is_enabled
 )
 select
@@ -92,7 +92,7 @@ select
     'El caballo corre rapido.',
     'The horse runs fast.',
     null,
-    '[{"es":"El caballo corre rapido.","en":"The horse runs fast."}]'::jsonb,
+    '[{"l1":"El caballo corre rapido.","l2":"The horse runs fast."}]'::jsonb,
     '["donkey", "mule", "camel"]'::jsonb,
     '{}'::jsonb,
     'refined',
@@ -110,13 +110,13 @@ $$;
 create or replace function pg_temp.alice_card_id(p_word text) returns bigint language sql as $$
     select c.id from public.cards c
     join public.decks d on d.id = c.deck_id
-    where d.slug = 'alice-deck' and c.spanish_text = p_word;
+    where d.slug = 'alice-deck' and c.l1_text = p_word;
 $$;
 
 create or replace function pg_temp.market_card_id(p_word text) returns bigint language sql as $$
     select c.id from public.cards c
     join public.decks d on d.id = c.deck_id
-    where d.slug = 'market-deck' and c.spanish_text = p_word;
+    where d.slug = 'market-deck' and c.l1_text = p_word;
 $$;
 
 create or replace function pg_temp.ok(p_label text, p_cond boolean) returns void language plpgsql as $$
@@ -234,13 +234,13 @@ begin
     select * into v_card from public.cards where id = v_card_id;
 
     perform pg_temp.ok('3a1 updated target column', v_card.part_of_speech = 'noun (masculine)');
-    perform pg_temp.ok('3a2 untouched spanish_text', v_card.spanish_text = 'perro');
-    perform pg_temp.ok('3a3 untouched english_text', v_card.english_text = 'dog');
+    perform pg_temp.ok('3a2 untouched l1_text', v_card.l1_text = 'perro');
+    perform pg_temp.ok('3a3 untouched l2_text', v_card.l2_text = 'dog');
     perform pg_temp.ok('3a4 untouched section_name', v_card.section_name = 'Animals');
     perform pg_temp.ok('3a5 untouched collocations', jsonb_array_length(v_card.collocations) = 2);
-    perform pg_temp.ok('3a6 untouched synonyms_en', jsonb_array_length(v_card.synonyms_en) = 2);
-    perform pg_temp.ok('3a7 untouched cloze_distractors_en', jsonb_array_length(v_card.cloze_distractors_en) = 3);
-    perform pg_temp.ok('3a8 untouched mnemonic_en', v_card.mnemonic_en = 'Remember dog sounds like dig.');
+    perform pg_temp.ok('3a6 untouched l2_synonyms', jsonb_array_length(v_card.l2_synonyms) = 2);
+    perform pg_temp.ok('3a7 untouched l2_cloze_distractors', jsonb_array_length(v_card.l2_cloze_distractors) = 3);
+    perform pg_temp.ok('3a8 untouched l2_mnemonic', v_card.l2_mnemonic = 'Remember dog sounds like dig.');
 
     -- 3b. Explicit null in patch is rejected
     begin
@@ -309,8 +309,8 @@ begin
     select * into v_card from public.cards where id = v_card_id;
 
     perform pg_temp.ok('4a1 examples array updated', jsonb_array_length(v_card.examples) = 2);
-    perform pg_temp.ok('4a2 example_es mirrored from examples[0]', v_card.example_es = 'El perro guardián vigila.');
-    perform pg_temp.ok('4a3 example_en mirrored from examples[0]', v_card.example_en = 'The guard dog watches.');
+    perform pg_temp.ok('4a2 example_l1 mirrored from examples[0]', v_card.example_l1 = 'El perro guardián vigila.');
+    perform pg_temp.ok('4a3 example_l2 mirrored from examples[0]', v_card.example_l2 = 'The guard dog watches.');
     perform pg_temp.ok('4a4 example_sentence mirrored from examples[0]', v_card.example_sentence = 'The guard dog watches.');
 
     -- 4b. Patching examples with {example_es, example_en} legacy key names
@@ -322,8 +322,8 @@ begin
     perform public.apply_card_ai_patch(v_card_id, v_patch);
     select * into v_card from public.cards where id = v_card_id;
 
-    perform pg_temp.ok('4b1 example_es handles example_es key', v_card.example_es = 'El can duerme.');
-    perform pg_temp.ok('4b2 example_en handles example_en key', v_card.example_en = 'The hound sleeps.');
+    perform pg_temp.ok('4b1 example_l1 handles example_es key', v_card.example_l1 = 'El can duerme.');
+    perform pg_temp.ok('4b2 example_l2 handles example_en key', v_card.example_l2 = 'The hound sleeps.');
 
     -- 4c. Patching examples with empty array nulls out the legacy mirror columns
     v_patch := jsonb_build_object('examples', '[]'::jsonb);
@@ -331,8 +331,8 @@ begin
     select * into v_card from public.cards where id = v_card_id;
 
     perform pg_temp.ok('4c1 empty examples array stored', jsonb_array_length(v_card.examples) = 0);
-    perform pg_temp.ok('4c2 example_es set to null', v_card.example_es is null);
-    perform pg_temp.ok('4c3 example_en set to null', v_card.example_en is null);
+    perform pg_temp.ok('4c2 example_l1 set to null', v_card.example_l1 is null);
+    perform pg_temp.ok('4c3 example_l2 set to null', v_card.example_l2 is null);
     perform pg_temp.ok('4c4 example_sentence set to null', v_card.example_sentence is null);
 end $$;
 
@@ -445,8 +445,8 @@ begin
 
     select * into v_card1 from public.cards where id = v_alice_1;
     select * into v_card2 from public.cards where id = v_alice_2;
-    perform pg_temp.ok('7a3 card 1 applied', v_card1.definition_en = 'Batch def 1');
-    perform pg_temp.ok('7a4 card 2 applied', v_card2.definition_en = 'Batch def 2');
+    perform pg_temp.ok('7a3 card 1 applied', v_card1.l2_definition = 'Batch def 1');
+    perform pg_temp.ok('7a4 card 2 applied', v_card2.l2_definition = 'Batch def 2');
 
     -- 7b. Mixed batch containing an unauthorized card aborts the whole batch
     v_batch := jsonb_build_array(
@@ -463,7 +463,7 @@ begin
 
     -- Assert card 1 was rolled back and not modified
     select * into v_card1 from public.cards where id = v_alice_1;
-    perform pg_temp.ok('7b2 card 1 rolled back', v_card1.definition_en = 'Batch def 1');
+    perform pg_temp.ok('7b2 card 1 rolled back', v_card1.l2_definition = 'Batch def 1');
 
     -- 7c. Missing card_id is rejected
     v_batch := jsonb_build_array(

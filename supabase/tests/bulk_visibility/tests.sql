@@ -14,7 +14,7 @@ insert into auth.users (id, email, raw_user_meta_data) values
 insert into public.decks (slug, title, description, user_id)
 values ('alice-deck', 'Alice Deck', 'Personal', '11111111-1111-1111-1111-111111111111');
 
-insert into public.cards (deck_id, spanish_text, english_text, generation_phase)
+insert into public.cards (deck_id, l1_text, l2_text, generation_phase)
 select d.id, v.es, v.en, 'refined'
 from public.decks d,
 (values ('uno','one'),('dos','two'),('tres','three'),('cuatro','four'),('cinco','five')) as v(es,en)
@@ -24,7 +24,7 @@ where d.slug = 'alice-deck';
 insert into public.decks (slug, title, description, user_id, owner_id)
 values ('market-deck', 'Market Deck', 'Public', null, '33333333-3333-3333-3333-333333333333');
 
-insert into public.cards (deck_id, spanish_text, english_text, generation_phase)
+insert into public.cards (deck_id, l1_text, l2_text, generation_phase)
 select d.id, v.es, v.en, 'refined'
 from public.decks d,
 (values ('rojo','red'),('azul','blue')) as v(es,en)

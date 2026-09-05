@@ -1,5 +1,8 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { pickCardExample } from '../minigameText';
+import { speechLangFor } from '../speech';
+import { getLanguage } from '../languages';
 
 const AUTO_SPEECH_DEDUPE_WINDOW_MS = 750;
 const TAP_REVEAL_TOLERANCE_PX = 12;
@@ -162,12 +165,15 @@ function Flashcard({
   hideRevealButtonOnMobile = false,
   isIdleHintVisible = false,
   actionsRef,
+  languageTo,
+  languageFrom,
   onReveal,
   onToggleReveal,
   onOpenDetails,
   onReviewKnown,
   onReviewUnknown,
 }) {
+  const { t } = useTranslation();
   const activeUtteranceRef = useRef(null);
   const previousAnswerVisibleRef = useRef(isAnswerVisible);
   const hasAutoSpokenAnswerRef = useRef(false);
@@ -193,16 +199,22 @@ function Flashcard({
   const [enterGeneration, setEnterGeneration] = useState(0);
 
   const displayCard = exitCardRef.current ?? card;
+  const targetLang = speechLangFor(languageTo ?? displayCard?.language_to ?? card?.language_to ?? card?.deck?.language_to ?? 'en');
+  const sourceLang = speechLangFor(languageFrom ?? displayCard?.language_from ?? card?.language_from ?? card?.deck?.language_from ?? 'es');
+  const sourceLabel = getLanguage(languageFrom ?? displayCard?.language_from ?? card?.language_from ?? card?.deck?.language_from ?? 'es')?.name ?? t('deck.source_prompt_fallback');
+  const targetLabel = getLanguage(languageTo ?? displayCard?.language_to ?? card?.language_to ?? card?.deck?.language_to ?? 'en')?.name ?? t('deck.target_answer_fallback');
+  const displayPrompt = displayCard?.prompt_l1;
+  const displayAnswer = displayCard?.answer_l2;
   const activeExample = pickCardExample(displayCard);
   const isBackVisible = exitDirection ? true : isAnswerVisible;
-  const hasAnswerSpeech = canUseSpeechSynthesis() && Boolean(normalizeSpeechText(displayCard.answer_en));
+  const hasAnswerSpeech = canUseSpeechSynthesis() && Boolean(normalizeSpeechText(displayAnswer));
   const knownSwipeProgress = clampProgress(dragOffsetX / TOUCH_SWIPE_REVIEW_THRESHOLD_PX);
   const unknownSwipeProgress = clampProgress(-dragOffsetX / TOUCH_SWIPE_REVIEW_THRESHOLD_PX);
   const showRevealHint = isIdleHintVisible && !isBackVisible;
   const showSwipeHint = isIdleHintVisible && isBackVisible && !exitDirection;
 
-  useTwoLineFit(promptHeadingRef, [displayCard.card_id, displayCard.prompt_es]);
-  useTwoLineFit(answerHeadingRef, [displayCard.card_id, displayCard.answer_en, isBackVisible]);
+  useTwoLineFit(promptHeadingRef, [displayCard.card_id, displayPrompt]);
+  useTwoLineFit(answerHeadingRef, [displayCard.card_id, displayAnswer, isBackVisible]);
 
   function resetGesture() {
     gestureStateRef.current = {
@@ -277,7 +289,7 @@ function Flashcard({
     stopSpeech();
 
     const utterance = new window.SpeechSynthesisUtterance(speechText);
-    utterance.lang = lang;
+    utterance.lang = speechLangFor(lang);
     utterance.rate = 0.92;
     utterance.onend = () => {
       if (activeUtteranceRef.current === utterance) {
@@ -294,14 +306,17 @@ function Flashcard({
     window.speechSynthesis.speak(utterance);
   }
 
+  const cardPrompt = card.prompt_l1;
+  const cardAnswer = card.answer_l2;
+
   useEffect(() => {
     stopSpeech();
     hasAutoSpokenAnswerRef.current = false;
   }, [card.card_id]);
 
   useEffect(() => {
-    speakText(card.prompt_es, 'es-ES', `prompt:${card.card_id}:${card.prompt_es}`);
-  }, [card.card_id, card.prompt_es]);
+    speakText(cardPrompt, sourceLang, `prompt:${card.card_id}:${cardPrompt}`);
+  }, [card.card_id, cardPrompt, sourceLang]);
 
   useEffect(() => {
     const wasAnswerVisible = previousAnswerVisibleRef.current;
@@ -312,8 +327,8 @@ function Flashcard({
     }
 
     hasAutoSpokenAnswerRef.current = true;
-    speakText(card.answer_en, 'en-US', `answer:${card.card_id}:${card.answer_en}`);
-  }, [card.answer_en, card.card_id, isAnswerVisible]);
+    speakText(cardAnswer, targetLang, `answer:${card.card_id}:${cardAnswer}`);
+  }, [cardAnswer, card.card_id, isAnswerVisible, targetLang]);
 
   useEffect(() => () => {
     stopSpeech();
@@ -329,7 +344,7 @@ function Flashcard({
       return;
     }
 
-    speakText(displayCard.answer_en, 'en-US', `manual-answer:${displayCard.card_id}:${Date.now()}`);
+    speakText(displayAnswer, targetLang, `manual-answer:${displayCard.card_id}:${Date.now()}`);
   }
 
   function handlePointerDown(event) {
@@ -587,8 +602,8 @@ function Flashcard({
       <div
         aria-label={
           isBackVisible
-            ? 'Flashcard answer shown. Swipe left for unknown or right for known on touch devices.'
-            : 'Flashcard prompt. Tap to reveal the answer on touch devices.'
+            ? t('deck.flashcard_answer_aria')
+            : t('deck.flashcard_prompt_aria')
         }
         className={gestureSurfaceClassName}
         key={`${displayCard.card_id}:${enterGeneration}`}
@@ -616,19 +631,21 @@ function Flashcard({
                 <span className="flashcard__meta-pill">{displayCard.section_name}</span>
               </div>
             ) : null}
-            <p className="flashcard__label">Spanish</p>
+            <p className="flashcard__label">{sourceLabel}</p>
             <div className="flashcard__prompt-row">
               <h2 className="flashcard__inline-audio-heading flashcard__fit-heading" ref={promptHeadingRef}>
-                <span>{displayCard.prompt_es}</span>
+                <span>{displayPrompt}</span>
               </h2>
             </div>
-            {activeExample.example_es ?? activeExample.es ? <p className="flashcard__example">{activeExample.example_es ?? activeExample.es}</p> : null}
+            {activeExample.example_l1 ?? activeExample.l1 ?? activeExample.example_es ?? activeExample.es ? (
+              <p className="flashcard__example">{activeExample.example_l1 ?? activeExample.l1 ?? activeExample.example_es ?? activeExample.es}</p>
+            ) : null}
 
             {showRevealHint ? (
               <div className="flashcard__reveal-hint" aria-hidden="true">
                 <span className="flashcard__reveal-pill">
                   <TapRevealIcon />
-                  <span>Tap to reveal</span>
+                  <span>{t('deck.tap_to_reveal')}</span>
                 </span>
               </div>
             ) : null}
@@ -640,25 +657,27 @@ function Flashcard({
                 <span className="flashcard__meta-pill flashcard__meta-pill--secondary">{displayCard.section_name}</span>
               </div>
             ) : null}
-            <p className="flashcard__label">English</p>
+            <p className="flashcard__label">{targetLabel}</p>
             <div className="flashcard__prompt-row flashcard__prompt-row--answer">
               <h3 className="flashcard__inline-audio-heading flashcard__fit-heading flashcard__fit-heading--answer" ref={answerHeadingRef}>
-                <span>{displayCard.answer_en}</span>
+                <span>{displayAnswer}</span>
                 <button
-                  aria-label={hasAnswerSpeech ? 'Replay English audio' : 'English audio unavailable'}
+                  aria-label={hasAnswerSpeech ? t('deck.replay_audio_aria', { label: targetLabel }) : t('deck.audio_unavailable_aria', { label: targetLabel })}
                   className="flashcard__audio-button"
                   type="button"
                   onClick={handlePlayAnswerSpeech}
                   disabled={!hasAnswerSpeech}
-                  title={hasAnswerSpeech ? 'Replay English audio' : 'English audio unavailable'}
+                  title={hasAnswerSpeech ? t('deck.replay_audio_aria', { label: targetLabel }) : t('deck.audio_unavailable_aria', { label: targetLabel })}
                 >
                   <AudioIcon />
                 </button>
               </h3>
             </div>
-            {activeExample.example_en ?? activeExample.en ? <p className="flashcard__example flashcard__example--answer">{activeExample.example_en ?? activeExample.en}</p> : null}
+            {activeExample.example_l2 ?? activeExample.l2 ?? activeExample.example_en ?? activeExample.en ? (
+              <p className="flashcard__example flashcard__example--answer">{activeExample.example_l2 ?? activeExample.l2 ?? activeExample.example_en ?? activeExample.en}</p>
+            ) : null}
             <button
-              aria-label="Show flashcard metadata"
+              aria-label={t('deck.show_metadata')}
               className="info-button"
               type="button"
               onClick={onOpenDetails}
@@ -669,10 +688,10 @@ function Flashcard({
             <div className={`flashcard__swipe-feedback${showSwipeHint ? ' flashcard__swipe-feedback--visible' : ''}`} aria-hidden="true">
               <span className="flashcard__swipe-pill flashcard__swipe-pill--unknown">
                 <SwipeDirectionIcon direction="left" />
-                <span>I didn't know it</span>
+                <span>{t('deck.didnt_know')}</span>
               </span>
               <span className="flashcard__swipe-pill flashcard__swipe-pill--known">
-                <span>I knew it</span>
+                <span>{t('deck.knew_it')}</span>
                 <SwipeDirectionIcon direction="right" />
               </span>
             </div>
@@ -687,7 +706,7 @@ function Flashcard({
           onClick={onToggleReveal}
           disabled={Boolean(exitDirection) || isSubmitting}
         >
-          {isAnswerVisible ? 'Hide answer' : 'Reveal answer'}
+          {isAnswerVisible ? t('deck.hide_answer') : t('deck.reveal_answer')}
         </button>
       ) : null}
     </section>

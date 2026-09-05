@@ -5,10 +5,15 @@ import App from './App';
 import './styles.css';
 import './aiBuilder.css';
 
+import './i18n';
+import { LocaleProvider } from './context/LocaleContext';
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
-      <App />
+      <LocaleProvider>
+        <App />
+      </LocaleProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

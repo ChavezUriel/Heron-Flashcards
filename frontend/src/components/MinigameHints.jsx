@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // Two-step hint ladder shared by the free-type production games — Recall from
 // definition and the free-type cloze (docs/minigames.md §4 #2–#3). Step 1 reveals
@@ -8,10 +9,6 @@ import { useState } from 'react';
 // still resolves `known`, so the ladder trades recall difficulty for momentum
 // without touching the FSRS contract.
 export const MAX_HINT_LEVEL = 2;
-
-// The button always advertises what the NEXT press reveals, so the learner knows
-// what they're spending a hint on before committing.
-const NEXT_HINT_LABEL = ['Hint: word shape', 'Hint: in Spanish'];
 
 // Hint state for one round. `reveal` bumps the level and hands focus straight back
 // to the answer input: the button sits immediately after the input in DOM order
@@ -61,8 +58,14 @@ function LightbulbIcon() {
 // beside the input. `aria-label` carries the same words in every layout, so the icon-only
 // form is never a mystery to a screen reader, and `title` gives sighted users the tooltip.
 export function HintButton({ level, onReveal }) {
+  const { t } = useTranslation();
   const exhausted = level >= MAX_HINT_LEVEL;
-  const label = exhausted ? 'No more hints' : NEXT_HINT_LABEL[level];
+  const label = exhausted
+    ? t('games.hints.exhausted')
+    : level === 0
+    ? t('games.hints.word_shape')
+    : t('games.hints.translation');
+
   return (
     <button
       type="button"
@@ -83,6 +86,7 @@ export function HintButton({ level, onReveal }) {
 // Underscore glyphs run together visually, so each character gets its own span and
 // CSS gaps do the separating (a wider gap marks the spaces).
 export function AnswerShape({ answer }) {
+  const { t } = useTranslation();
   const words = (answer ?? '').trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) {
     return null;
@@ -93,7 +97,7 @@ export function AnswerShape({ answer }) {
     <span
       className="hintshape"
       role="img"
-      aria-label={`Word shape: ${letterCounts.join(' + ')} letters`}
+      aria-label={t('games.hints.shape_aria', { counts: letterCounts.join(' + ') })}
     >
       {words.map((word, wordIndex) => (
         <span key={wordIndex} className="hintshape__word" aria-hidden="true">
@@ -108,15 +112,17 @@ export function AnswerShape({ answer }) {
   );
 }
 
-// Step-2 hint: the word on the other side of the card (prompt_es for these en-answer
+// Step-2 hint: the word on the other side of the card (prompt for these target-answer
 // games), labeled like the reveal's answer block so the visual language matches.
-export function TranslationHint({ text }) {
+export function TranslationHint({ text, label }) {
+  const { t } = useTranslation();
+  const displayLabel = label || t('games.hints.translation_label');
   if (!text) {
     return null;
   }
   return (
     <p className="typegame__hint-translation">
-      <span className="typegame__answer-label">In Spanish</span>
+      <span className="typegame__answer-label">{displayLabel}</span>
       <span className="typegame__hint-word">{text}</span>
     </p>
   );

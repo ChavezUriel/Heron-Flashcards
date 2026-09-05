@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { normalizeAnswer } from '../minigameText';
+import { getLanguage } from '../languages';
 
 // Fisher–Yates over a copy.
 function shuffle(items) {
@@ -28,12 +30,16 @@ function scramble(letters) {
 }
 
 // Tier-C cool-down game (docs/minigames.md §4 #9): a SINGLE-card word puzzle run as
-// a queue-external interstitial. Unscramble the jumbled letters of the English
-// answer and type it in. It is pure arcade fun — a *different* skill from es→en
+// a queue-external interstitial. Unscramble the jumbled letters of the
+// answer and type it in. It is pure arcade fun — a *different* skill from
 // recall — so it NEVER grades: it only ever calls onDone() to dismiss and never
 // touches a session RPC (§5.2, §8.2).
 function WordScramble({ card, onDone }) {
-  const answer = (card.answer_en ?? '').trim();
+  const { t } = useTranslation();
+  const answer = (card.answer_l2 ?? card.answer_en ?? '').trim();
+  const prompt = card.prompt_l1 ?? card.prompt_es;
+  const sourceLang = getLanguage(card.language_from ?? 'es');
+  const sourceLabel = sourceLang?.name ?? t('deck.source_prompt_fallback');
   // The jumbled letters to display as tiles (letters only; spaces/punctuation are
   // dropped from the jumble but the typed answer is compared whole).
   const jumble = useMemo(() => {
@@ -89,10 +95,10 @@ function WordScramble({ card, onDone }) {
 
   return (
     <section className="panel scramblegame">
-      <p className="flashcard__label">Word scramble</p>
+      <p className="flashcard__label">{t('games.word_scramble.label')}</p>
       <p className="scramblegame__prompt">
-        <span className="scramblegame__prompt-label">Spanish</span>
-        {card.prompt_es}
+        <span className="scramblegame__prompt-label">{sourceLabel}</span>
+        {prompt}
       </p>
 
       <div className="scramblegame__tiles" aria-hidden="true">
@@ -109,8 +115,8 @@ function WordScramble({ card, onDone }) {
             type="text"
             value={guess}
             onChange={(event) => setGuess(event.target.value)}
-            placeholder="Unscramble the word"
-            aria-label="Type the unscrambled English word"
+            placeholder={t('games.word_scramble.placeholder')}
+            aria-label={t('games.word_scramble.input_label')}
             autoComplete="off"
             autoCapitalize="off"
             autoCorrect="off"
@@ -119,19 +125,19 @@ function WordScramble({ card, onDone }) {
           />
           <div className="scramblegame__actions">
             <button type="submit" className="button button--primary scramblegame__action" disabled={!guess.trim()}>
-              Check
+              {t('common.check')}
             </button>
             <button type="button" className="st-link-button" onClick={reveal}>
-              Reveal
+              {t('games.word_scramble.reveal')}
             </button>
           </div>
         </form>
       ) : (
         <div className={`scramblegame__feedback scramblegame__feedback--${outcome}`} role="status" aria-live="polite">
-          <p className="scramblegame__verdict">{outcome === 'correct' ? 'Solved it! 🎉' : 'Here it is'}</p>
+          <p className="scramblegame__verdict">{outcome === 'correct' ? t('games.word_scramble.solved') : t('games.word_scramble.here_it_is')}</p>
           <p className="scramblegame__answer">{answer}</p>
           <button ref={continueRef} type="button" className="button button--primary scramblegame__action" onClick={finish}>
-            Continue
+            {t('common.continue')}
           </button>
         </div>
       )}

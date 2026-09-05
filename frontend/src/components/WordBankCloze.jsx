@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import MultipleChoice from './MultipleChoice';
 import { locateAnswerInExample } from '../minigameText';
 
@@ -15,10 +16,12 @@ import { locateAnswerInExample } from '../minigameText';
 // MinigameHost picks WHICH sentence this presentation blanks (`clozeExample`,
 // migration 0019) and passes it down with its span.
 function WordBankCloze({ card, clozeExample, distractors, onResolve, onOpenDetails }) {
-  const example = clozeExample?.en ?? card.example_en ?? '';
+  const { t } = useTranslation();
+  const example = clozeExample?.l2 ?? clozeExample?.en ?? card.example_l2 ?? card.example_en ?? '';
+  const answer = card.answer_l2 ?? card.answer_en;
   const span = useMemo(
-    () => clozeExample?.span ?? locateAnswerInExample(example, card.answer_en),
-    [clozeExample, example, card.answer_en],
+    () => clozeExample?.span ?? locateAnswerInExample(example, answer),
+    [clozeExample, example, answer],
   );
   const before = span ? example.slice(0, span.start) : '';
   const after = span ? example.slice(span.end) : '';
@@ -26,7 +29,7 @@ function WordBankCloze({ card, clozeExample, distractors, onResolve, onOpenDetai
   const promptNode = (
     <p className="clozegame__sentence wordbankgame__sentence">
       {before}
-      <span className="clozegame__slot clozegame__slot--blank clozegame__slot--line" aria-label="missing word" />
+      <span className="clozegame__slot clozegame__slot--blank clozegame__slot--line" aria-label={t('games.word_bank_cloze.missing_word')} />
       {after}
     </p>
   );
@@ -37,7 +40,8 @@ function WordBankCloze({ card, clozeExample, distractors, onResolve, onOpenDetai
       distractors={distractors}
       onResolve={onResolve}
       onOpenDetails={onOpenDetails}
-      label="Fill the gap"
+      answer={answer}
+      label={t('games.word_bank_cloze.label')}
       promptNode={promptNode}
     />
   );

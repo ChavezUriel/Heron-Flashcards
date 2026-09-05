@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import usePwaInstall from '../usePwaInstall';
 
 const DownloadIcon = () => (
@@ -34,6 +35,7 @@ const ShareIcon = () => (
  * - Already installed / unsupported browsers: renders nothing.
  */
 export default function InstallButton() {
+  const { t } = useTranslation();
   const { canInstall, isStandalone, isIOS, promptInstall } = usePwaInstall();
   const [showIosHelp, setShowIosHelp] = useState(false);
   const wrapRef = useRef(null);
@@ -74,24 +76,24 @@ export default function InstallButton() {
         onClick={handleClick}
         aria-haspopup={isIOS ? 'dialog' : undefined}
         aria-expanded={isIOS ? showIosHelp : undefined}
-        title="Install Heron on your device"
+        title={t('install.title')}
       >
         <DownloadIcon />
-        <span>Get the app</span>
+        <span>{t('install.cta')}</span>
       </button>
 
       {isIOS && showIosHelp && (
-        <div className="install-help" role="dialog" aria-label="How to install Heron">
-          <p className="install-help__title">Add Heron to your Home Screen</p>
+        <div className="install-help" role="dialog" aria-label={t('install.help_label')}>
+          <p className="install-help__title">{t('install.ios_title')}</p>
           <ol className="install-help__steps">
             <li>
-              Tap the <strong>Share</strong> icon <ShareIcon /> in Safari's toolbar.
+              {t('install.ios_step1')} <ShareIcon />
             </li>
             <li>
-              Choose <strong>Add to Home Screen</strong>.
+              {t('install.ios_step2')}
             </li>
             <li>
-              Tap <strong>Add</strong> — Heron opens like a native app.
+              {t('install.ios_step3')}
             </li>
           </ol>
         </div>

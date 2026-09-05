@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { claimMarketDeck, fetchMarketDecks, updateDeckHomeSelection } from '../api';
+import { useTranslation } from 'react-i18next';
+import { claimMarketDeck, fetchHomeDecks, fetchMarketDecks, updateDeckHomeSelection } from '../api';
 import DeckCard from '../components/DeckCard';
+import { PairIcon } from '../components/DeckPairBadge';
+import { useLocale } from '../context/LocaleContext';
+import { normalizeSearchText } from '../textSearch';
 
 function HomeIcon() {
   return (
@@ -13,17 +17,7 @@ function HomeIcon() {
   );
 }
 
-function normalizeSearchText(value) {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, ' ')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function sortDecks(decks) {
+function sortDecks(decks, localeCompare) {
   return [...decks].sort((leftDeck, rightDeck) => {
     const leftHome = leftDeck.is_selected_on_home ? 1 : 0;
     const rightHome = rightDeck.is_selected_on_home ? 1 : 0;
@@ -35,25 +29,86 @@ function sortDecks(decks) {
       return rightDeck.completion_ratio - leftDeck.completion_ratio;
     }
 
-    return leftDeck.title.localeCompare(rightDeck.title);
+    return localeCompare
+      ? localeCompare(leftDeck.title, rightDeck.title)
+      : String(leftDeck.title).localeCompare(String(rightDeck.title));
   });
 }
 
 function MarketPage() {
+  const { t } = useTranslation();
+  const { localeCompare } = useLocale();
   const [decks, setDecks] = useState([]);
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
   const [pendingDeckIds, setPendingDeckIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Pair facet states
+  const [activePairKeys, setActivePairKeys] = useState(['es->en']);
+  const [availableMarketPairs, setAvailableMarketPairs] = useState([]);
+  const [selectedPair, setSelectedPair] = useState('es->en');
+  const [initialized, setInitialized] = useState(false);
+
+  // Initial load: discover active pairs and market pairs
   useEffect(() => {
+    let cancelled = false;
+
+    async function loadInitial() {
+      try {
+        const [homeDecks, allMarket] = await Promise.all([
+          fetchHomeDecks().catch(() => []),
+          fetchMarketDecks('all').catch(() => []),
+        ]);
+
+        if (cancelled) return;
+
+        const homePairs = Array.from(new Set(
+          (homeDecks || [])
+            .filter((d) => d.language_from && d.language_to)
+            .map((d) => `${d.language_from}->${d.language_to}`)
+        ));
+
+        const marketPairs = Array.from(new Set(
+          (allMarket || [])
+            .filter((d) => d.language_from && d.language_to)
+            .map((d) => `${d.language_from}->${d.language_to}`)
+        ));
+
+        const activeList = homePairs.length > 0 ? homePairs : ['es->en'];
+        setActivePairKeys(activeList);
+        setAvailableMarketPairs(marketPairs);
+
+        // Default market to learner's active pair
+        const initialSelected = activeList[0] || 'es->en';
+        setSelectedPair(initialSelected);
+        setInitialized(true);
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError.message);
+          setStatus('error');
+        }
+      }
+    }
+
+    loadInitial();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch decks when selectedPair changes or on initialization
+  useEffect(() => {
+    if (!initialized) return;
     let cancelled = false;
 
     async function loadDecks() {
       try {
-        const nextDecks = await fetchMarketDecks();
+        setStatus('loading');
+        const nextDecks = await fetchMarketDecks(selectedPair);
         if (!cancelled) {
-          setDecks(sortDecks(nextDecks));
+          setDecks(sortDecks(nextDecks, localeCompare));
           setStatus('ready');
         }
       } catch (loadError) {
@@ -69,7 +124,20 @@ function MarketPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialized, selectedPair, localeCompare]);
+
+  // Combined facet pairs: active pairs first, then any other market pairs
+  const facetPairs = useMemo(() => {
+    const pairs = new Set();
+    for (const p of activePairKeys) {
+      pairs.add(p);
+    }
+    for (const p of availableMarketPairs) {
+      pairs.add(p);
+    }
+    pairs.add('es->en');
+    return Array.from(pairs);
+  }, [activePairKeys, availableMarketPairs]);
 
   const normalizedSearchQuery = normalizeSearchText(searchQuery);
   const visibleDecks = useMemo(() => {
@@ -89,8 +157,6 @@ function MarketPage() {
 
     try {
       await updateDeckHomeSelection(deckId, isSelectedOnHome);
-      // Update selection state but do NOT re-sort while the market page is open.
-      // The ordering should be generated when the market screen is opened.
       setDecks((current) => current.map((deck) => (deck.id === deckId ? { ...deck, is_selected_on_home: isSelectedOnHome } : deck)));
     } catch (requestError) {
       setError(requestError.message);
@@ -119,12 +185,12 @@ function MarketPage() {
   const openProposalsToReview = decks.reduce((sum, deck) => sum + (deck.is_owner ? (deck.open_proposals ?? 0) : 0), 0);
   const hasProposalActivity = decks.some((deck) => deck.is_owner || (deck.my_open_proposals ?? 0) > 0);
 
-  if (status === 'loading') {
-    return <p className="h-empty-state">Loading deck market…</p>;
+  if (status === 'loading' && !initialized) {
+    return <p className="h-empty-state">{t('market.loading_market')}</p>;
   }
 
   if (status === 'error') {
-    return <p className="h-empty-state h-empty-state--error">Unable to load market: {error}</p>;
+    return <p className="h-empty-state h-empty-state--error">{t('market.load_error', { error })}</p>;
   }
 
   return (
@@ -133,21 +199,21 @@ function MarketPage() {
         <div className="h-market__head-left">
           <Link to="/" className="back-link back-link--home back-link--button h-market__back">
             <HomeIcon />
-            <span>Home</span>
+            <span>{t('nav.home')}</span>
           </Link>
-          <p className="h-market__kicker">DECK MARKET</p>
-          <h1 className="h-market__title">Find your next deck.</h1>
-          <p className="h-market__copy">Add decks to your home screen to bring them into rotation. You can remove them later.</p>
+          <p className="h-market__kicker">{t('market.kicker')}</p>
+          <h1 className="h-market__title">{t('market.heading')}</h1>
+          <p className="h-market__copy">{t('market.copy')}</p>
           <Link to="/market/proposals" className="h-decks__text-action h-market__proposals-link">
             {openProposalsToReview > 0
-              ? `Review ${openProposalsToReview} open proposal${openProposalsToReview === 1 ? '' : 's'} →`
+              ? t('market.proposals_to_review', { count: openProposalsToReview })
               : hasProposalActivity
-                ? 'Change proposals →'
-                : 'Your change proposals →'}
+                ? t('market.change_proposals_link')
+                : t('market.your_proposals_link')}
           </Link>
         </div>
 
-        <label className="h-deck-search h-market__search" aria-label="Search market decks">
+        <label className="h-deck-search h-market__search" aria-label={t('market.search_aria')}>
           <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style={{ flexShrink: 0, color: 'var(--muted)' }}>
             <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.7" />
             <path d="m16 16 4 4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -156,15 +222,69 @@ function MarketPage() {
             type="search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search the market"
+            placeholder={t('market.search_placeholder')}
           />
         </label>
       </div>
 
-      {visibleDecks.length === 0 ? (
+      <div className="h-market__facets" role="tablist" aria-label={t('market.pair_filter_aria')}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={selectedPair === 'all'}
+          className={`h-market__facet-btn ${selectedPair === 'all' ? 'h-market__facet-btn--active' : ''}`}
+          onClick={() => setSelectedPair('all')}
+        >
+          <span>{t('market.all_pairs')}</span>
+        </button>
+
+        {facetPairs.map((pairKey) => {
+          const [from, to] = pairKey.split('->');
+          const isActiveLearnerPair = activePairKeys.includes(pairKey);
+          const isSelected = selectedPair === pairKey;
+          const label = `${String(from).toUpperCase()} → ${String(to).toUpperCase()}`;
+
+          return (
+            <button
+              key={pairKey}
+              type="button"
+              role="tab"
+              aria-selected={isSelected}
+              className={`h-market__facet-btn ${isSelected ? 'h-market__facet-btn--active' : ''}`}
+              onClick={() => setSelectedPair(pairKey)}
+            >
+              <PairIcon size={12} />
+              <span>{label}</span>
+              {isActiveLearnerPair ? (
+                <span className="h-market__facet-active-indicator">
+                  {t('market.active_pair_badge')}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {status === 'loading' ? (
+        <p className="h-empty-state">{t('market.loading_market')}</p>
+      ) : visibleDecks.length === 0 ? (
         <div className="h-empty-panel panel">
-          <p>{decks.length === 0 ? 'All decks are already on your home screen.' : 'No market decks match your search.'}</p>
-          <Link to="/" className="button button--primary">Back home</Link>
+          <p>
+            {decks.length === 0
+              ? (selectedPair !== 'all' ? t('market.no_decks_for_pair') : t('market.all_decks_on_home'))
+              : t('market.no_matches')}
+          </p>
+          {selectedPair !== 'all' ? (
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={() => setSelectedPair('all')}
+            >
+              {t('market.all_pairs')}
+            </button>
+          ) : (
+            <Link to="/" className="button button--primary">{t('market.back_home_btn')}</Link>
+          )}
         </div>
       ) : (
         <div className="h-market-grid">

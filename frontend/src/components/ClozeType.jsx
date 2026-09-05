@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { classifyGuess, locateAnswerInExample, normalizeAnswer } from '../minigameText';
 import MinigameFeedback from './MinigameFeedback';
 import { AnswerShape, HintButton, TranslationHint, useHints } from './MinigameHints';
@@ -23,6 +24,7 @@ const FEEDBACK_MS = { known: 1100, almost: 2000, unknown: 2000 };
 // clozeCandidates — migration 0019 gives cards several) and passes it down with
 // its span. Falls back to the card's primary example when the prop is absent.
 function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
+  const { t } = useTranslation();
   const [guess, setGuess] = useState('');
   // null while typing; 'known' | 'almost' | 'unknown' once submitted (drives the reveal).
   const [outcome, setOutcome] = useState(null);
@@ -35,10 +37,12 @@ function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
 
   // The raw span of the answer inside the chosen example, so the sentence can be
   // split into "before ___ after". The gate guarantees a match; guard defensively.
-  const example = clozeExample?.en ?? card.example_en ?? '';
+  const example = clozeExample?.l2 ?? card.example_l2 ?? '';
+  const answer = card.answer_l2;
+  const prompt = card.prompt_l1;
   const span = useMemo(
-    () => clozeExample?.span ?? locateAnswerInExample(example, card.answer_en),
-    [clozeExample, example, card.answer_en],
+    () => clozeExample?.span ?? locateAnswerInExample(example, answer),
+    [clozeExample, example, answer],
   );
   const before = span ? example.slice(0, span.start) : '';
   const after = span ? example.slice(span.end) : '';
@@ -101,24 +105,24 @@ function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
       ) : null}
 
       <div className="typegame__body">
-        <p className="flashcard__label">Fill in the missing word</p>
+        <p className="flashcard__label">{t('games.cloze_type.label')}</p>
         <p className="clozegame__sentence">
           {before}
           {isRevealed ? (
-            <span className={`clozegame__slot clozegame__slot--${outcome}`}>{card.answer_en}</span>
+            <span className={`clozegame__slot clozegame__slot--${outcome}`}>{answer}</span>
           ) : hints.level >= 1 ? (
             // First hint: the anonymous blank becomes the answer's shape — an
             // underscore per character, word gaps visible (AnswerShape labels itself).
             <span className="clozegame__slot clozegame__slot--blank">
-              <AnswerShape answer={card.answer_en} />
+              <AnswerShape answer={answer} />
             </span>
           ) : (
-            <span className="clozegame__slot clozegame__slot--blank clozegame__slot--line" aria-label="missing word" />
+            <span className="clozegame__slot clozegame__slot--blank clozegame__slot--line" aria-label={t('games.word_bank_cloze.missing_word')} />
           )}
           {after}
         </p>
 
-        {!isRevealed && hints.level >= 2 ? <TranslationHint text={card.prompt_es} /> : null}
+        {!isRevealed && hints.level >= 2 ? <TranslationHint text={prompt} /> : null}
 
         <form className="typegame__form" onSubmit={handleSubmit}>
           <input
@@ -133,8 +137,8 @@ function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
                 setConfirmSkip(false);
               }
             }}
-            placeholder="Type the missing word"
-            aria-label="Type the word that fills the gap"
+            placeholder={t('games.cloze_type.placeholder')}
+            aria-label={t('games.cloze_type.input_label')}
             autoComplete="off"
             autoCapitalize="off"
             autoCorrect="off"
@@ -153,13 +157,13 @@ function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
               {/* On a near miss, echo the guess so the learner can spot the typo. */}
               {outcome === 'almost' ? (
                 <p className="typegame__answer">
-                  <span className="typegame__answer-label">You typed</span>
+                  <span className="typegame__answer-label">{t('games.feedback.you_typed')}</span>
                   <span className="typegame__typed-text">{guess.trim()}</span>
                 </p>
               ) : null}
               <p className="typegame__answer">
-                <span className="typegame__answer-label">Answer</span>
-                <span className="typegame__answer-text">{card.answer_en}</span>
+                <span className="typegame__answer-label">{t('games.feedback.answer')}</span>
+                <span className="typegame__answer-text">{answer}</span>
               </p>
             </MinigameFeedback>
           ) : (
@@ -174,7 +178,7 @@ function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
                     : `button typegame__action typegame__action--skip${confirmSkip ? ' typegame__action--confirm' : ''}`
                 }
               >
-                {guess.trim() ? 'Check' : confirmSkip ? 'Sure?' : 'Skip'}
+                {guess.trim() ? t('common.check') : confirmSkip ? t('common.sure') : t('common.skip')}
               </button>
             </>
           )}
@@ -183,7 +187,7 @@ function ClozeType({ card, clozeExample, onResolve, onOpenDetails }) {
 
       {isRevealed && onOpenDetails ? (
         <button
-          aria-label="Show flashcard metadata"
+          aria-label={t('deck.show_metadata')}
           className="info-button"
           type="button"
           onClick={onOpenDetails}

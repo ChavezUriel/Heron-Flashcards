@@ -33,16 +33,24 @@ run_psql -d appdb -f "$TESTDIR/shim.sql"
 
 for f in "$MIG"/*.sql; do
   base="$(basename "$f")"
-  [ "$base" = "0017_market_sync_and_proposals.sql" ] && continue
-  echo "== $base"
-  run_psql -d appdb -f "$f"
+  num="${base%%_*}"
+  if [ "$num" -lt 17 ]; then
+    echo "== $base"
+    run_psql -d appdb -f "$f"
+  fi
 done
 
 echo "== fixtures (legacy world)"
 run_psql -d appdb -f "$TESTDIR/fixtures_legacy.sql"
 
-echo "== 0017_market_sync_and_proposals.sql"
-run_psql -d appdb -f "$MIG/0017_market_sync_and_proposals.sql"
+for f in "$MIG"/*.sql; do
+  base="$(basename "$f")"
+  num="${base%%_*}"
+  if [ "$num" -ge 17 ]; then
+    echo "== $base"
+    run_psql -d appdb -f "$f"
+  fi
+done
 
 echo "== tests"
 run_psql -d appdb -f "$TESTDIR/tests.sql"

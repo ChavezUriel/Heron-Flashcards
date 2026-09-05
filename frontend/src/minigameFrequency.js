@@ -1,3 +1,6 @@
+// Explicit .js extension is required by run_browser_pipeline_tests.mjs (Node ESM resolver)
+import { getLanguage } from './languages.js';
+
 // Frequency dosing & interstitial selection for minigames.
 // See docs/minigames.md §6.3 (dosing), §7.1 (settings), §9 Phase 3.
 //
@@ -122,8 +125,8 @@ export function usableBoundaryCards(cards) {
   const seenAnswers = new Set();
   const seenPrompts = new Set();
   for (const card of cards ?? []) {
-    const prompt = (card?.prompt_es ?? '').trim();
-    const answer = (card?.answer_en ?? '').trim();
+    const prompt = (card?.prompt_l1 ?? '').trim();
+    const answer = (card?.answer_l2 ?? '').trim();
     if (!prompt || !answer) {
       continue;
     }
@@ -136,8 +139,8 @@ export function usableBoundaryCards(cards) {
     seenPrompts.add(promptKey);
     out.push({
       card_id: card.card_id,
-      prompt_es: prompt,
-      answer_en: answer,
+      prompt_l1: prompt,
+      answer_l2: answer,
       section_name: card.section_name ?? null,
     });
   }
@@ -185,10 +188,13 @@ function preferenceFor(placement, seed) {
 // A card's distinct English synonyms, excluding any that just restate the answer —
 // the correct picks for a Synonym-match round (docs/minigames.md §9 Phase 6).
 function usableSynonyms(card) {
-  const answerKey = normalizeKey(card?.answer_en);
+  const answerKey = normalizeKey(card?.answer_l2);
   const seen = new Set(answerKey ? [answerKey] : []);
   const out = [];
-  for (const raw of Array.isArray(card?.synonyms_en) ? card.synonyms_en : []) {
+  const synonyms = Array.isArray(card?.l2_synonyms)
+    ? card?.l2_synonyms
+    : [];
+  for (const raw of synonyms) {
     const text = typeof raw === 'string' ? raw.trim() : '';
     const norm = normalizeKey(text);
     if (!norm || seen.has(norm)) {
@@ -204,7 +210,7 @@ function usableSynonyms(card) {
 // synonyms plus a set of other cards to source distractor answers from. Returns
 // { cards: [anchor, ...distractorCards] } (SynonymMatch reads cards[0] as the anchor
 // and the rest as the distractor pool) or null when the pool can't supply a fair
-// round. Uses the RAW pool (which carries synonyms_en) rather than the slimmed
+// round. Uses the RAW pool (which carries l2_synonyms) rather than the slimmed
 // boundary pool. See §9 Phase 6.
 function chooseDepthRound(cards) {
   // One entry per distinct answer so a repeated word can't be both anchor and distractor.
@@ -214,7 +220,7 @@ function chooseDepthRound(cards) {
     if (!card || card.card_id == null) {
       continue;
     }
-    const answerKey = normalizeKey(card.answer_en);
+    const answerKey = normalizeKey(card.answer_l2);
     if (!answerKey || seenAnswers.has(answerKey)) {
       continue;
     }
@@ -227,7 +233,7 @@ function chooseDepthRound(cards) {
     return null;
   }
   const anchor = sample(anchors, 1)[0];
-  const anchorAnswerKey = normalizeKey(anchor.answer_en);
+  const anchorAnswerKey = normalizeKey(anchor.answer_l2);
   const anchorSynonymKeys = new Set(usableSynonyms(anchor).map(normalizeKey));
 
   // Distractors: other answers that are neither the anchor's answer nor a synonym.
@@ -235,7 +241,7 @@ function chooseDepthRound(cards) {
     if (card.card_id === anchor.card_id) {
       return false;
     }
-    const key = normalizeKey(card.answer_en);
+    const key = normalizeKey(card.answer_l2);
     return key !== anchorAnswerKey && !anchorSynonymKeys.has(key);
   });
   if (distractors.length < DEPTH_MIN_DISTRACTORS) {
@@ -252,8 +258,13 @@ function chooseDepthRound(cards) {
 export function chooseInterstitialGame(placement, cards, settings, seed = 0) {
   const enabled = settings?.minigames?.games ?? {};
   const pool = usableBoundaryCards(cards);
+  const lang = getLanguage(cards?.[0]?.language_to ?? cards?.[0]?.l2 ?? 'en');
+  const allowedGames = lang?.games;
   for (const game of preferenceFor(placement, seed)) {
     if (!BOUNDARY_GAMES.includes(game) || !enabled[game]) {
+      continue;
+    }
+    if (allowedGames && !allowedGames.has(game)) {
       continue;
     }
     // The depth game has its own material rule (an anchor with synonyms + distractor

@@ -10,6 +10,8 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
+import { useLocale } from '../context/LocaleContext';
 import AiModeTabs from '../components/AiModeTabs';
 import DeckGapReport from '../components/DeckGapReport';
 import AiProviderPanel from '../components/AiProviderPanel';
@@ -30,11 +32,11 @@ import { startRun } from '../ai/runManager';
 const CONCURRENCY_RANGE = { min: 1, max: 8 };
 
 const GROUP_OPTIONS = [
-  { id: 'lexical', label: 'Part of speech & English definitions' },
-  { id: 'equivalents', label: 'Translations & collocations' },
-  { id: 'synonyms', label: 'English synonyms' },
-  { id: 'examples', label: '3+ blankable example sentence pairs' },
-  { id: 'cloze-options', label: 'Curated word-bank distractors' },
+  { id: 'lexical', labelKey: 'builder.group_lexical' },
+  { id: 'equivalents', labelKey: 'builder.group_equivalents' },
+  { id: 'synonyms', labelKey: 'builder.group_synonyms' },
+  { id: 'examples', labelKey: 'builder.group_examples' },
+  { id: 'cloze-options', labelKey: 'builder.group_cloze_options' },
 ];
 
 function StepHeader({ index, title, hint }) {
@@ -50,6 +52,8 @@ function StepHeader({ index, title, hint }) {
 }
 
 export default function AiDeckCompletePage() {
+  const { t } = useTranslation();
+  const { formatDate } = useLocale();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialDeckId = searchParams.get('deck');
@@ -131,7 +135,7 @@ export default function AiDeckCompletePage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setDecksError(err.message || 'Failed to load decks');
+          setDecksError(err.message || t('builder.error_failed_load_decks'));
         }
       } finally {
         if (!cancelled) {
@@ -194,7 +198,7 @@ export default function AiDeckCompletePage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setScanError(err.message || 'Failed to fetch deck cards for scan');
+          setScanError(err.message || t('builder.error_failed_fetch_cards'));
         }
       } finally {
         if (!cancelled) {
@@ -239,7 +243,7 @@ export default function AiDeckCompletePage() {
       setDeckCtx(inferred);
       saveDeckContextCache(selectedDeck.id, inferred);
     } catch (err) {
-      setInferError(err.message || 'Failed to infer deck context');
+      setInferError(err.message || t('builder.error_failed_infer_context'));
     } finally {
       setInferring(false);
     }
@@ -266,7 +270,7 @@ export default function AiDeckCompletePage() {
       startRun(job, credential);
       navigate(`/decks/runs/${job.id}`);
     } catch (err) {
-      setLaunchError(err.message || 'Failed to start fill run');
+      setLaunchError(err.message || t('builder.error_failed_start_fill'));
     }
   }
 
@@ -275,12 +279,10 @@ export default function AiDeckCompletePage() {
       <AiModeTabs />
 
       <header className="st-header">
-        <p className="st-kicker">AI DECK COMPLETION</p>
-        <h1 className="st-header__title">Complete an existing deck</h1>
+        <p className="st-kicker">{t('builder.complete_kicker')}</p>
+        <h1 className="st-header__title">{t('builder.complete_title')}</h1>
         <p className="st-section__hint">
-          Fill in missing example sentences, word-bank options, and vocabulary metadata for decks
-          you already own — or audit and improve what is already there. The initial scan is free,
-          instant, and runs completely in your browser.
+          {t('builder.complete_subtitle')}
         </p>
       </header>
 
@@ -288,8 +290,8 @@ export default function AiDeckCompletePage() {
       <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-1">
         <StepHeader
           index="1"
-          title={<span id="ai-complete-step-1">Choose the provider</span>}
-          hint="Set up your AI key to infer context and complete your deck. Your key stays in this browser."
+          title={<span id="ai-complete-step-1">{t('builder.step1_complete_title')}</span>}
+          hint={t('builder.step1_complete_hint')}
         />
 
         <AiProviderPanel
@@ -299,7 +301,7 @@ export default function AiDeckCompletePage() {
         />
 
         <label className="st-field">
-          <span className="st-field__label">Cards in parallel — {prefs.concurrency}</span>
+          <span className="st-field__label">{t('builder.concurrency_cards_label', { count: prefs.concurrency })}</span>
           <input
             className="ai-range"
             type="range"
@@ -309,7 +311,7 @@ export default function AiDeckCompletePage() {
             onChange={(event) => updatePrefs({ concurrency: Number(event.target.value) })}
           />
           <span className="ai-provider__hint">
-            Higher is faster but more likely to hit your provider's rate limit. 3–4 is a safe start.
+            {t('builder.concurrency_hint')}
           </span>
         </label>
       </section>
@@ -318,31 +320,36 @@ export default function AiDeckCompletePage() {
       <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-2">
         <StepHeader
           index="2"
-          title={<span id="ai-complete-step-2">Pick a deck to scan</span>}
-          hint="Select any personal deck or maintained market deck to inspect for missing fields."
+          title={<span id="ai-complete-step-2">{t('builder.step2_complete_title')}</span>}
+          hint={t('builder.step2_complete_hint')}
         />
 
         {loadingDecks ? (
-          <div className="st-section__hint">Loading your decks…</div>
+          <div className="st-section__hint">{t('builder.loading_decks')}</div>
         ) : decksError ? (
           <div className="st-error">{decksError}</div>
         ) : decks.length === 0 ? (
           <div className="st-section__hint">
-            No writable decks found. <Link to="/market">Browse the market</Link> or{' '}
-            <Link to="/decks/new">create a new deck</Link> first.
+            <Trans
+              i18nKey="builder.no_writable_decks_found"
+              components={{
+                1: <Link to="/market" />,
+                2: <Link to="/decks/new" />,
+              }}
+            />
           </div>
         ) : (
           <label className="st-field">
-            <span className="st-field__label">Target Deck</span>
+            <span className="st-field__label">{t('builder.target_deck_label')}</span>
             <select
               className="st-input"
               value={selectedDeckId || ''}
               onChange={(e) => setSelectedDeckId(e.target.value ? Number(e.target.value) : null)}
             >
-              <option value="">Select a deck…</option>
+              <option value="">{t('builder.select_deck_placeholder')}</option>
               {decks.map((deck) => (
                 <option key={`${deck.isMarket ? 'market-' : 'home-'}${deck.id}`} value={deck.id}>
-                  {deck.title} ({deck.total_cards ?? 0} cards){deck.isMarket ? ' — (Market deck you maintain)' : ''}
+                  {deck.title} ({t('deck.cards_count', { count: deck.total_cards ?? 0 })}){deck.isMarket ? t('builder.deck_option_market_tag') : ''}
                 </option>
               ))}
             </select>
@@ -355,12 +362,12 @@ export default function AiDeckCompletePage() {
         <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-3">
           <StepHeader
             index="3"
-            title={<span id="ai-complete-step-3">Deck Gap Report</span>}
-            hint="Free, instant analysis of missing or incomplete cards — zero LLM calls."
+            title={<span id="ai-complete-step-3">{t('builder.step3_complete_title')}</span>}
+            hint={t('builder.step3_complete_hint')}
           />
 
           {scanning ? (
-            <div className="st-section__hint">Scanning cards in {selectedDeck.title}…</div>
+            <div className="st-section__hint">{t('builder.scanning_deck_cards', { title: selectedDeck.title })}</div>
           ) : scanError ? (
             <div className="st-error">{scanError}</div>
           ) : scanResult ? (
@@ -374,12 +381,12 @@ export default function AiDeckCompletePage() {
         <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-4">
           <StepHeader
             index="4"
-            title={<span id="ai-complete-step-4">Choose what to do</span>}
-            hint="Fill in blanks only (never touch existing values) or Audit and improve (re-evaluate and rewrite failing fields)."
+            title={<span id="ai-complete-step-4">{t('builder.step4_complete_title')}</span>}
+            hint={t('builder.step4_complete_hint')}
           />
 
           <div className="st-field">
-            <span className="st-field__label">Operation Mode</span>
+            <span className="st-field__label">{t('builder.operation_mode_label')}</span>
             <div className="ai-mode-picker">
               <label className={`ai-mode-option${mode === 'fill' ? ' ai-mode-option--active' : ''}`}>
                 <input
@@ -390,9 +397,9 @@ export default function AiDeckCompletePage() {
                   onChange={() => setMode('fill')}
                 />
                 <div>
-                  <strong>Fill in blanks only</strong>
+                  <strong>{t('builder.mode_fill_title')}</strong>
                   <p className="st-section__hint">
-                    Never overwrites non-empty hand-written values. Only gaps (missing examples, definitions, or distractors) are filled.
+                    {t('builder.mode_fill_detail')}
                   </p>
                 </div>
               </label>
@@ -406,9 +413,9 @@ export default function AiDeckCompletePage() {
                   onChange={() => setMode('audit')}
                 />
                 <div>
-                  <strong>Audit and improve</strong>
+                  <strong>{t('builder.mode_audit_title')}</strong>
                   <p className="st-section__hint">
-                    Uses LLM-as-judge to evaluate existing cards and rewrite low-quality or inaccurate sentences, definitions, and options.
+                    {t('builder.mode_audit_detail')}
                   </p>
                 </div>
               </label>
@@ -417,21 +424,21 @@ export default function AiDeckCompletePage() {
 
           <div className="st-field">
             <div className="ai-run__log-head">
-              <span className="st-field__label">Feature groups to fill</span>
+              <span className="st-field__label">{t('builder.feature_groups_label')}</span>
               <div className="st-actions">
                 <button
                   type="button"
                   className="ai-link"
                   onClick={() => setSelectedGroups(GROUP_OPTIONS.map((g) => g.id))}
                 >
-                  Select all
+                  {t('deck_words.select_all')}
                 </button>
                 <button
                   type="button"
                   className="ai-link"
                   onClick={() => setSelectedGroups([])}
                 >
-                  Clear
+                  {t('builder.clear_groups')}
                 </button>
               </div>
             </div>
@@ -446,7 +453,7 @@ export default function AiDeckCompletePage() {
                       checked={checked}
                       onChange={() => toggleGroup(group.id)}
                     />
-                    <span>{group.label}</span>
+                    <span>{t(group.labelKey)}</span>
                   </label>
                 );
               })}
@@ -454,10 +461,13 @@ export default function AiDeckCompletePage() {
           </div>
 
           <div className="ai-estimate-box">
-            <span className="st-field__label">Estimated Run</span>
+            <span className="st-field__label">{t('builder.estimated_run_label')}</span>
             <p className="st-section__hint">
-              <strong>{estimate.cards}</strong> cards will be processed · roughly{' '}
-              <strong>{estimate.calls}</strong> model calls · <strong>{estimate.label}</strong>.
+              <Trans
+                i18nKey="builder.estimated_run_desc"
+                values={{ cards: estimate.cards, calls: estimate.calls, time: estimate.label }}
+                components={{ strong: <strong /> }}
+              />
             </p>
           </div>
         </section>
@@ -468,23 +478,23 @@ export default function AiDeckCompletePage() {
         <section className="panel st-section ai-step" aria-labelledby="ai-complete-step-5">
           <StepHeader
             index="5"
-            title={<span id="ai-complete-step-5">Deck context</span>}
-            hint="Guiding context fed into every model prompt to keep examples and definitions cohesive."
+            title={<span id="ai-complete-step-5">{t('builder.step5_complete_title')}</span>}
+            hint={t('builder.step5_complete_hint')}
           />
 
           <div className="ai-context-editor">
             <label className="st-field">
-              <span className="st-field__label">Deck Topic</span>
+              <span className="st-field__label">{t('builder.deck_topic_label')}</span>
               <input
                 className="st-input"
                 value={deckCtx.topic}
                 onChange={(e) => setDeckCtx((c) => ({ ...c, topic: e.target.value }))}
-                placeholder="e.g. Travel and airport navigation"
+                placeholder={t('builder.deck_topic_placeholder')}
               />
             </label>
 
             <label className="st-field">
-              <span className="st-field__label">Difficulty</span>
+              <span className="st-field__label">{t('builder.difficulty_label')}</span>
               <select
                 className="st-input"
                 value={deckCtx.difficulty}
@@ -492,29 +502,29 @@ export default function AiDeckCompletePage() {
               >
                 {DIFFICULTIES.map((d) => (
                   <option key={d} value={d}>
-                    {d.charAt(0).toUpperCase() + d.slice(1)}
+                    {t(`builder.difficulty_${d}`, { defaultValue: d.charAt(0).toUpperCase() + d.slice(1) })}
                   </option>
                 ))}
               </select>
             </label>
 
             <label className="st-field">
-              <span className="st-field__label">Learner Profile</span>
+              <span className="st-field__label">{t('builder.learner_profile_label')}</span>
               <input
                 className="st-input"
                 value={deckCtx.learner_profile}
                 onChange={(e) => setDeckCtx((c) => ({ ...c, learner_profile: e.target.value }))}
-                placeholder="e.g. Intermediate Spanish speaker preparing for travel"
+                placeholder={t('builder.learner_profile_complete_placeholder')}
               />
             </label>
 
             <label className="st-field">
-              <span className="st-field__label">Generation Notes</span>
+              <span className="st-field__label">{t('builder.notes_label')}</span>
               <input
                 className="st-input"
                 value={deckCtx.generation_notes}
                 onChange={(e) => setDeckCtx((c) => ({ ...c, generation_notes: e.target.value }))}
-                placeholder="e.g. Neutral Latin American Spanish, formal register"
+                placeholder={t('builder.generation_notes_complete_placeholder')}
               />
             </label>
 
@@ -525,10 +535,10 @@ export default function AiDeckCompletePage() {
                 disabled={!hasKey || inferring || !rawCards.length}
                 onClick={handleInferContext}
               >
-                {inferring ? 'Inferring from deck…' : 'Infer from the deck'}
+                {inferring ? t('builder.inferring') : t('builder.infer_from_deck')}
               </button>
               {!hasKey ? (
-                <span className="st-section__hint">Add a provider key in step 1 first.</span>
+                <span className="st-section__hint">{t('builder.add_key_hint')}</span>
               ) : null}
               {inferError ? <span className="st-error">{inferError}</span> : null}
             </div>
@@ -540,18 +550,17 @@ export default function AiDeckCompletePage() {
       {selectedDeck && scanResult ? (
         <section className="panel st-section ai-launch" aria-labelledby="ai-complete-step-launch">
           <div>
-            <h2 className="st-section__title" id="ai-complete-step-launch">Ready to complete</h2>
+            <h2 className="st-section__title" id="ai-complete-step-launch">{t('builder.step6_complete_title')}</h2>
             <p className="st-section__hint">
-              {estimate.cards} card(s) · roughly {estimate.calls} model calls · {estimate.label}.
-              You will review all proposed diffs before anything is written to your deck.
+              {t('builder.launch_summary', { cards: estimate.cards, calls: estimate.calls, time: estimate.label })}
             </p>
           </div>
 
           {!hasKey ? (
-            <p className="st-error">Add an API key for {prefs.providerId} in step 1 to start.</p>
+            <p className="st-error">{t('builder.add_key_error', { provider: prefs.providerId })}</p>
           ) : null}
           {selectedGroups.length === 0 ? (
-            <p className="st-error">Select at least one feature group to fill.</p>
+            <p className="st-error">{t('builder.select_one_group_error')}</p>
           ) : null}
           {launchError ? <p className="st-error">{launchError}</p> : null}
 
@@ -562,9 +571,11 @@ export default function AiDeckCompletePage() {
               disabled={!hasKey || selectedGroups.length === 0 || estimate.cards === 0}
               onClick={handleStart}
             >
-              Start {mode === 'audit' ? 'audit run' : 'fill run'} ({estimate.cards} cards)
+              {mode === 'audit'
+                ? t('builder.start_audit_run_btn', { count: estimate.cards })
+                : t('builder.start_fill_run_btn', { count: estimate.cards })}
             </button>
-            <Link className="button button--secondary" to="/">Back to home</Link>
+            <Link className="button button--secondary" to="/">{t('deck_words.back_to_home')}</Link>
           </div>
         </section>
       ) : null}
@@ -572,23 +583,27 @@ export default function AiDeckCompletePage() {
       {recentJobs.length > 0 ? (
         <section className="panel st-section" aria-labelledby="ai-recent-fill">
           <div>
-            <h2 className="st-section__title" id="ai-recent-fill">Recent fill runs</h2>
-            <p className="st-section__hint">Runs stay on this device so you can resume or review them.</p>
+            <h2 className="st-section__title" id="ai-recent-fill">{t('builder.recent_fill_runs_title')}</h2>
+            <p className="st-section__hint">{t('builder.recent_fill_runs_hint')}</p>
           </div>
           <ul className="st-identity-list">
             {recentJobs.map((job) => (
               <li className="st-identity" key={job.id}>
                 <div className="st-identity__info">
-                  <span className="st-identity__name">{job.spec?.title || 'Untitled deck'}</span>
+                  <span className="st-identity__name">{job.spec?.title || t('builder.untitled_deck')}</span>
                   <span className="st-identity__meta">
-                    {new Date(job.createdAt).toLocaleString()} · {job.cards?.length ?? 0} cards ·{' '}
+                    {t('builder.recent_runs_meta', {
+                      date: formatDate(job.createdAt, { dateStyle: 'short', timeStyle: 'short' }),
+                      count: job.cards?.length ?? 0,
+                    })}
+                    {' · '}
                     {job.provider?.model ?? job.provider?.providerId}
                   </span>
                 </div>
                 <div className="st-actions">
                   <span className={`ai-status ai-status--${job.status}`}>{job.status}</span>
                   <Link className="button button--secondary st-button--compact" to={`/decks/runs/${job.id}`}>
-                    Open
+                    {t('builder.open_run_btn')}
                   </Link>
                 </div>
               </li>

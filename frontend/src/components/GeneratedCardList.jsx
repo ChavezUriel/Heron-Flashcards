@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CARD_STATUS } from '../ai/generator';
 
 // The results table of a run: one row per card, expandable into everything the
@@ -6,53 +7,44 @@ import { CARD_STATUS } from '../ai/generator';
 // state is legible at a glance (ready / open issues / failed / still working)
 // and the open issues are spelled out rather than hidden behind a count.
 
-const STATUS_LABEL = {
-  [CARD_STATUS.pending]: 'Queued',
-  [CARD_STATUS.working]: 'Working',
-  [CARD_STATUS.ready]: 'Ready',
-  [CARD_STATUS.flagged]: 'Check',
-  [CARD_STATUS.failed]: 'Failed',
-};
-
-const FILTERS = [
-  ['all', 'All'],
-  [CARD_STATUS.ready, 'Ready'],
-  [CARD_STATUS.flagged, 'Needs a look'],
-  [CARD_STATUS.failed, 'Failed'],
-];
-
 function CardDetail({ card }) {
+  const { t } = useTranslation();
+  const definition = card.l2_definition ?? card.definition_en;
+  const translations = card.l1_translations ?? card.main_translations_es ?? [];
+  const synonyms = card.l2_synonyms ?? card.synonyms_en ?? [];
+  const distractors = card.l2_cloze_distractors ?? card.cloze_distractors_en ?? [];
+
   return (
     <div className="ai-card__detail">
-      {card.definition_en ? (
+      {definition ? (
         <p className="ai-card__definition">
-          <span className="st-chip st-chip--muted">{card.part_of_speech}</span> {card.definition_en}
+          <span className="st-chip st-chip--muted">{card.part_of_speech}</span> {definition}
         </p>
       ) : null}
 
       {(card.examples ?? []).length > 0 ? (
         <ul className="ai-card__examples">
-          {card.examples.map((pair) => (
-            <li key={pair.en}>
-              <span className="ai-card__example-en">{pair.en}</span>
-              <span className="ai-card__example-es">{pair.es}</span>
+          {card.examples.map((pair, idx) => (
+            <li key={idx}>
+              <span className="ai-card__example-en">{pair.l2 ?? pair.en}</span>
+              <span className="ai-card__example-es">{pair.l1 ?? pair.es}</span>
             </li>
           ))}
         </ul>
       ) : null}
 
       <dl className="ai-card__meta">
-        {(card.main_translations_es ?? []).length > 0 ? (
-          <div><dt>Spanish</dt><dd>{card.main_translations_es.join(' · ')}</dd></div>
+        {translations.length > 0 ? (
+          <div><dt>{t('cards_list.meta_translations')}</dt><dd>{translations.join(' · ')}</dd></div>
         ) : null}
-        {(card.synonyms_en ?? []).length > 0 ? (
-          <div><dt>Synonyms</dt><dd>{card.synonyms_en.join(' · ')}</dd></div>
+        {synonyms.length > 0 ? (
+          <div><dt>{t('cards_list.meta_synonyms')}</dt><dd>{synonyms.join(' · ')}</dd></div>
         ) : null}
         {(card.collocations ?? []).length > 0 ? (
-          <div><dt>Collocations</dt><dd>{card.collocations.join(' · ')}</dd></div>
+          <div><dt>{t('cards_list.meta_collocations')}</dt><dd>{card.collocations.join(' · ')}</dd></div>
         ) : null}
-        {(card.cloze_distractors_en ?? []).length > 0 ? (
-          <div><dt>Word bank</dt><dd>{card.cloze_distractors_en.join(' · ')}</dd></div>
+        {distractors.length > 0 ? (
+          <div><dt>{t('cards_list.meta_word_bank')}</dt><dd>{distractors.join(' · ')}</dd></div>
         ) : null}
       </dl>
 
@@ -66,8 +58,24 @@ function CardDetail({ card }) {
 }
 
 function GeneratedCardList({ job }) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState('all');
   const [openId, setOpenId] = useState(null);
+
+  const statusLabel = {
+    [CARD_STATUS.pending]: t('cards_list.status_queued'),
+    [CARD_STATUS.working]: t('cards_list.status_working'),
+    [CARD_STATUS.ready]: t('cards_list.status_ready'),
+    [CARD_STATUS.flagged]: t('cards_list.status_check'),
+    [CARD_STATUS.failed]: t('cards_list.status_failed'),
+  };
+
+  const filters = [
+    ['all', t('cards_list.filter_all')],
+    [CARD_STATUS.ready, t('cards_list.filter_ready')],
+    [CARD_STATUS.flagged, t('cards_list.filter_needs_look')],
+    [CARD_STATUS.failed, t('cards_list.filter_failed')],
+  ];
 
   const cards = job.cards ?? [];
   if (cards.length === 0) return null;
@@ -77,9 +85,9 @@ function GeneratedCardList({ job }) {
   return (
     <section className="panel st-section" aria-labelledby="ai-cards-title">
       <div className="ai-run__log-head">
-        <h2 className="st-section__title" id="ai-cards-title">Cards</h2>
-        <div className="ai-filters" role="tablist" aria-label="Filter cards">
-          {FILTERS.map(([id, label]) => {
+        <h2 className="st-section__title" id="ai-cards-title">{t('cards_list.title')}</h2>
+        <div className="ai-filters" role="tablist" aria-label={t('cards_list.filter_cards_aria')}>
+          {filters.map(([id, label]) => {
             const count = id === 'all' ? cards.length : cards.filter((card) => card._status === id).length;
             if (count === 0 && id !== 'all') return null;
             return (
@@ -100,7 +108,9 @@ function GeneratedCardList({ job }) {
 
       <ul className="ai-card-list">
         {visible.map((card) => {
-          const key = `${card.spanish_text}|${card.english_text}`;
+          const prompt = card.l1_text ?? card.prompt_l1;
+          const answer = card.l2_text ?? card.answer_l2;
+          const key = `${prompt}|${answer}`;
           const isOpen = openId === key;
           return (
             <li key={key} className={`ai-card ai-card--${card._status}`}>
@@ -112,12 +122,12 @@ function GeneratedCardList({ job }) {
               >
                 <span className="ai-card__status" aria-hidden="true" />
                 <span className="ai-card__text">
-                  <span className="ai-card__prompt">{card.spanish_text}</span>
-                  <span className="ai-card__answer">{card.english_text}</span>
+                  <span className="ai-card__prompt">{prompt}</span>
+                  <span className="ai-card__answer">{answer}</span>
                 </span>
                 <span className="ai-card__tags">
                   {card.section_name ? <span className="st-chip st-chip--muted">{card.section_name}</span> : null}
-                  <span className="ai-card__state">{STATUS_LABEL[card._status]}</span>
+                  <span className="ai-card__state">{statusLabel[card._status]}</span>
                 </span>
               </button>
               {isOpen ? <CardDetail card={card} /> : null}

@@ -8,15 +8,19 @@ import WordBankCloze from './WordBankCloze';
 import Listening from './Listening';
 import { presentationIndex, sentenceIndex, shouldPlayPerCardGame } from '../minigameFrequency';
 import { clozeCandidates } from '../minigameText';
+import { getLanguage, isGameSupportedForLanguage } from '../languages';
 
-// Recall-from-definition needs an English definition to prompt with (§4 #2).
+export { isGameSupportedForLanguage };
+
+// Recall-from-definition needs a definition to prompt with (§4 #2).
 function hasDefinition(card) {
-  return typeof card?.definition_en === 'string' && card.definition_en.trim().length > 0;
+  const def = card?.l2_definition ?? card?.definition_en;
+  return typeof def === 'string' && def.trim().length > 0;
 }
 
 // The cloze games (§4 #3 free-type, #6 word-bank) can only run when the answer is
 // locatable as a whole word in at least one of the card's example sentences
-// (example_en + the `examples` pairs, migration 0019), so we can blank exactly it.
+// (example_l2 + the `examples` pairs, migration 0019 / 0034), so we can blank exactly it.
 // When no sentence qualifies, the game drops from the eligible set rather than
 // render a broken blank (docs/minigames.md Phase 5 cloze-robustness decision).
 function hasClozeSpan(card) {
@@ -29,22 +33,21 @@ function hasClozeSpan(card) {
 export const MIN_MC_DISTRACTORS = 2;
 
 // Which distractor side a modality needs, or null when it needs none. Multiple
-// choice picks an English answer (sibling english_text); reverse MC picks a
-// Spanish prompt (sibling spanish_text); word-bank cloze asks for the curated
+// choice picks an L2 answer (sibling l2_text); reverse MC picks an
+// L1 prompt (sibling l1_text); word-bank cloze asks for the curated
 // 'cloze' side (migration 0018: per-card options verified so only the real
-// answer fits the blank, with sibling-English fallback — and pre-0018 servers
-// normalize 'cloze' to 'en', so it degrades to sibling behavior). PracticePage
+// answer fits the blank, with sibling-L2 fallback). PracticePage
 // keys its distractor prefetch/cache on this so each recognition game gets the
 // right side (§8.3, §4 #5–#6).
 export function recognitionSide(modality) {
   if (modality === 'multiple_choice') {
-    return 'en';
+    return 'l2';
   }
   if (modality === 'word_bank_cloze') {
     return 'cloze';
   }
   if (modality === 'reverse_mc') {
-    return 'es';
+    return 'l1';
   }
   return null;
 }
@@ -94,6 +97,9 @@ export function selectModality(card, settings) {
   const timesPresented = card?.times_presented ?? 0;
   const lastResult = card?.last_result ?? null;
 
+  // Consult the registry's per-language games set (P5)
+  const isGameAllowed = (game) => isGameSupportedForLanguage(game, card);
+
   // Slot — new card's very first exposure (times_presented === 0): Tier-C encoding
   // aid only (§4 #11, §6.1). Pure exposure / a different skill, so it NEVER
   // grades — it resolves via skip, re-queuing the card so its first *graded* rep
@@ -101,7 +107,7 @@ export function selectModality(card, settings) {
   // encoding, not measurement. Listening when enabled; otherwise today's classic
   // graded swipe.
   if (kind === 'new' && timesPresented === 0) {
-    if (games.listening) {
+    if (games.listening && isGameAllowed('listening')) {
       return 'listening';
     }
     return 'classic';
@@ -141,7 +147,7 @@ export function selectModality(card, settings) {
   }
 
   const eligible = candidates
-    .filter(([game, fieldOk]) => games[game] && fieldOk)
+    .filter(([game, fieldOk]) => games[game] && fieldOk && isGameAllowed(game))
     .map(([game]) => game);
 
   if (eligible.length === 0) {

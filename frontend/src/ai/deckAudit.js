@@ -36,9 +36,9 @@ export function fieldPresence(card) {
     };
   }
 
-  // --- lexical (part_of_speech + definition_en) ---
+  // --- lexical (part_of_speech + l2_definition) ---
   const hasPos = !isBlank(card.part_of_speech);
-  const hasDef = !isBlank(card.definition_en);
+  const hasDef = !isBlank(card.l2_definition ?? card.definition_en);
   let lexical = 'empty';
   if (hasPos && hasDef) {
     lexical = 'present';
@@ -46,9 +46,10 @@ export function fieldPresence(card) {
     lexical = 'partial';
   }
 
-  // --- equivalents (main_translations_es + collocations) ---
-  const translations = Array.isArray(card.main_translations_es)
-    ? card.main_translations_es.filter((t) => !isBlank(t))
+  // --- equivalents (l1_translations + collocations) ---
+  const rawTranslations = card.l1_translations ?? card.main_translations_es;
+  const translations = Array.isArray(rawTranslations)
+    ? rawTranslations.filter((t) => !isBlank(t))
     : [];
   const collocations = Array.isArray(card.collocations)
     ? card.collocations.filter((c) => !isBlank(c))
@@ -60,17 +61,18 @@ export function fieldPresence(card) {
     equivalents = 'partial';
   }
 
-  // --- synonyms (synonyms_en) ---
-  const synonyms = Array.isArray(card.synonyms_en)
-    ? card.synonyms_en.filter((s) => !isBlank(s))
+  // --- synonyms (l2_synonyms) ---
+  const rawSynonyms = card.l2_synonyms ?? card.synonyms_en;
+  const synonyms = Array.isArray(rawSynonyms)
+    ? rawSynonyms.filter((s) => !isBlank(s))
     : [];
   const synonymsPresence = synonyms.length > 0 ? 'present' : 'empty';
 
-  // --- examples (examples: [{es, en}] + legacy mirror) ---
+  // --- examples (examples: [{l1, l2}] + legacy mirror) ---
   const pairs = Array.isArray(card.examples)
-    ? card.examples.filter((p) => p && !isBlank(p.es) && !isBlank(p.en))
+    ? card.examples.filter((p) => p && !isBlank(p.l1 ?? p.es) && !isBlank(p.l2 ?? p.en))
     : [];
-  const hasLegacy = !isBlank(card.example_es) && !isBlank(card.example_en);
+  const hasLegacy = !isBlank(card.example_l1 ?? card.example_es) && !isBlank(card.example_l2 ?? card.example_en);
   const exampleCount = pairs.length || (hasLegacy ? 1 : 0);
   let examplesPresence = 'empty';
   if (exampleCount >= EXAMPLES_MIN) {
@@ -79,9 +81,10 @@ export function fieldPresence(card) {
     examplesPresence = 'partial';
   }
 
-  // --- cloze distractors (cloze_distractors_en, migration 0018) ---
-  const options = Array.isArray(card.cloze_distractors_en)
-    ? card.cloze_distractors_en.filter((o) => !isBlank(o))
+  // --- cloze distractors (l2_cloze_distractors, migration 0018 & 0034) ---
+  const rawOptions = card.l2_cloze_distractors ?? card.cloze_distractors_en;
+  const options = Array.isArray(rawOptions)
+    ? rawOptions.filter((o) => !isBlank(o))
     : [];
   let clozeDistractors = 'empty';
   if (options.length >= CLOZE_DISTRACTORS_MIN) {

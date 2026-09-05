@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useLocale } from '../context/LocaleContext';
 import AiProviderPanel from '../components/AiProviderPanel';
 import AiModeTabs from '../components/AiModeTabs';
 import DeckSpecEditor from '../components/DeckSpecEditor';
@@ -18,7 +20,7 @@ const CALLS_PER_CARD = 15;
 const SECONDS_PER_CARD = 45;
 const CONCURRENCY_RANGE = { min: 1, max: 8 };
 
-function estimateRun(spec, concurrency) {
+function estimateRun(spec, concurrency, t) {
   const cards = plannedCardCount(spec);
   const calls = cards * CALLS_PER_CARD;
   const minutes = (cards * SECONDS_PER_CARD) / Math.max(1, concurrency) / 60;
@@ -26,8 +28,8 @@ function estimateRun(spec, concurrency) {
     cards,
     calls,
     label: minutes < 1.5
-      ? 'about a minute'
-      : `about ${Math.round(minutes)}–${Math.round(minutes * 1.6)} minutes`,
+      ? t('builder.estimate_time_minute')
+      : t('builder.estimate_time_range', { min: Math.round(minutes), max: Math.round(minutes * 1.6) }),
   };
 }
 
@@ -44,6 +46,8 @@ function StepHeader({ index, title, hint }) {
 }
 
 function AiDeckBuilderPage() {
+  const { t } = useTranslation();
+  const { formatDate } = useLocale();
   const navigate = useNavigate();
   const [prefs, setPrefs] = useState(() => loadBuilderPrefs());
   const [credential, setCredential] = useState(null);
@@ -61,7 +65,7 @@ function AiDeckBuilderPage() {
   }, []);
 
   const problems = useMemo(() => validateSpec(spec), [spec]);
-  const estimate = useMemo(() => estimateRun(spec, prefs.concurrency), [spec, prefs.concurrency]);
+  const estimate = useMemo(() => estimateRun(spec, prefs.concurrency, t), [spec, prefs.concurrency, t]);
   const hasKey = Boolean(credential?.apiKey);
 
   const handleCredentialChange = useCallback((next) => setCredential(next), []);
@@ -115,20 +119,18 @@ function AiDeckBuilderPage() {
     <div className="ai-page">
       <AiModeTabs />
       <header className="st-header">
-        <p className="st-kicker">AI DECK BUILDER</p>
-        <h1 className="st-header__title">Build a deck with your own AI key</h1>
+        <p className="st-kicker">{t('builder.builder_kicker')}</p>
+        <h1 className="st-header__title">{t('builder.builder_heading')}</h1>
         <p className="st-section__hint">
-          Describe what you want to learn, review the plan, and let your provider write the cards —
-          definitions, example sentences, synonyms and word-bank options included. Your key stays in
-          this browser.
+          {t('builder.builder_subheading')}
         </p>
       </header>
 
       <section className="panel st-section ai-step" aria-labelledby="ai-step-provider">
         <StepHeader
           index="1"
-          title={<span id="ai-step-provider">Choose the provider</span>}
-          hint="You pay your provider directly. Set up your AI key to populate specifications and generate cards. Your key stays in this browser."
+          title={<span id="ai-step-provider">{t('builder.step1_title')}</span>}
+          hint={t('builder.step1_hint')}
         />
         <AiProviderPanel
           providerId={prefs.providerId}
@@ -136,7 +138,7 @@ function AiDeckBuilderPage() {
           onCredentialChange={handleCredentialChange}
         />
         <label className="st-field">
-          <span className="st-field__label">Cards in parallel — {prefs.concurrency}</span>
+          <span className="st-field__label">{t('builder.concurrency_cards_label', { count: prefs.concurrency })}</span>
           <input
             className="ai-range"
             type="range"
@@ -146,7 +148,7 @@ function AiDeckBuilderPage() {
             onChange={(event) => updatePrefs({ concurrency: Number(event.target.value) })}
           />
           <span className="ai-provider__hint">
-            Higher is faster but more likely to hit your provider's rate limit. 3–4 is a safe start.
+            {t('builder.concurrency_hint')}
           </span>
         </label>
       </section>
@@ -154,17 +156,17 @@ function AiDeckBuilderPage() {
       <section className="panel st-section ai-step" aria-labelledby="ai-step-idea">
         <StepHeader
           index="2"
-          title={<span id="ai-step-idea">Describe the deck</span>}
-          hint="One or two sentences is enough. The assistant uses your AI key to turn it into a full specification you can edit."
+          title={<span id="ai-step-idea">{t('builder.step2_title')}</span>}
+          hint={t('builder.step2_hint')}
         />
         <label className="st-field">
-          <span className="st-field__label">What should this deck teach?</span>
+          <span className="st-field__label">{t('builder.what_teach_label')}</span>
           <textarea
             className="st-input ai-textarea"
             rows={3}
             value={idea}
             onChange={(event) => setIdea(event.target.value)}
-            placeholder="English I need for a job interview in tech — small talk, describing my experience, asking about the team."
+            placeholder={t('builder.idea_placeholder')}
           />
         </label>
         <div className="st-actions">
@@ -174,9 +176,9 @@ function AiDeckBuilderPage() {
             disabled={!hasKey || !idea.trim() || assistant.status === 'working'}
             onClick={() => runAssistant(() => specDraftPrompt(idea, { targetCardCount: spec.target_card_count }))}
           >
-            {assistant.status === 'working' ? 'Drafting…' : 'Draft the specification'}
+            {assistant.status === 'working' ? t('builder.drafting_spec') : t('builder.draft_spec_btn')}
           </button>
-          {!hasKey ? <span className="st-section__hint">Add a provider key in step 1 first.</span> : null}
+          {!hasKey ? <span className="st-section__hint">{t('builder.add_key_hint')}</span> : null}
           {assistant.status === 'error' ? <span className="st-error">{assistant.error}</span> : null}
         </div>
       </section>
@@ -184,21 +186,21 @@ function AiDeckBuilderPage() {
       <section className="panel st-section ai-step" aria-labelledby="ai-step-spec">
         <StepHeader
           index="3"
-          title={<span id="ai-step-spec">Review the specification</span>}
-          hint="Every field below is fed to the model as deck context. Edit it as a form or as YAML you can save and re-run."
+          title={<span id="ai-step-spec">{t('builder.step3_title')}</span>}
+          hint={t('builder.step3_hint')}
         />
 
         <DeckSpecEditor spec={spec} onChange={setSpec} />
 
         <div className="ai-refine">
           <label className="st-field">
-            <span className="st-field__label">Ask the assistant to improve it</span>
+            <span className="st-field__label">{t('builder.ask_assistant_label')}</span>
             <div className="ai-refine__row">
               <input
                 className="st-input"
                 value={refineInstruction}
                 onChange={(event) => setRefineInstruction(event.target.value)}
-                placeholder="Make it more specific to phone calls, and add a section on polite refusals."
+                placeholder={t('builder.refine_placeholder')}
               />
               <button
                 type="button"
@@ -206,13 +208,13 @@ function AiDeckBuilderPage() {
                 disabled={!hasKey || assistant.status === 'working'}
                 onClick={() => runAssistant(() => specRefinePrompt(spec, refineInstruction), { keepSpec: true })}
               >
-                Improve
+                {assistant.status === 'working' ? t('builder.refining_spec') : t('builder.refine_btn')}
               </button>
             </div>
           </label>
           {assistant.notes.length > 0 ? (
             <div className="ai-notes">
-              <p className="st-field__label">What changed</p>
+              <p className="st-field__label">{t('builder.what_changed_label')}</p>
               <ul>
                 {assistant.notes.map((note) => <li key={note}>{note}</li>)}
               </ul>
@@ -222,7 +224,7 @@ function AiDeckBuilderPage() {
                   className="ai-link"
                   onClick={() => { setSpec(previousSpec); setPreviousSpec(null); setAssistant({ status: 'idle', notes: [], error: '' }); }}
                 >
-                  Undo these changes
+                  {t('builder.undo_refine')}
                 </button>
               ) : null}
             </div>
@@ -232,10 +234,13 @@ function AiDeckBuilderPage() {
 
       <section className="panel st-section ai-launch" aria-labelledby="ai-step-launch">
         <div>
-          <h2 className="st-section__title" id="ai-step-launch">Start the run</h2>
+          <h2 className="st-section__title" id="ai-step-launch">{t('builder.step4_title')}</h2>
           <p className="st-section__hint">
-            {estimate.cards} cards · roughly {estimate.calls} model calls · {estimate.label}. You can
-            watch it card by card, and stop or resume at any point.
+            {t('builder.launch_summary_create', {
+              cards: estimate.cards,
+              calls: estimate.calls,
+              time: estimate.label,
+            })}
           </p>
         </div>
         {problems.length > 0 ? (
@@ -243,7 +248,7 @@ function AiDeckBuilderPage() {
             {problems.map((problem) => <li key={problem}>{problem}</li>)}
           </ul>
         ) : null}
-        {!hasKey ? <p className="st-error">Add an API key for {prefs.providerId} to start.</p> : null}
+        {!hasKey ? <p className="st-error">{t('builder.add_key_error', { provider: prefs.providerId })}</p> : null}
         {launchError ? <p className="st-error">{launchError}</p> : null}
         <div className="st-actions">
           <button
@@ -252,32 +257,35 @@ function AiDeckBuilderPage() {
             disabled={problems.length > 0 || !hasKey}
             onClick={handleStart}
           >
-            Generate {estimate.cards} cards
+            {t('builder.generate_cards_btn', { count: estimate.cards })}
           </button>
-          <Link className="button button--secondary" to="/">Back to home</Link>
+          <Link className="button button--secondary" to="/">{t('practice.back_to_home')}</Link>
         </div>
       </section>
 
       {recentJobs.length > 0 ? (
         <section className="panel st-section" aria-labelledby="ai-recent">
           <div>
-            <h2 className="st-section__title" id="ai-recent">Recent runs</h2>
-            <p className="st-section__hint">Runs stay on this device so you can resume or save them later.</p>
+            <h2 className="st-section__title" id="ai-recent">{t('builder.recent_runs_title')}</h2>
+            <p className="st-section__hint">{t('builder.recent_fill_runs_hint')}</p>
           </div>
           <ul className="st-identity-list">
             {recentJobs.map((job) => (
               <li className="st-identity" key={job.id}>
                 <div className="st-identity__info">
-                  <span className="st-identity__name">{job.spec.title || 'Untitled deck'}</span>
+                  <span className="st-identity__name">{job.spec.title || t('builder.untitled_deck')}</span>
                   <span className="st-identity__meta">
-                    {new Date(job.createdAt).toLocaleString()} · {job.cards?.length ?? 0} cards ·{' '}
-                    {job.provider?.model ?? job.provider?.providerId}
+                    {t('builder.recent_runs_meta', {
+                      date: formatDate(job.createdAt, { dateStyle: 'short', timeStyle: 'short' }),
+                      count: job.cards?.length ?? 0,
+                    })}
+                    {job.provider?.model || job.provider?.providerId ? ` · ${job.provider?.model ?? job.provider?.providerId}` : ''}
                   </span>
                 </div>
                 <div className="st-actions">
                   <span className={`ai-status ai-status--${job.status}`}>{job.status}</span>
                   <Link className="button button--secondary st-button--compact" to={`/decks/runs/${job.id}`}>
-                    Open
+                    {t('builder.open_run_btn')}
                   </Link>
                 </div>
               </li>

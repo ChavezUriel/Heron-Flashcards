@@ -1,21 +1,21 @@
 // Field-level diffing between two card content shapes. Handles both JSON
-// shapes the backend produces: _preview_card_json (prompt_es / answer_en) and
-// _card_sync_content (spanish_text / english_text).
+// shapes the backend produces: _preview_card_json (prompt_l1 / answer_l2) and
+// _card_sync_content (l1_text / l2_text).
 
 const CARD_DIFF_FIELDS = [
-  { key: 'prompt', label: 'Spanish' },
-  { key: 'answer', label: 'English' },
+  { key: 'prompt', label: 'Prompt' },
+  { key: 'answer', label: 'Answer' },
   { key: 'section_name', label: 'Section' },
   { key: 'part_of_speech', label: 'Part of speech' },
-  { key: 'definition_en', label: 'Definition' },
-  { key: 'main_translations_es', label: 'Translations', isArray: true },
+  { key: 'l2_definition', label: 'Definition' },
+  { key: 'l1_translations', label: 'Translations', isArray: true },
   { key: 'collocations', label: 'Collocations', isArray: true },
-  { key: 'synonyms_en', label: 'Synonyms', isArray: true },
+  { key: 'l2_synonyms', label: 'Synonyms', isArray: true },
   { key: 'examples', label: 'Examples', isArray: true },
   { key: 'example_sentence', label: 'Example' },
-  { key: 'example_es', label: 'Example (ES)' },
-  { key: 'example_en', label: 'Example (EN)' },
-  { key: 'cloze_distractors_en', label: 'Word-bank options', isArray: true },
+  { key: 'example_l1', label: 'Example (L1)' },
+  { key: 'example_l2', label: 'Example (L2)' },
+  { key: 'l2_cloze_distractors', label: 'Word-bank options', isArray: true },
 ];
 
 // Normalize either backend shape into the diffable key set above.
@@ -25,26 +25,26 @@ export function normalizeCardContent(raw) {
   }
   const examplesList = Array.isArray(raw.examples) && raw.examples.length > 0
     ? raw.examples.map((p) => {
-        const es = p?.es ?? p?.example_es ?? '';
-        const en = p?.en ?? p?.example_en ?? '';
-        return es && en ? `${es} / ${en}` : (es || en || '');
+        const l1 = p?.l1 ?? p?.example_l1 ?? '';
+        const l2 = p?.l2 ?? p?.example_l2 ?? '';
+        return l1 && l2 ? `${l1} / ${l2}` : (l1 || l2 || '');
       }).filter(Boolean)
     : [];
 
   return {
-    prompt: raw.prompt_es ?? raw.spanish_text ?? null,
-    answer: raw.answer_en ?? raw.english_text ?? null,
+    prompt: raw.prompt_l1 ?? raw.l1_text ?? null,
+    answer: raw.answer_l2 ?? raw.l2_text ?? null,
     section_name: raw.section_name ?? null,
     part_of_speech: raw.part_of_speech ?? null,
-    definition_en: raw.definition_en ?? null,
-    main_translations_es: raw.main_translations_es ?? [],
+    l2_definition: raw.l2_definition ?? null,
+    l1_translations: raw.l1_translations ?? [],
     collocations: raw.collocations ?? [],
-    synonyms_en: raw.synonyms_en ?? [],
+    l2_synonyms: raw.l2_synonyms ?? [],
     examples: examplesList,
     example_sentence: raw.example_sentence ?? null,
-    example_es: raw.example_es ?? null,
-    example_en: raw.example_en ?? null,
-    cloze_distractors_en: raw.cloze_distractors_en ?? [],
+    example_l1: raw.example_l1 ?? null,
+    example_l2: raw.example_l2 ?? null,
+    l2_cloze_distractors: raw.l2_cloze_distractors ?? [],
   };
 }
 

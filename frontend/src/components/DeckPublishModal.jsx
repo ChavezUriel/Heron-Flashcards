@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { publishUserDeck, updateCardVisibility } from '../api';
 import { auditDeckForPublishing, SAFETY_CATEGORIES } from '../ai/safetyAudit';
 import { loadCredentials, loadBuilderPrefs } from '../ai/keyStore';
@@ -44,6 +45,7 @@ export default function DeckPublishModal({
   onEditCard,
 }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [credentials, setCredentials] = useState(() => loadCredentials());
   const [providerId, setProviderId] = useState(() => loadBuilderPrefs().providerId || DEFAULT_PROVIDER_ID);
   const [showProviderSetup, setShowProviderSetup] = useState(false);
@@ -159,16 +161,16 @@ export default function DeckPublishModal({
   }
 
   return (
-    <div className="details-modal" role="dialog" aria-modal="true" aria-label="Publish deck to market">
+    <div className="details-modal" role="dialog" aria-modal="true" aria-label={t('publish.title')}>
       <button
-        aria-label="Close publish dialog"
+        aria-label={t('common.close_dialog')}
         className="details-modal__backdrop"
         type="button"
         onClick={onClose}
       />
       <div className="details-modal__panel publish-modal__panel">
         <button
-          aria-label="Close publish dialog"
+          aria-label={t('common.close_dialog')}
           className="details-modal__close"
           type="button"
           onClick={onClose}
@@ -180,8 +182,8 @@ export default function DeckPublishModal({
         </button>
 
         <div className="details-modal__header">
-          <p className="flashcard__label">Market Publication</p>
-          <h3>Publish Deck to Market</h3>
+          <p className="flashcard__label">{t('publish.label')}</p>
+          <h3>{t('publish.title')}</h3>
         </div>
 
         {error && <p className="sync-modal__status sync-modal__status--error">{error}</p>}
@@ -191,26 +193,25 @@ export default function DeckPublishModal({
           <div className="publish-modal__body">
             <div className="publish-summary-card">
               <h4 className="publish-summary-title">{deckPreview.deck_title}</h4>
-              <p className="publish-summary-desc">{deckPreview.deck_description || 'No description provided.'}</p>
+              <p className="publish-summary-desc">{deckPreview.deck_description || ''}</p>
               <div className="publish-meta-row">
                 <span className="publish-meta-pill">
-                  <strong>{activeCards.length}</strong> active flashcards
+                  {t('publish.active_flashcards', { count: activeCards.length })}
                 </span>
                 <span className="publish-meta-pill">
-                  Creator maintains ownership
+                  {t('publish.creator_ownership')}
                 </span>
               </div>
             </div>
 
             <div className="publish-info-box">
-              <h4>Safety & Quality Guarantee</h4>
+              <h4>{t('publish.guarantee_title')}</h4>
               <p>
-                Before publishing, DuoCards filters content with an AI security, ethics, and quality check to ensure
-                community guidelines, language accuracy, and privacy are upheld.
+                {t('publish.guarantee_desc')}
               </p>
               {!hasKey && (
                 <p className="publish-note">
-                  <em>Tip:</em> Configure an AI API key below for deep semantic checking and automatic false-friend analysis.
+                  <em>{t('publish.api_key_tip')}</em>
                 </p>
               )}
             </div>
@@ -222,7 +223,7 @@ export default function DeckPublishModal({
                 className="button button--secondary st-button--compact"
                 onClick={() => setShowProviderSetup((prev) => !prev)}
               >
-                {showProviderSetup ? 'Hide AI Provider Settings' : 'Configure AI Provider Key ⚙'}
+                {showProviderSetup ? t('publish.hide_provider_settings') : t('publish.show_provider_settings')}
               </button>
             </div>
 
@@ -240,7 +241,7 @@ export default function DeckPublishModal({
 
             <div className="publish-modal__footer">
               <button type="button" className="button button--secondary" onClick={onClose}>
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -248,7 +249,7 @@ export default function DeckPublishModal({
                 onClick={handleStartScan}
                 disabled={activeCards.length === 0}
               >
-                Start Security & Ethics Audit →
+                {t('publish.start_audit_btn')}
               </button>
             </div>
           </div>
@@ -259,8 +260,8 @@ export default function DeckPublishModal({
           <div className="publish-modal__body">
             <div className="publish-scanning">
               <div className="publish-spinner" />
-              <h3>Scanning Flashcards with AI</h3>
-              <p className="publish-scanning__msg">{scanProgress.message || 'Analyzing cards...'}</p>
+              <h3>{t('publish.scanning_title')}</h3>
+              <p className="publish-scanning__msg">{scanProgress.message || t('publish.scanning_note')}</p>
 
               <div className="publish-progress-bar">
                 <div
@@ -273,7 +274,7 @@ export default function DeckPublishModal({
 
               <div className="publish-modal__footer publish-modal__footer--center">
                 <button type="button" className="button button--secondary st-button--compact" onClick={handleCancelScan}>
-                  Stop Scan
+                  {t('publish.cancel_scan')}
                 </button>
               </div>
             </div>
@@ -290,11 +291,11 @@ export default function DeckPublishModal({
                   <ShieldCheckIcon />
                 </div>
                 <div className="publish-verdict__content">
-                  <h4>Deck Approved for Community Market!</h4>
+                  <h4>{t('publish.verdict_approved')}</h4>
                   <p>{report.summary.verdict_summary}</p>
                   <div className="publish-metrics">
-                    <span>✓ {report.summary.clean_cards} cards clean</span>
-                    <span>✓ 0 policy conflicts</span>
+                    <span>{t('publish.cards_clean', { count: report.summary.clean_cards })}</span>
+                    <span>{t('publish.zero_policy_conflicts')}</span>
                   </div>
                 </div>
               </div>
@@ -305,7 +306,7 @@ export default function DeckPublishModal({
                   <ShieldAlertIcon />
                 </div>
                 <div className="publish-verdict__content">
-                  <h4>Publication Blocked — Revisions Required</h4>
+                  <h4>{t('publish.verdict_needs_review')}</h4>
                   <p className="publish-verdict__why">{report.summary.verdict_summary}</p>
 
                   {/* Policy breakdown tags */}
@@ -328,10 +329,10 @@ export default function DeckPublishModal({
               <div className="publish-conflicted-section">
                 <div className="publish-conflicted-header">
                   <h4>
-                    Conflicted Flashcards ({report.conflicted_cards.length})
+                    {t('publish.conflicted_cards_title', { count: report.conflicted_cards.length })}
                   </h4>
                   <p>
-                    Fix the highlighted issues below or exclude the card from the deck before publishing.
+                    {t('publish.fix_highlighted_hint')}
                   </p>
                 </div>
 
@@ -340,9 +341,9 @@ export default function DeckPublishModal({
                     <div key={card.card_id} className="safety-conflicted-card">
                       <div className="safety-conflicted-card__head">
                         <div className="safety-card-pair">
-                          <span className="safety-card-prompt">{card.prompt_es}</span>
+                          <span className="safety-card-prompt">{card.prompt_l1}</span>
                           <span className="safety-card-arrow">→</span>
-                          <span className="safety-card-answer">{card.answer_en}</span>
+                          <span className="safety-card-answer">{card.answer_l2}</span>
                         </div>
                         <div className="safety-card-tags">
                           <SeverityBadge severity={card.severity} />
@@ -354,42 +355,40 @@ export default function DeckPublishModal({
 
                       {/* Why Rejected Explanation */}
                       <div className="safety-issue-reason">
-                        <strong>Why Rejected:</strong> {card.why_rejected}
+                        <strong>{t('publish.why_rejected_label')}</strong> {card.why_rejected}
                       </div>
 
                       {/* Flagged Excerpt */}
                       {card.flagged_excerpt && (
                         <div className="safety-issue-excerpt">
-                          <span className="safety-excerpt-label">Flagged text ({card.flagged_field}):</span>
+                          <span className="safety-excerpt-label">{t('publish.flagged_text_label', { field: card.flagged_field })}</span>
                           <mark className="safety-mark">{card.flagged_excerpt}</mark>
                         </div>
                       )}
 
                       {/* Actionable Remediation Advice */}
                       <div className="safety-remediation">
-                        <strong>💡 How to Fix:</strong> {card.remediation_advice}
+                        <strong>{t('publish.how_to_fix_label')}</strong> {card.remediation_advice}
                       </div>
 
                       {/* Actions per card */}
                       <div className="safety-card-actions">
-                        {onEditCard && (
-                          <button
-                            type="button"
-                            className="button button--secondary st-button--compact"
-                            onClick={() => {
-                              onEditCard(card.card_id);
-                            }}
-                          >
-                            ✏️ Edit Card
-                          </button>
-                        )}
                         <button
                           type="button"
-                          className="button button--danger-outline st-button--compact"
-                          disabled={actionPendingCardId === card.card_id}
-                          onClick={() => handleDisableCard(card.card_id)}
+                          className="button button--secondary st-button--compact"
+                          onClick={() => onEditCard && onEditCard(card.card_id)}
                         >
-                          {actionPendingCardId === card.card_id ? 'Excluding…' : 'Exclude from Deck'}
+                          {t('common.edit')}
+                        </button>
+                        <button
+                          type="button"
+                          className="button button--secondary st-button--compact"
+                          onClick={() => handleDisableCard(card.card_id)}
+                          disabled={actionPendingCardId === card.card_id}
+                        >
+                          {actionPendingCardId === card.card_id
+                            ? t('publish.disabling')
+                            : t('publish.disable_card_btn')}
                         </button>
                       </div>
                     </div>
@@ -401,11 +400,11 @@ export default function DeckPublishModal({
             {/* Bottom Actions */}
             <div className="publish-modal__footer">
               <button type="button" className="button button--secondary" onClick={onClose}>
-                Close
+                {t('common.close')}
               </button>
               {!report.eligible && (
                 <button type="button" className="button button--secondary" onClick={handleStartScan}>
-                  🔄 Re-run Safety Audit
+                  {t('publish.rerun_audit_btn')}
                 </button>
               )}
               {report.eligible && (
@@ -415,7 +414,7 @@ export default function DeckPublishModal({
                   onClick={handleConfirmPublish}
                   disabled={stage === 'publishing'}
                 >
-                  {stage === 'publishing' ? 'Publishing…' : 'Publish to Market Now 🚀'}
+                  {stage === 'publishing' ? t('publish.publishing') : t('publish.publish_cta')}
                 </button>
               )}
             </div>
@@ -429,14 +428,13 @@ export default function DeckPublishModal({
               <div className="publish-verdict__icon">
                 <ShieldCheckIcon />
               </div>
-              <h3>🎉 Your Deck is Live on the Market!</h3>
+              <h3>🎉 {t('publish.published_title')}</h3>
               <p>
-                Other language learners can now discover, add, and study your deck from the Market.
-                You are registered as the deck maintainer.
+                {t('publish.published_desc')}
               </p>
               <div className="publish-modal__footer publish-modal__footer--center">
                 <button type="button" className="button button--secondary" onClick={onClose}>
-                  Done
+                  {t('common.done')}
                 </button>
                 <button
                   type="button"
@@ -446,7 +444,7 @@ export default function DeckPublishModal({
                     navigate('/market');
                   }}
                 >
-                  View Market →
+                  {t('publish.view_market_deck')} →
                 </button>
               </div>
             </div>

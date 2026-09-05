@@ -11,13 +11,13 @@ declare c public.cards%rowtype;
 begin
     select * into c from public.cards where id = p_card_id;
     return public.update_card(
-        p_card_id, c.spanish_text, coalesce(p_answer, c.english_text), c.section_name, c.part_of_speech,
-        coalesce(p_definition, c.definition_en),
-        array(select jsonb_array_elements_text(coalesce(c.main_translations_es, '[]'::jsonb))),
+        p_card_id, c.l1_text, coalesce(p_answer, c.l2_text), c.section_name, c.part_of_speech,
+        coalesce(p_definition, c.l2_definition),
+        array(select jsonb_array_elements_text(coalesce(c.l1_translations, '[]'::jsonb))),
         array(select jsonb_array_elements_text(coalesce(c.collocations, '[]'::jsonb))),
-        array(select jsonb_array_elements_text(coalesce(c.synonyms_en, '[]'::jsonb))),
-        c.example_sentence, c.example_es, c.example_en,
-        coalesce(p_mnemonic, c.mnemonic_en)
+        array(select jsonb_array_elements_text(coalesce(c.l2_synonyms, '[]'::jsonb))),
+        c.example_sentence, c.example_l1, c.example_l2,
+        coalesce(p_mnemonic, c.l2_mnemonic)
     );
 end $$;
 
@@ -40,7 +40,7 @@ begin
     where c.deck_id = v_deck and c.base_version_hash is distinct from public._card_content_hash(c);
     assert v_n = 0, 'backfill hashed the USER content as baseline';
 
-    select count(*) into v_n from public.cards where deck_id = v_deck and mnemonic_en is not null;
+    select count(*) into v_n from public.cards where deck_id = v_deck and l2_mnemonic is not null;
     assert v_n = 0, 'legacy clone lost mnemonics (pre-0017 bug reproduced)';
 
     raise notice 'T1 backfill OK';
@@ -97,10 +97,10 @@ begin
     assert jsonb_array_length(v_res -> 'skipped') = 0, 'nothing skipped';
     assert (v_res -> 'status' ->> 'total_updates')::int = 0, 'clean after apply';
 
-    select count(*) into v_n from public.cards where deck_id = v_deck and mnemonic_en is not null;
+    select count(*) into v_n from public.cards where deck_id = v_deck and l2_mnemonic is not null;
     assert v_n = 3, 'mnemonics pulled from market';
 
-    select english_text into v_answer from public.cards where deck_id = v_deck and spanish_text = 'el gato';
+    select l2_text into v_answer from public.cards where deck_id = v_deck and l1_text = 'el gato';
     assert v_answer = 'cat', 'local edit reverted by full sync (visible+optional in UI)';
 
     raise notice 'T3 apply sync OK';
@@ -147,7 +147,7 @@ declare
     v jsonb; v_deck jsonb; v_failed boolean := false;
 begin
     select id into v_market from public.decks where slug = 'animals';
-    select id into v_perro from public.cards where deck_id = v_market and spanish_text = 'el perro';
+    select id into v_perro from public.cards where deck_id = v_market and l1_text = 'el perro';
     select content_updated_at into t0 from public.cards where id = v_perro;
 
     -- non-maintainer cannot edit a market card
@@ -190,12 +190,12 @@ declare
 begin
     select id into v_market from public.decks where slug = 'animals';
     select id into v_deck from public.decks where user_id = alice;
-    select id into v_pajaro from public.cards where deck_id = v_market and spanish_text = 'el pajaro';
+    select id into v_pajaro from public.cards where deck_id = v_market and l1_text = 'el pajaro';
 
     -- market gains a card (seed-script style, superuser)
     perform set_config('app.uid', '', false);
-    insert into public.cards (deck_id, spanish_text, english_text, section_name, part_of_speech,
-        definition_en, mnemonic_en)
+    insert into public.cards (deck_id, l1_text, l2_text, section_name, part_of_speech,
+        l2_definition, l2_mnemonic)
     values (v_market, 'la vaca', 'cow', 'Farm', 'noun', 'A large farm animal', 'VACA - a cow in a VACUUM.')
     returning id into v_vaca;
 
@@ -217,7 +217,7 @@ begin
     assert (v_res -> 'status' ->> 'total_updates')::int = 2, 'two updates left';
 
     select * into v_uc from public.cards where deck_id = v_deck and base_card_id = v_vaca;
-    assert v_uc.id is not null and v_uc.mnemonic_en is not null and v_uc.is_enabled, 'vaca cloned complete + enabled';
+    assert v_uc.id is not null and v_uc.l2_mnemonic is not null and v_uc.is_enabled, 'vaca cloned complete + enabled';
     assert v_uc.base_version_hash = (select public._card_content_hash(c) from public.cards c where c.id = v_vaca),
         'clone baseline = market content';
 
@@ -238,7 +238,7 @@ begin
     assert (v_res ->> 'applied')::int = 2, 'rest applied';
     assert (v_res -> 'status' ->> 'total_updates')::int = 0, 'clean';
 
-    select * into v_uc from public.cards where deck_id = v_deck and spanish_text = 'el pajaro';
+    select * into v_uc from public.cards where deck_id = v_deck and l1_text = 'el pajaro';
     assert not v_uc.is_enabled, 'removed = disabled locally';
     assert v_uc.base_card_id is not null, 'link kept for history';
 
@@ -255,7 +255,7 @@ declare
 begin
     select id into v_market from public.decks where slug = 'animals';
     select id into v_deck from public.decks where user_id = alice;
-    select id into v_perro_mkt from public.cards where deck_id = v_market and spanish_text = 'el perro';
+    select id into v_perro_mkt from public.cards where deck_id = v_market and l1_text = 'el perro';
     select id into v_perro_mine from public.cards where deck_id = v_deck and base_card_id = v_perro_mkt;
 
     perform set_config('app.uid', alice::text, false);
@@ -287,7 +287,7 @@ declare
 begin
     select id into v_market from public.decks where slug = 'animals';
     select id into v_deck from public.decks where user_id = alice;
-    select id into v_perro_mkt from public.cards where deck_id = v_market and spanish_text = 'el perro';
+    select id into v_perro_mkt from public.cards where deck_id = v_market and l1_text = 'el perro';
     select id into v_perro_mine from public.cards where deck_id = v_deck and base_card_id = v_perro_mkt;
 
     perform set_config('app.uid', alice::text, false);
@@ -297,7 +297,7 @@ begin
     assert v ->> 'message' = 'Better mnemonic!', 'message trimmed';
     assert jsonb_array_length(v -> 'items') = 1, 'one item';
     assert v -> 'items' -> 0 ->> 'change_type' = 'edit_card', 'edit item';
-    assert v -> 'items' -> 0 -> 'payload' ->> 'mnemonic_en' = 'My dog Rex says PERRO.', 'payload from my card';
+    assert v -> 'items' -> 0 -> 'payload' ->> 'l2_mnemonic' = 'My dog Rex says PERRO.', 'payload from my card';
     assert not (v -> 'items' -> 0 ->> 'is_stale')::boolean, 'fresh right after create';
 
     v := public.get_deck_outgoing_changes(v_deck);
@@ -339,7 +339,7 @@ begin
     v := public.resolve_deck_change_proposal(v_prop, 'approve', 'Nice one, thanks!');
     assert v -> 'proposal' ->> 'status' = 'approved', 'approved';
     assert (v ->> 'applied')::int = 1, 'one item applied';
-    assert (select mnemonic_en from public.cards where id = v_perro_mkt) = 'My dog Rex says PERRO.', 'market updated';
+    assert (select l2_mnemonic from public.cards where id = v_perro_mkt) = 'My dog Rex says PERRO.', 'market updated';
 
     -- proposer is clean: content now equals market; fast-forward reconciles
     perform set_config('app.uid', alice::text, false);
@@ -370,7 +370,7 @@ declare
 begin
     select id into v_market from public.decks where slug = 'animals';
     select id into v_deck from public.decks where user_id = alice;
-    select id into v_gato_mkt from public.cards where deck_id = v_market and spanish_text = 'el gato';
+    select id into v_gato_mkt from public.cards where deck_id = v_market and l1_text = 'el gato';
     select id into v_gato_mine from public.cards where deck_id = v_deck and base_card_id = v_gato_mkt;
 
     perform set_config('app.uid', alice::text, false);
@@ -396,7 +396,7 @@ begin
     v := public.resolve_deck_change_proposal(v_prop, 'reject', 'Prefer the original.');
     assert v -> 'proposal' ->> 'status' = 'rejected', 'rejected';
     assert v -> 'proposal' ->> 'resolution_note' = 'Prefer the original.', 'note kept';
-    assert (select mnemonic_en from public.cards where id = v_gato_mkt) = 'GATO - a cat at the GATE-oh.', 'market untouched';
+    assert (select l2_mnemonic from public.cards where id = v_gato_mkt) = 'GATO - a cat at the GATE-oh.', 'market untouched';
 
     -- rejection frees the card for a future proposal
     perform set_config('app.uid', alice::text, false);
@@ -420,7 +420,7 @@ begin
 
     -- personal, unlinked card in alice's copy (as if user-authored)
     perform set_config('app.uid', '', false);
-    insert into public.cards (deck_id, spanish_text, english_text, section_name, part_of_speech, definition_en)
+    insert into public.cards (deck_id, l1_text, l2_text, section_name, part_of_speech, l2_definition)
     values (v_deck, 'la tortuga', 'turtle', 'Wild', 'noun', 'A slow reptile with a shell')
     returning id into v_tortuga;
 
@@ -434,7 +434,7 @@ begin
     assert (v ->> 'applied')::int = 1, 'added to market';
 
     select id into v_mkt_tortuga from public.cards
-    where deck_id = v_market and spanish_text = 'la tortuga' and is_enabled and generation_phase = 'refined';
+    where deck_id = v_market and l1_text = 'la tortuga' and is_enabled and generation_phase = 'refined';
     assert v_mkt_tortuga is not null, 'market card created';
 
     -- proposer's card got linked, so it does not bounce back as "added"
@@ -484,7 +484,7 @@ begin
     select id into v_deck from public.decks where user_id = alice;
     select c.id into v_perro_mine from public.cards c
     join public.cards b on b.id = c.base_card_id
-    where c.deck_id = v_deck and c.spanish_text = 'el perro';
+    where c.deck_id = v_deck and c.l1_text = 'el perro';
 
     -- unauthenticated
     perform set_config('app.uid', '', false);
@@ -550,7 +550,7 @@ declare
     v_market bigint; v_perro bigint; v jsonb; v_failed boolean;
 begin
     select id into v_market from public.decks where slug = 'animals';
-    select id into v_perro from public.cards where deck_id = v_market and spanish_text = 'el perro';
+    select id into v_perro from public.cards where deck_id = v_market and l1_text = 'el perro';
 
     perform set_config('app.uid', bob::text, false);
     v_failed := false;
@@ -608,7 +608,7 @@ begin
 
     select count(*) into v_n from public.cards where deck_id = v_deck_c and base_card_id is null;
     assert v_n = 0, 'fresh clone fully linked';
-    select count(*) into v_n from public.cards where deck_id = v_deck_c and mnemonic_en is not null;
+    select count(*) into v_n from public.cards where deck_id = v_deck_c and l2_mnemonic is not null;
     assert v_n >= 3, 'fresh clone keeps mnemonics (old bug fixed)';
 
     v := public.get_home_decks();
@@ -617,7 +617,7 @@ begin
 
     -- market card hard-deleted (seed maintenance): both subscribers see removal
     perform set_config('app.uid', '', false);
-    select id into v_vaca_mkt from public.cards where deck_id = v_market and spanish_text = 'la vaca';
+    select id into v_vaca_mkt from public.cards where deck_id = v_market and l1_text = 'la vaca';
     delete from public.cards where id = v_vaca_mkt;
 
     perform set_config('app.uid', alice::text, false);
@@ -625,7 +625,7 @@ begin
     assert jsonb_array_length(v -> 'removed') = 1, 'hard delete detected';
     perform public.apply_deck_sync(v_deck_a, jsonb_build_array(jsonb_build_object(
         'type', 'remove', 'card_id', (v -> 'removed' -> 0 -> 'user_card' ->> 'card_id')::bigint)));
-    assert exists (select 1 from public.cards where deck_id = v_deck_a and spanish_text = 'la vaca' and not is_enabled),
+    assert exists (select 1 from public.cards where deck_id = v_deck_a and l1_text = 'la vaca' and not is_enabled),
         'removal disables, never deletes';
 
     -- deck preview flags for each role
@@ -642,6 +642,112 @@ begin
     assert (v ->> 'is_owner')::boolean and (v ->> 'can_edit')::boolean, 'owner preview flags';
 
     raise notice 'T14 fresh clone + delete + preview OK';
+end $$;
+
+-- --------------------------------------- T15 P7: market & collaboration by pair
+do $$
+declare
+    alice constant uuid := '11111111-1111-1111-1111-111111111111';
+    bob   constant uuid := '22222222-2222-2222-2222-222222222222';
+    carol constant uuid := '33333333-3333-3333-3333-333333333333';
+    v_market_es bigint;
+    v_market_fr bigint;
+    v_deck_es bigint;
+    v_deck_mismatch bigint;
+    v_card_mismatch bigint;
+    v_list jsonb;
+    v jsonb;
+    v_failed boolean := false;
+begin
+    -- 1. Check get_market_decks with pair filters
+    select id into v_market_es from public.decks where slug = 'animals';
+    assert (select language_from from public.decks where id = v_market_es) = 'es', 'animals is es->en';
+
+    -- Create a French market deck to test filtering
+    perform set_config('app.uid', '', false);
+    insert into public.decks (title, slug, description, language_from, language_to, owner_id)
+    values ('Animaux', 'animaux', 'Animaux en français', 'fr', 'en', bob)
+    returning id into v_market_fr;
+
+    -- Query as authenticated user (alice)
+    perform set_config('app.uid', alice::text, false);
+
+    -- Query default / null -> all decks returned (escape hatch)
+    v_list := public.get_market_decks();
+    assert jsonb_array_length(v_list) >= 2, 'all pairs returns both decks';
+    assert (v_list -> 0) ? 'language_from', 'market deck has language_from';
+    assert (v_list -> 0) ? 'language_to', 'market deck has language_to';
+
+    -- Query 'all'
+    v_list := public.get_market_decks('all');
+    assert jsonb_array_length(v_list) >= 2, 'all keyword returns both decks';
+
+    -- Query 'es', 'en'
+    v_list := public.get_market_decks('es', 'en');
+    assert jsonb_array_length(v_list) >= 1, 'es->en returns at least animals';
+    assert not exists (
+        select 1 from jsonb_array_elements(v_list) elem
+        where elem ->> 'language_from' <> 'es' or elem ->> 'language_to' <> 'en'
+    ), 'only es->en decks returned';
+
+    -- Query composite 'es->en'
+    v_list := public.get_market_decks('es->en');
+    assert jsonb_array_length(v_list) >= 1, 'composite es->en returns at least animals';
+    assert not exists (
+        select 1 from jsonb_array_elements(v_list) elem
+        where elem ->> 'language_from' <> 'es' or elem ->> 'language_to' <> 'en'
+    ), 'only es->en decks returned via composite string';
+
+    -- Query 'fr', 'en'
+    v_list := public.get_market_decks('fr', 'en');
+    assert jsonb_array_length(v_list) = 1, 'fr->en returns exactly animaux';
+    assert (v_list -> 0 ->> 'slug') = 'animaux', 'animaux deck returned';
+
+    -- Query non-existent pair 'de', 'en'
+    v_list := public.get_market_decks('de', 'en');
+    assert jsonb_array_length(v_list) = 0, 'empty for non-existent pair';
+
+    -- 2. Test cross-pair collaboration rejection
+    perform set_config('app.uid', '', false);
+    insert into public.decks (title, slug, description, language_from, language_to, user_id, base_deck_id)
+    values ('Alice French Animals', 'alice-french-animals', 'Alice copy in french', 'fr', 'en', alice, v_market_es)
+    returning id into v_deck_mismatch;
+
+    insert into public.cards (deck_id, l1_text, l2_text, section_name, part_of_speech, l2_definition, is_enabled, generation_phase)
+    values (v_deck_mismatch, 'le chien', 'dog', 'Animaux', 'noun', 'Domestic canine', true, 'refined')
+    returning id into v_card_mismatch;
+
+    -- get_deck_sync_status should detect mismatch
+    perform set_config('app.uid', alice::text, false);
+    v := public.get_deck_sync_status(v_deck_mismatch);
+    assert (v ->> 'linked')::boolean = false and (v ->> 'pair_mismatch')::boolean = true,
+        'sync status returns pair_mismatch';
+
+    -- _deck_pending_sync_count should return 0 on mismatch
+    assert public._deck_pending_sync_count(v_deck_mismatch) = 0,
+        'pending sync count returns 0 on mismatch';
+
+    -- apply_deck_sync must reject cross-pair operations
+    v_failed := false;
+    begin
+        perform public.apply_deck_sync(v_deck_mismatch, jsonb_build_array(jsonb_build_object('type', 'deck_meta')));
+    exception when others then
+        v_failed := true;
+        assert sqlerrm like '%language pair mismatch%', 'expected pair mismatch error, got: ' || sqlerrm;
+    end;
+    assert v_failed, 'apply_deck_sync must reject cross-pair operation';
+
+    -- create_deck_change_proposal must reject cross-pair operations
+    v_failed := false;
+    begin
+        perform public.create_deck_change_proposal(v_market_es, 'cross pair prop', array[v_card_mismatch]);
+    exception when others then
+        v_failed := true;
+        assert sqlerrm like '%language pair mismatch%', 'expected pair mismatch error, got: ' || sqlerrm;
+    end;
+    assert v_failed, 'create_deck_change_proposal must reject cross-pair operation';
+
+    raise notice 'T15 P7 market & collaboration by pair OK';
 end $$;
 
 drop function public.__test_edit_card(bigint, text, text, text);

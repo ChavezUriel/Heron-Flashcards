@@ -24,7 +24,7 @@ on conflict (id) do update set full_name = excluded.full_name;
 insert into public.decks (slug, title, description, user_id, is_selected_on_home, is_enabled_in_smart_practice)
 values ('alice-personal', 'Alice Personal Deck', 'Personal', '11111111-1111-1111-1111-111111111111', true, true);
 
-insert into public.cards (deck_id, spanish_text, english_text, generation_phase)
+insert into public.cards (deck_id, l1_text, l2_text, generation_phase)
 select d.id, v.es, v.en, 'refined'
 from public.decks d,
 (values ('uno','one'),('dos','two'),('tres','three'),('cuatro','four'),('cinco','five')) as v(es,en)
@@ -34,7 +34,7 @@ where d.slug = 'alice-personal';
 insert into public.decks (slug, title, description, user_id, owner_id)
 values ('market-fruits', 'Market Fruits', 'Public fruits deck', null, '33333333-3333-3333-3333-333333333333');
 
-insert into public.cards (deck_id, spanish_text, english_text, generation_phase)
+insert into public.cards (deck_id, l1_text, l2_text, generation_phase)
 select d.id, v.es, v.en, 'refined'
 from public.decks d,
 (values ('la manzana','apple'),('el platano','banana'),('la naranja','orange')) as v(es,en)
@@ -269,9 +269,9 @@ begin
     perform pg_temp.ok('4.1 Alice cloned market deck', v_alice_deck_id is not null);
 
     -- Alice has 3 cards in her copy
-    select id into v_manzana_user_id from public.cards where deck_id = v_alice_deck_id and spanish_text = 'la manzana';
-    select id into v_platano_user_id from public.cards where deck_id = v_alice_deck_id and spanish_text = 'el platano';
-    select id into v_naranja_user_id from public.cards where deck_id = v_alice_deck_id and spanish_text = 'la naranja';
+    select id into v_manzana_user_id from public.cards where deck_id = v_alice_deck_id and l1_text = 'la manzana';
+    select id into v_platano_user_id from public.cards where deck_id = v_alice_deck_id and l1_text = 'el platano';
+    select id into v_naranja_user_id from public.cards where deck_id = v_alice_deck_id and l1_text = 'la naranja';
 
     -- Initially no outgoing changes
     v_outgoing := public.get_deck_outgoing_changes(v_alice_deck_id);
@@ -292,13 +292,13 @@ begin
     -- Alice also disables (hides) 'el platano'
     perform public.update_card_visibility(v_platano_user_id, false);
 
-    -- Now outgoing changes should have 2 removals: 1 deleted, 1 hidden
+    -- Under 0032, hiding a card is not proposable, so outgoing changes remains 1
     v_outgoing := public.get_deck_outgoing_changes(v_alice_deck_id);
-    perform pg_temp.ok('4.8 outgoing changes has 2 items', jsonb_array_length(v_outgoing->'changes') = 2);
+    perform pg_temp.ok('4.8 outgoing changes has 1 item', jsonb_array_length(v_outgoing->'changes') = 1);
 
-    -- Deck preview counts outgoing changes as 2
+    -- Deck preview counts outgoing changes as 1
     v_preview := public.get_deck_preview(v_alice_deck_id);
-    perform pg_temp.ok('4.9 preview outgoing_changes is 2', (v_preview->>'outgoing_changes')::int = 2);
+    perform pg_temp.ok('4.9 preview outgoing_changes is 1', (v_preview->>'outgoing_changes')::int = 1);
     perform pg_temp.ok('4.10 preview total_cards is 2 (excluding deleted card)', (v_preview->>'total_cards')::int = 2);
 end $$;
 
@@ -321,8 +321,8 @@ declare
 begin
     select id into v_market_id from public.decks where slug = 'market-fruits';
     select id into v_alice_deck_id from public.decks where user_id = alice and base_deck_id = v_market_id;
-    select id into v_manzana_user_id from public.cards where deck_id = v_alice_deck_id and spanish_text = 'la manzana';
-    select id into v_manzana_market_id from public.cards where deck_id = v_market_id and spanish_text = 'la manzana';
+    select id into v_manzana_user_id from public.cards where deck_id = v_alice_deck_id and l1_text = 'la manzana';
+    select id into v_manzana_market_id from public.cards where deck_id = v_market_id and l1_text = 'la manzana';
 
     -- Alice proposes removal of 'la manzana'
     perform set_config('app.uid', alice::text, false);
@@ -391,9 +391,9 @@ begin
 
     -- Now create a third subscriber (e.g. Bob's second copy or manually insert a live card linked to manzana in Bob's deck)
     -- to test apply_deck_sync applying 'remove'
-    insert into public.cards (deck_id, spanish_text, english_text, is_enabled, is_deleted, generation_phase, base_card_id)
+    insert into public.cards (deck_id, l1_text, l2_text, is_enabled, is_deleted, generation_phase, base_card_id)
     values (v_bob_deck_id, 'la manzana', 'apple', true, false, 'refined',
-            (select id from public.cards where deck_id = v_market_id and spanish_text = 'la manzana'))
+            (select id from public.cards where deck_id = v_market_id and l1_text = 'la manzana'))
     returning id into v_manzana_bob_id;
 
     perform set_config('app.uid', bob::text, false);

@@ -5,26 +5,28 @@
 // deep-linkable, keyboard accessible, mobile friendly, and state-preserving.
 
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export default function AiModeTabs() {
+  const { t } = useTranslation();
   const location = useLocation();
   const isComplete = location.pathname.startsWith('/decks/complete');
 
   return (
-    <nav className="ai-tabs ai-mode-tabs" aria-label="AI Mode Navigation">
+    <nav className="ai-tabs ai-mode-tabs" aria-label={t('builder.mode_nav')}>
       <Link
         to="/decks/new"
         className={`ai-tab ${!isComplete ? 'ai-tab--active' : ''}`}
         aria-current={!isComplete ? 'page' : undefined}
       >
-        Build a new deck
+        {t('builder.build_new_deck')}
       </Link>
       <Link
         to="/decks/complete"
         className={`ai-tab ${isComplete ? 'ai-tab--active' : ''}`}
         aria-current={isComplete ? 'page' : undefined}
       >
-        Complete a deck
+        {t('builder.complete_deck')}
       </Link>
     </nav>
   );

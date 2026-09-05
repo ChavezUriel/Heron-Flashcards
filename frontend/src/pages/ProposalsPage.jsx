@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   fetchMarketDecks,
   listDeckProposals,
@@ -8,6 +9,7 @@ import {
   withdrawDeckChangeProposal,
 } from '../api';
 import { cardTitle, diffCardContent } from '../cardDiff';
+import { useLocale } from '../context/LocaleContext';
 
 function BackIcon() {
   return (
@@ -17,25 +19,13 @@ function BackIcon() {
   );
 }
 
-const STATUS_LABELS = {
-  open: 'Open',
-  approved: 'Approved',
-  rejected: 'Rejected',
-  withdrawn: 'Withdrawn',
-};
-
-function formatDate(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
 function ProposalItemDiff({ item }) {
+  const { t } = useTranslation();
   if (item.change_type === 'add_card') {
     return (
       <li className="sync-row">
         <p className="sync-row__title">
-          <span className="sync-chip sync-chip--add">New card</span>
+          <span className="sync-chip sync-chip--add">{t('proposals.new_card_chip')}</span>
           {cardTitle(item.payload)}
         </p>
         {item.payload?.definition_en ? <p className="proposal-item__detail">{item.payload.definition_en}</p> : null}
@@ -47,10 +37,10 @@ function ProposalItemDiff({ item }) {
     return (
       <li className="sync-row">
         <p className="sync-row__title">
-          <span className="sync-chip sync-chip--warn">Card removal</span>
+          <span className="sync-chip sync-chip--warn">{t('proposals.removal_chip')}</span>
           {cardTitle(item.base_snapshot)}
         </p>
-        <p className="proposal-item__detail">Proposed deletion from the public market deck.</p>
+        <p className="proposal-item__detail">{t('proposals.removal_desc')}</p>
       </li>
     );
   }
@@ -61,12 +51,12 @@ function ProposalItemDiff({ item }) {
       <p className="sync-row__title">
         {cardTitle(item.base_snapshot ?? item.payload)}
         {item.is_stale ? (
-          <span className="sync-chip sync-chip--warn" title="The market card changed after this was proposed">
-            Market card changed since
+          <span className="sync-chip sync-chip--warn" title={t('proposals.stale_chip_tooltip')}>
+            {t('proposals.stale_chip')}
           </span>
         ) : null}
         {item.current_base === null ? (
-          <span className="sync-chip sync-chip--warn">Market card no longer exists</span>
+          <span className="sync-chip sync-chip--warn">{t('proposals.deleted_chip')}</span>
         ) : null}
       </p>
       <ul className="sync-diff">
@@ -86,9 +76,20 @@ function ProposalItemDiff({ item }) {
 }
 
 function ProposalCard({ proposal, role, isPending, onResolve, onWithdraw }) {
+  const { t } = useTranslation();
+  const { formatDate } = useLocale();
   const [expanded, setExpanded] = useState(proposal.status === 'open');
   const [note, setNote] = useState('');
   const isOpen = proposal.status === 'open';
+
+  const formattedCreatedDate = proposal.created_at
+    ? formatDate(proposal.created_at, { day: 'numeric', month: 'short', year: 'numeric' })
+    : '';
+  const formattedResolvedDate = proposal.resolved_at
+    ? formatDate(proposal.resolved_at, { day: 'numeric', month: 'short', year: 'numeric' })
+    : '';
+
+  const statusLabel = t(`proposals.status_${proposal.status}`, { defaultValue: proposal.status });
 
   return (
     <article className={`proposal-card ${isOpen ? 'proposal-card--open' : ''}`}>
@@ -99,14 +100,13 @@ function ProposalCard({ proposal, role, isPending, onResolve, onWithdraw }) {
         onClick={() => setExpanded((current) => !current)}
       >
         <div className="proposal-card__head-main">
-          <span className={`sync-chip sync-chip--${proposal.status}`}>{STATUS_LABELS[proposal.status] ?? proposal.status}</span>
+          <span className={`sync-chip sync-chip--${proposal.status}`}>{statusLabel}</span>
           <span className="proposal-card__deck">{proposal.market_deck_title}</span>
           <span className="proposal-card__meta">
-            {proposal.items.length} change{proposal.items.length === 1 ? '' : 's'}
+            {t('proposals.changes_count', { count: proposal.items.length })}
             {' · '}
-            {role === 'reviewer' ? `from ${proposal.proposer_name}` : 'by you'}
-            {' · '}
-            {formatDate(proposal.created_at)}
+            {role === 'reviewer' ? t('proposals.from_author', { name: proposal.proposer_name }) : t('proposals.by_you')}
+            {formattedCreatedDate ? ` · ${formattedCreatedDate}` : ''}
           </span>
         </div>
         <span className="proposal-card__chevron" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
@@ -124,8 +124,8 @@ function ProposalCard({ proposal, role, isPending, onResolve, onWithdraw }) {
 
           {proposal.status !== 'open' && (proposal.resolution_note || proposal.resolved_at) ? (
             <p className="proposal-card__resolution">
-              {STATUS_LABELS[proposal.status]} {formatDate(proposal.resolved_at)}
-              {proposal.resolved_by_name && proposal.status !== 'withdrawn' ? ` by ${proposal.resolved_by_name}` : ''}
+              {statusLabel} {formattedResolvedDate}
+              {proposal.resolved_by_name && proposal.status !== 'withdrawn' ? ` ${t('proposals.by_author', { name: proposal.resolved_by_name })}` : ''}
               {proposal.resolution_note ? ` — “${proposal.resolution_note}”` : ''}
             </p>
           ) : null}
@@ -135,7 +135,7 @@ function ProposalCard({ proposal, role, isPending, onResolve, onWithdraw }) {
               <input
                 type="text"
                 className="proposal-card__note"
-                placeholder="Optional note to the proposer"
+                placeholder={t('proposals.add_note_placeholder')}
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 disabled={isPending}
@@ -147,7 +147,7 @@ function ProposalCard({ proposal, role, isPending, onResolve, onWithdraw }) {
                   disabled={isPending}
                   onClick={() => onResolve(proposal.proposal_id, 'approve', note)}
                 >
-                  Approve &amp; apply
+                  {t('proposals.approve_apply_btn')}
                 </button>
                 <button
                   className="button button--secondary"
@@ -155,7 +155,7 @@ function ProposalCard({ proposal, role, isPending, onResolve, onWithdraw }) {
                   disabled={isPending}
                   onClick={() => onResolve(proposal.proposal_id, 'reject', note)}
                 >
-                  Reject
+                  {t('proposals.reject_proposal')}
                 </button>
               </div>
             </div>
@@ -169,7 +169,7 @@ function ProposalCard({ proposal, role, isPending, onResolve, onWithdraw }) {
                 disabled={isPending}
                 onClick={() => onWithdraw(proposal.proposal_id)}
               >
-                Withdraw proposal
+                {t('proposals.withdraw_proposal')}
               </button>
             </div>
           ) : null}
@@ -180,6 +180,7 @@ function ProposalCard({ proposal, role, isPending, onResolve, onWithdraw }) {
 }
 
 function MaintainedDeckRow({ deck, onTransferred }) {
+  const { t } = useTranslation();
   const [showTransfer, setShowTransfer] = useState(false);
   const [email, setEmail] = useState('');
   const [pending, setPending] = useState(false);
@@ -206,30 +207,30 @@ function MaintainedDeckRow({ deck, onTransferred }) {
         <span className="maintained-deck__title">{deck.title}</span>
         <span className="maintained-deck__meta">
           {deck.open_proposals > 0
-            ? `${deck.open_proposals} open proposal${deck.open_proposals === 1 ? '' : 's'}`
-            : 'No open proposals'}
+            ? t('proposals.open_proposals_count', { count: deck.open_proposals })
+            : t('proposals.no_open_proposals')}
         </span>
       </div>
       {showTransfer ? (
         <div className="maintained-deck__transfer">
           <input
             type="email"
-            placeholder="new-maintainer@email.com"
+            placeholder={t('proposals.transfer_email_placeholder')}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             disabled={pending}
           />
           <button className="button button--primary" type="button" disabled={pending || !email.trim()} onClick={handleTransfer}>
-            {pending ? 'Transferring…' : 'Transfer'}
+            {pending ? t('proposals.transferring') : t('proposals.transfer_btn')}
           </button>
           <button className="button button--secondary" type="button" disabled={pending} onClick={() => { setShowTransfer(false); setError(''); }}>
-            Cancel
+            {t('common.cancel')}
           </button>
           {error ? <p className="sync-modal__status sync-modal__status--error">{error}</p> : null}
         </div>
       ) : (
         <button className="h-decks__text-action" type="button" onClick={() => setShowTransfer(true)}>
-          Transfer ownership
+          {t('proposals.transfer_ownership_btn')}
         </button>
       )}
     </li>
@@ -237,6 +238,7 @@ function MaintainedDeckRow({ deck, onTransferred }) {
 }
 
 function ProposalsPage() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
   const [proposals, setProposals] = useState({ to_review: [], mine: [] });
@@ -305,7 +307,7 @@ function ProposalsPage() {
   }
 
   if (status === 'loading') {
-    return <p className="h-empty-state">Loading proposals…</p>;
+    return <p className="h-empty-state">{t('proposals.loading_proposals')}</p>;
   }
 
   if (status === 'error') {
@@ -313,9 +315,9 @@ function ProposalsPage() {
       <section className="h-market proposals-page">
         <Link to="/market" className="back-link back-link--home back-link--button">
           <BackIcon />
-          <span>Back to market</span>
+          <span>{t('proposals.back_to_market')}</span>
         </Link>
-        <p className="h-empty-state h-empty-state--error">Unable to load proposals: {error}</p>
+        <p className="h-empty-state h-empty-state--error">{t('proposals.load_error', { error })}</p>
       </section>
     );
   }
@@ -327,19 +329,16 @@ function ProposalsPage() {
       <div className="proposals-page__head">
         <Link to="/market" className="back-link back-link--home back-link--button">
           <BackIcon />
-          <span>Back to market</span>
+          <span>{t('proposals.back_to_market')}</span>
         </Link>
-        <p className="h-market__kicker">DECK MARKET</p>
-        <h1 className="h-market__title">Change proposals.</h1>
-        <p className="h-market__copy">
-          Improvements travel both ways: subscribers propose card edits, maintainers review them,
-          and approved changes reach everyone through deck sync.
-        </p>
+        <p className="h-market__kicker">{t('market.kicker')}</p>
+        <h1 className="h-market__title">{t('proposals.title')}</h1>
+        <p className="h-market__copy">{t('proposals.subtitle')}</p>
       </div>
 
       {maintainedDecks.length > 0 ? (
         <section className="proposals-page__maintained panel">
-          <h2>Decks you maintain</h2>
+          <h2>{t('proposals.maintained_decks_title')}</h2>
           <ul>
             {maintainedDecks.map((deck) => (
               <MaintainedDeckRow key={deck.id} deck={deck} onTransferred={handleTransferred} />
@@ -348,7 +347,7 @@ function ProposalsPage() {
         </section>
       ) : null}
 
-      <div className="proposals-page__tabs" role="tablist" aria-label="Proposal lists">
+      <div className="proposals-page__tabs" role="tablist" aria-label={t('proposals.tabs_aria')}>
         <button
           type="button"
           role="tab"
@@ -356,7 +355,7 @@ function ProposalsPage() {
           className={`h-seg__btn ${activeTab === 'to_review' ? 'h-seg__btn--active' : ''}`}
           onClick={() => setTab('to_review')}
         >
-          To review{openToReview > 0 ? ` (${openToReview})` : ''}
+          {t('proposals.to_review_tab')}{openToReview > 0 ? ` (${openToReview})` : ''}
         </button>
         <button
           type="button"
@@ -365,7 +364,7 @@ function ProposalsPage() {
           className={`h-seg__btn ${activeTab === 'mine' ? 'h-seg__btn--active' : ''}`}
           onClick={() => setTab('mine')}
         >
-          My proposals{proposals.mine.length > 0 ? ` (${proposals.mine.length})` : ''}
+          {t('proposals.outgoing_tab')}{proposals.mine.length > 0 ? ` (${proposals.mine.length})` : ''}
         </button>
       </div>
 
@@ -375,10 +374,10 @@ function ProposalsPage() {
         <div className="h-empty-panel panel">
           <p>
             {activeTab === 'to_review'
-              ? 'No proposals to review. When subscribers of the decks you maintain propose changes, they land here.'
-              : 'You have not proposed any changes yet. Edit cards in your copy of a market deck, then use “Propose to market” in the deck explorer.'}
+              ? t('proposals.no_incoming')
+              : t('proposals.no_outgoing')}
           </p>
-          <Link to="/market" className="button button--primary">Back to market</Link>
+          <Link to="/market" className="button button--primary">{t('proposals.back_to_market')}</Link>
         </div>
       ) : (
         <div className="proposals-page__list">

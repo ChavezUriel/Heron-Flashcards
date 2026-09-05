@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { fetchDeckProgress, fetchReviewCard, submitReview, undoReview, updateCard } from '../api';
 import CardDetailsModal from '../components/CardDetailsModal';
 import Flashcard from '../components/Flashcard';
@@ -15,6 +16,7 @@ function UndoIcon() {
 }
 
 function ReviewPage() {
+  const { t } = useTranslation();
   const { deckId } = useParams();
   const [card, setCard] = useState(null);
   const [progress, setProgress] = useState(null);
@@ -176,16 +178,16 @@ function ReviewPage() {
   }
 
   if (status === 'loading') {
-    return <section className="panel empty-state">Preparing your next card...</section>;
+    return <section className="panel empty-state">{t('review.preparing_card')}</section>;
   }
 
   if (status === 'error') {
     return (
       <section className="panel empty-state">
-        <p>There was a problem loading the review session.</p>
+        <p>{t('review.loading_problem')}</p>
         <p>{error}</p>
         <Link className="button button--secondary" to="/">
-          Back to home
+          {t('review.back_to_home')}
         </Link>
       </section>
     );
@@ -198,7 +200,7 @@ function ReviewPage() {
       <div className="review-stage">
         <div className="review-topbar">
           <Link className="back-link" to="/">
-            Back to home
+            {t('review.back_to_home')}
           </Link>
 
           {canUndo ? (
@@ -209,7 +211,7 @@ function ReviewPage() {
               disabled={isSubmitting}
             >
               <UndoIcon />
-              <span>Undo last card</span>
+              <span>{t('review.undo_last_card')}</span>
             </button>
           ) : null}
         </div>
@@ -227,7 +229,7 @@ function ReviewPage() {
         />
 
         <div className="review-actions">
-          <p className="review-shortcuts">Up or down reveals. Left reviews again. Right marks known.</p>
+          <p className="review-shortcuts">{t('review.shortcuts_prompt')}</p>
           <div className="action-row">
             <button
               className="button button--danger"
@@ -235,7 +237,7 @@ function ReviewPage() {
               onClick={() => flashcardActionsRef.current?.triggerReview('left')}
               disabled={!isAnswerVisible || isSubmitting}
             >
-              I need to review it
+              {t('review.i_need_review')}
             </button>
             <button
               className="button button--primary"
@@ -243,7 +245,7 @@ function ReviewPage() {
               onClick={() => flashcardActionsRef.current?.triggerReview('right')}
               disabled={!isAnswerVisible || isSubmitting}
             >
-              I knew it
+              {t('review.i_knew_it')}
             </button>
           </div>
         </div>

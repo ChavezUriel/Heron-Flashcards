@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import MinigameFeedback from './MinigameFeedback';
 import { useAutoAdvance } from '../useAutoAdvance';
 
@@ -37,16 +38,19 @@ function MultipleChoice({
   distractors,
   onResolve,
   onOpenDetails,
-  // The correct option string (defaults to the English answer for the es→en round).
-  answer = card.answer_en,
-  label = 'Choose the translation',
-  answerLabel = 'Answer',
+  // The correct option string (defaults to the L2 answer for the forward round).
+  answer = card.answer_l2,
+  label,
+  answerLabel,
   // Prompt element rendered above the tiles; defaults to the Spanish word.
   promptNode = null,
   // Whether a click/key press can stay the auto-advance. In-queue rounds want this;
   // the rapid-fire speed round passes false so eager next-answer keys never pause it.
   stoppable = true,
 }) {
+  const { t } = useTranslation();
+  const displayLabel = label ?? t('games.multiple_choice.label');
+  const displayAnswerLabel = answerLabel ?? t('games.feedback.answer');
   const correctAnswer = answer;
 
   // Build the option tiles once the distractors arrive. De-dupe defensively even
@@ -163,11 +167,11 @@ function MultipleChoice({
       ) : null}
 
       <div className="mcgame__body">
-        <p className="flashcard__label">{label}</p>
-        {promptNode ?? <h2 className="mcgame__prompt">{card.prompt_es}</h2>}
+        <p className="flashcard__label">{displayLabel}</p>
+        {promptNode ?? <h2 className="mcgame__prompt">{card.prompt_l1}</h2>}
 
         {options ? (
-          <div className="mcgame__options" role="group" aria-label="Answer options">
+          <div className="mcgame__options" role="group" aria-label={t('games.multiple_choice.options_group')}>
             {options.map((option, index) => (
               <button
                 key={option}
@@ -178,7 +182,7 @@ function MultipleChoice({
                 className={tileClassName(index)}
                 onClick={() => commitChoice(index)}
                 disabled={isRevealed}
-                aria-label={`Option ${index + 1}: ${option}`}
+                aria-label={t('games.multiple_choice.option_aria', { index: index + 1, option })}
               >
                 <span className="mcgame__tile-key" aria-hidden="true">{index + 1}</span>
                 <span className="mcgame__tile-text">{option}</span>
@@ -186,7 +190,7 @@ function MultipleChoice({
             ))}
           </div>
         ) : (
-          <p className="mcgame__loading" role="status" aria-live="polite">Loading answer options…</p>
+          <p className="mcgame__loading" role="status" aria-live="polite">{t('games.multiple_choice.loading')}</p>
         )}
 
         {isRevealed ? (
@@ -199,7 +203,7 @@ function MultipleChoice({
           >
             {!isCorrect ? (
               <p className="mcgame__answer">
-                <span className="mcgame__answer-label">{answerLabel}</span>
+                <span className="mcgame__answer-label">{displayAnswerLabel}</span>
                 <span className="mcgame__answer-text">{correctAnswer}</span>
               </p>
             ) : null}
@@ -209,7 +213,7 @@ function MultipleChoice({
 
       {isRevealed && onOpenDetails ? (
         <button
-          aria-label="Show flashcard metadata"
+          aria-label={t('deck.show_metadata')}
           className="info-button"
           type="button"
           onClick={onOpenDetails}

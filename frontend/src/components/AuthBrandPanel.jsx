@@ -1,7 +1,11 @@
-function AuthBrandPanel({
-  quote = '"Still water, sharp mind. The words come when you stop chasing them."',
-  tagline = 'A QUIET WAY TO LEARN ENGLISH',
-}) {
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+
+function AuthBrandPanel({ quote, tagline }) {
+  const { t } = useTranslation();
+  const displayQuote = quote || t('auth.brand_quote');
+  const displayTagline = tagline || t('auth.brand_tagline');
+
   return (
     <div className="login-split__left">
       <div className="login-brand">
@@ -11,8 +15,8 @@ function AuthBrandPanel({
         <span className="login-brand__name">Heron</span>
       </div>
       <div>
-        <p className="login-quote">{quote}</p>
-        <p className="login-tagline">{tagline}</p>
+        <p className="login-quote">{displayQuote}</p>
+        <p className="login-tagline">{displayTagline}</p>
       </div>
     </div>
   );

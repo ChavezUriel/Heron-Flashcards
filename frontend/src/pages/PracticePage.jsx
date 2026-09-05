@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   getMinigameDistractors,
   hideSmartPracticeCard,
@@ -47,46 +48,47 @@ function UndoIcon() {
   );
 }
 
-function modeLabel(mode) {
-  if (mode === 'new_material') return 'New Material';
-  if (mode === 'mixed') return 'Mixed Practice';
-  return 'Review Stack';
+function modeLabel(mode, t) {
+  if (mode === 'new_material') return t('practice.mode_new');
+  if (mode === 'mixed') return t('practice.mode_mixed');
+  return t('practice.mode_review');
 }
 
 // The auto-chosen shape of a mixed session (see the Auto ruleset in
 // start_smart_practice_session); null for single-kind sessions.
-function sessionShapeLabel(shape) {
-  if (shape === 'front_loaded') return 'warm-up';
-  if (shape === 'spread') return 'spread';
-  if (shape === 'interleaved') return 'interleaved';
+function sessionShapeLabel(shape, t) {
+  if (shape === 'front_loaded') return t('practice.shape_warmup');
+  if (shape === 'spread') return t('practice.shape_spread');
+  if (shape === 'interleaved') return t('practice.shape_interleaved');
   return null;
 }
 
 // Kept to ~31 characters so the pill stays on one line at phone widths — see
 // .practice-feedback-slot, which reserves exactly one line of height.
-function feedbackMessage(feedback) {
+function feedbackMessage(feedback, t) {
   if (!feedback) {
     return '';
   }
 
   if (feedback.repeats_in_session) {
-    return feedback.result === 'known' ? 'Almost there — one more pass.' : 'No problem — it comes back soon.';
+    return feedback.result === 'known' ? t('practice.feedback_almost_there') : t('practice.feedback_no_problem');
   }
 
   const days = feedback.interval_days;
   if (!days || days < 1) {
-    return 'Scheduled for review soon.';
+    return t('practice.feedback_scheduled_soon');
   }
   if (days === 1) {
-    return 'Next review tomorrow.';
+    return t('practice.feedback_tomorrow');
   }
   if (days >= 60) {
-    return `Locked in — review in ${Math.round(days / 30)} months.`;
+    return t('practice.feedback_months', { months: Math.round(days / 30) });
   }
-  return `Next review in ${days} days.`;
+  return t('practice.feedback_days', { count: days });
 }
 
 function PracticePage() {
+  const { t } = useTranslation();
   const [session, setSession] = useState(null);
   // Read once at mount, same as the session start below; MinigameHost uses these
   // to decide each card's answer modality (Phase 0: always the classic flashcard).
@@ -588,17 +590,17 @@ function PracticePage() {
   }
 
   if (status === 'loading') {
-    return <section className="panel empty-state">Preparing your smart practice session...</section>;
+    return <section className="panel empty-state">{t('practice.preparing_session')}</section>;
   }
 
   if (status === 'error') {
     return (
       <section className="panel empty-state">
-        <p>There was a problem loading smart practice.</p>
+        <p>{t('practice.loading_problem')}</p>
         <p>{error}</p>
         <Link className="back-link back-link--home back-link--button" to="/">
           <HomeIcon />
-          <span>Home</span>
+          <span>{t('nav.home')}</span>
         </Link>
       </section>
     );
@@ -616,7 +618,7 @@ function PracticePage() {
           <div className="practice-session-bar__nav">
             <Link className="back-link back-link--home" to="/">
               <HomeIcon />
-              <span>Home</span>
+              <span>{t('nav.home')}</span>
             </Link>
 
             {summary.can_undo && !isInterstitialActive ? (
@@ -627,29 +629,29 @@ function PracticePage() {
                 disabled={isSubmitting}
               >
                 <UndoIcon />
-                <span>Undo</span>
+                <span>{t('common.undo')}</span>
               </button>
             ) : null}
           </div>
 
-          <div className="practice-session-summary" aria-label="Smart practice summary">
-            <span className="practice-session-summary__mode">{modeLabel(summary.mode)}</span>
+          <div className="practice-session-summary" aria-label={t('practice.summary_aria')}>
+            <span className="practice-session-summary__mode">{modeLabel(summary.mode, t)}</span>
             <div className="practice-session-summary__stats">
-              <span>{summary.completed_cards} done</span>
+              <span>{t('practice.done_count', { count: summary.completed_cards })}</span>
               {summary.mode === 'mixed' ? (
                 <>
-                  <span>{summary.remaining_new} new</span>
-                  <span>{summary.remaining_review} review</span>
+                  <span>{t('home.session_new_count', { count: summary.remaining_new })}</span>
+                  <span>{t('home.session_review_count', { count: summary.remaining_review })}</span>
                 </>
               ) : (
-                <span>{summary.remaining_cards} left</span>
+                <span>{t('practice.left_count', { count: summary.remaining_cards })}</span>
               )}
-              {sessionShapeLabel(summary.session_shape) ? (
-                <span>{sessionShapeLabel(summary.session_shape)}</span>
+              {sessionShapeLabel(summary.session_shape, t) ? (
+                <span>{sessionShapeLabel(summary.session_shape, t)}</span>
               ) : null}
               {!minigamesEnabled ? (
-                <span className="practice-session-summary__simplified-badge" title="Simplified mode: turning flashcards only">
-                  Simplified
+                <span className="practice-session-summary__simplified-badge" title={t('practice.simplified_tooltip')}>
+                  {t('practice.simplified_badge')}
                 </span>
               ) : null}
             </div>
@@ -661,7 +663,7 @@ function PracticePage() {
         <div className="practice-feedback-slot" role="status" aria-live="polite">
           {reviewFeedback ? (
             <p className={`practice-feedback-toast practice-feedback-toast--${reviewFeedback.result}`}>
-              {feedbackMessage(reviewFeedback)}
+              {feedbackMessage(reviewFeedback, t)}
             </p>
           ) : null}
         </div>
@@ -689,18 +691,22 @@ function PracticePage() {
           />
         ) : (
           <section className="panel empty-state practice-complete">
-            <p className="eyebrow">Session complete</p>
-            <h2>You cleared this smart practice round.</h2>
+            <p className="eyebrow">{t('practice.session_complete_title')}</p>
+            <h2>{t('practice.session_cleared_heading')}</h2>
             <p>
-              Completed {summary.completed_cards} of {summary.total_cards} cards in {modeLabel(summary.mode).toLowerCase()} mode.
+              {t('practice.session_cleared_desc', {
+                completed: summary.completed_cards,
+                total: summary.total_cards,
+                mode: modeLabel(summary.mode, t).toLowerCase(),
+              })}
             </p>
             {depthStat && depthStat.matched > 0 ? (
               <p className="practice-complete__depth">
-                Vocabulary depth: {depthStat.matched} related word{depthStat.matched === 1 ? '' : 's'} matched.
+                {t('practice.vocab_depth_matched', { count: depthStat.matched })}
               </p>
             ) : null}
             <Link className="button button--primary" to="/">
-              Back to home
+              {t('practice.back_to_home')}
             </Link>
           </section>
         )}

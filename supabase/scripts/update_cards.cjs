@@ -137,21 +137,32 @@ function listExpansionFiles() {
 }
 
 function toSeedCard(card) {
-  const out = { spanish: card.spanish_text, english: card.english_text };
+  const spanish = card.l1_text ?? card.spanish_text ?? card.spanish;
+  const english = card.l2_text ?? card.english_text ?? card.english;
+  const out = { spanish, english };
   if (optText(card.section_name)) out.section_name = card.section_name;
   if (optText(card.part_of_speech)) out.part_of_speech = card.part_of_speech;
-  if (optText(card.definition_en)) out.definition_en = card.definition_en;
-  out.main_translations_es = normList(card.main_translations_es);
+  const def = card.l2_definition ?? card.definition_en;
+  if (optText(def)) out.definition_en = def;
+  out.main_translations_es = normList(card.l1_translations ?? card.main_translations_es);
   out.collocations = normList(card.collocations);
-  out.synonyms_en = normList(card.synonyms_en);
+  out.synonyms_en = normList(card.l2_synonyms ?? card.synonyms_en);
   out.examples = (Array.isArray(card.examples) ? card.examples : [])
-    .filter((p) => p && p.es && p.en)
-    .map((p) => ({ es: p.es, en: p.en }));
-  if (optText(card.example_en)) out.example_sentence = card.example_en;
-  if (optText(card.example_es)) out.example_es = card.example_es;
-  if (optText(card.example_en)) out.example_en = card.example_en;
-  if (optText(card.mnemonic_en)) out.mnemonic_en = card.mnemonic_en;
-  out.cloze_distractors_en = normList(card.cloze_distractors_en);
+    .map((p) => {
+      if (!p) return null;
+      const es = optText(p.l1 ?? p.es ?? p.example_l1 ?? p.example_es);
+      const en = optText(p.l2 ?? p.en ?? p.example_l2 ?? p.example_en);
+      return (es && en) ? { es, en } : null;
+    })
+    .filter(Boolean);
+  const exL2 = card.example_l2 ?? card.example_en ?? card.example_sentence;
+  const exL1 = card.example_l1 ?? card.example_es;
+  if (optText(exL2)) out.example_sentence = exL2;
+  if (optText(exL1)) out.example_es = exL1;
+  if (optText(exL2)) out.example_en = exL2;
+  const mnemonic = card.l2_mnemonic ?? card.mnemonic_en;
+  if (optText(mnemonic)) out.mnemonic_en = mnemonic;
+  out.cloze_distractors_en = normList(card.l2_cloze_distractors ?? card.cloze_distractors_en);
   if (card._audits && Object.keys(card._audits).length) out._audits = card._audits;
   return out;
 }
@@ -295,7 +306,7 @@ async function main() {
     for (const idx of targets) {
       if (processedTotal >= limit) break;
       const c = working[idx];
-      log(`  [${processedHere + 1}/${targets.length}] ${c.spanish_text} -> ${c.english_text}`);
+      log(`  [${processedHere + 1}/${targets.length}] ${c.l1_text ?? c.spanish_text} -> ${c.l2_text ?? c.english_text}`);
       const t0 = Date.now();
       let result;
       try {

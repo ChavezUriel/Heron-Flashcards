@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
+import { useLocale } from '../context/LocaleContext';
 import { CARD_STATUS, jobProgress, usableCards, recomputeMismatchCard } from '../ai/generator';
 import { deleteJob, getJob, saveJob } from '../ai/jobStore';
 import { getLiveJob, isRunning, startRun, stopRun, subscribeToJob } from '../ai/runManager';
@@ -12,26 +14,26 @@ import ProposedChangeList from '../components/ProposedChangeList';
 import ProposeChangesModal from '../components/ProposeChangesModal';
 
 const CREATE_STAGES = [
-  ['blueprint', 'Blueprint'],
-  ['wordsets', 'Word sets'],
-  ['cards', 'Cards'],
-  ['done', 'Done'],
+  ['blueprint', 'run_page.blueprint_stage'],
+  ['wordsets', 'run_page.wordsets_stage'],
+  ['cards', 'run_page.cards_stage'],
+  ['done', 'run_page.done_stage'],
 ];
 
 const FILL_STAGES = [
-  ['scan', 'Scan'],
-  ['cards', 'Cards'],
-  ['review', 'Review'],
-  ['applied', 'Applied'],
+  ['scan', 'run_page.scan_stage'],
+  ['cards', 'run_page.cards_stage'],
+  ['review', 'run_page.review_stage'],
+  ['applied', 'run_page.applied_stage'],
 ];
 
-const STATUS_COPY = {
-  pending: 'Not started',
-  running: 'Generating',
-  cancelled: 'Stopped',
-  interrupted: 'Interrupted',
-  failed: 'Failed',
-  completed: 'Finished',
+const STATUS_KEYS = {
+  pending: 'run_page.status_pending',
+  running: 'run_page.status_running',
+  cancelled: 'run_page.status_cancelled',
+  interrupted: 'run_page.status_interrupted',
+  failed: 'run_page.status_failed',
+  completed: 'run_page.status_completed',
 };
 
 function formatDuration(fromIso, toIso) {
@@ -42,6 +44,8 @@ function formatDuration(fromIso, toIso) {
 }
 
 function DeckRunPage() {
+  const { t } = useTranslation();
+  const { formatDate, formatNumber } = useLocale();
   const { jobId } = useParams();
   const navigate = useNavigate();
   const [, bump] = useReducer((count) => count + 1, 0);
@@ -77,9 +81,9 @@ function DeckRunPage() {
   if (!job) {
     return (
       <div className="ai-page">
-        <p className="h-empty-state">This run is no longer on this device.</p>
+        <p className="h-empty-state">{t('run_page.run_missing')}</p>
         <div className="st-actions">
-          <Link className="button button--primary" to="/decks/new">Start a new one</Link>
+          <Link className="button button--primary" to="/decks/new">{t('run_page.start_new_btn')}</Link>
         </div>
       </div>
     );
@@ -116,7 +120,7 @@ function DeckRunPage() {
   function handleResume() {
     const credential = loadCredential(job.provider?.providerId ?? 'opencode');
     if (!credential.apiKey) {
-      setSaveState({ status: 'error', message: `Add your ${provider.label} key in the builder before resuming.` });
+      setSaveState({ status: 'error', message: t('run_page.add_key_error', { provider: provider.label }) });
       return;
     }
     startRun(job, { ...credential, model: job.provider?.model || credential.model });
@@ -189,7 +193,7 @@ function DeckRunPage() {
       });
       job.savedDeck = { id: deck.id, slug: deck.slug, title: deck.title, cardCount };
       saveJob(job);
-      setSaveState({ status: 'done', message: `Saved ${cardCount} cards to “${deck.title}”.` });
+      setSaveState({ status: 'done', message: t('run_page.saved_success', { count: cardCount, title: deck.title }) });
       bump();
     } catch (error) {
       if (error.partial) {
@@ -213,10 +217,14 @@ function DeckRunPage() {
       };
       job.stage = 'applied';
       saveJob(job);
-      const insertedMsg = insertedCount > 0 ? ` and added ${insertedCount} new flashcard(s)` : '';
+      const insertedMsg = insertedCount > 0 ? t('run_page.applied_inserted', { count: insertedCount }) : '';
       setSaveState({
         status: 'done',
-        message: `Successfully applied changes to ${appliedCount} card(s)${insertedMsg} in “${job.targetDeck?.title || 'your deck'}”.`,
+        message: t('run_page.applied_success', {
+          count: appliedCount,
+          inserted: insertedMsg,
+          title: job.targetDeck?.title || t('run_page.your_deck_fallback'),
+        }),
       });
       bump();
     } catch (error) {
@@ -265,27 +273,29 @@ function DeckRunPage() {
     <div className="ai-page">
       <header className="ai-run__header">
         <div>
-          <p className="st-kicker">{isFill ? 'FILL RUN' : 'RUN'} · {job.id.slice(5, 13)}</p>
-          <h1 className="st-header__title">{job.spec.title || 'Untitled deck'}</h1>
+          <p className="st-kicker">
+            {isFill ? t('run_page.kicker_fill', { id: job.id.slice(5, 13) }) : t('run_page.kicker_create', { id: job.id.slice(5, 13) })}
+          </p>
+          <h1 className="st-header__title">{job.spec.title || t('builder.untitled_deck')}</h1>
           <p className="st-section__hint">
-            {provider.label} · {job.provider?.model} · started {job.startedAt ? new Date(job.startedAt).toLocaleTimeString() : '—'} ·{' '}
+            {provider.label} · {job.provider?.model} · {t('run_page.started_at', { time: job.startedAt ? formatDate(job.startedAt, { timeStyle: 'short' }) : '—' })} ·{' '}
             {formatDuration(job.startedAt, job.finishedAt)} elapsed
           </p>
         </div>
         <span className={`ai-status ai-status--${job.status} ai-status--large`}>
-          {STATUS_COPY[job.status] ?? job.status}
+          {STATUS_KEYS[job.status] ? t(STATUS_KEYS[job.status]) : job.status}
         </span>
       </header>
 
-      <section className="panel st-section" aria-label="Progress">
+      <section className="panel st-section" aria-label={t('run_page.progress_aria')}>
         <ol className="ai-stages">
-          {stages.map(([id, label], index) => (
+          {stages.map(([id, labelKey], index) => (
             <li
               key={id}
               className={`ai-stage${index < stageIndex ? ' ai-stage--done' : ''}${index === stageIndex ? ' ai-stage--active' : ''}`}
             >
               <span className="ai-stage__dot" aria-hidden="true" />
-              {label}
+              {t(labelKey)}
             </li>
           ))}
         </ol>
@@ -295,12 +305,20 @@ function DeckRunPage() {
             <span className="ai-progress__fill" style={{ width: `${Math.round((progress?.ratio ?? 0) * 100)}%` }} />
           </div>
           <div className="ai-progress__counts">
-            <span><strong>{progress?.done ?? 0}</strong> of {progress?.total ?? 0} cards</span>
-            {(progress?.working ?? 0) > 0 ? <span>{progress.working} in flight</span> : null}
-            {(progress?.flagged ?? 0) > 0 ? <span className="ai-count--warn">{progress.flagged} with open issues</span> : null}
-            {(progress?.failed ?? 0) > 0 ? <span className="ai-count--error">{progress.failed} failed</span> : null}
+            <Trans
+              i18nKey="run_page.cards_ratio"
+              values={{ done: progress?.done ?? 0, total: progress?.total ?? 0 }}
+              parent="span"
+              components={{ strong: <strong /> }}
+            />
+            {(progress?.working ?? 0) > 0 ? <span>{t('run_page.in_flight_count', { count: progress.working })}</span> : null}
+            {(progress?.flagged ?? 0) > 0 ? <span className="ai-count--warn">{t('run_page.open_issues_count', { count: progress.flagged })}</span> : null}
+            {(progress?.failed ?? 0) > 0 ? <span className="ai-count--error">{t('run_page.failed_count', { count: progress.failed })}</span> : null}
             <span className="ai-count--muted">
-              {job.usage.calls} calls · {(job.usage.input_tokens + job.usage.output_tokens).toLocaleString()} tokens
+              {t('run_page.usage_meta', {
+                calls: job.usage.calls,
+                tokens: formatNumber(job.usage.input_tokens + job.usage.output_tokens),
+              })}
             </span>
           </div>
         </div>
@@ -310,22 +328,22 @@ function DeckRunPage() {
         <div className="st-actions">
           {live ? (
             <button type="button" className="button button--secondary" onClick={() => stopRun(jobId)}>
-              Stop after the current card
+              {t('run_page.stop_after_card')}
             </button>
           ) : null}
           {!live && resumable ? (
             <button type="button" className="button button--primary" onClick={handleResume}>
-              Resume run
+              {t('run_page.resume_run')}
             </button>
           ) : null}
           {!live && (progress?.failed ?? 0) > 0 ? (
             <button type="button" className="button button--secondary" onClick={handleRetryFailed}>
-              Retry {progress.failed} failed card{progress.failed === 1 ? '' : 's'}
+              {t('run_page.retry_failed_cards', { count: progress.failed })}
             </button>
           ) : null}
           {!live ? (
             <button type="button" className="button button--secondary st-button--compact" onClick={handleDelete}>
-              Delete run
+              {t('run_page.delete_run')}
             </button>
           ) : null}
         </div>
@@ -336,22 +354,22 @@ function DeckRunPage() {
         <section className="panel st-section" aria-labelledby="ai-save-title">
           <div>
             <h2 className="st-section__title" id="ai-save-title">
-              {job.savedDeck ? 'Saved to your decks' : 'Save to your decks'}
+              {job.savedDeck ? t('run_page.saved_title') : t('run_page.save_title')}
             </h2>
             <p className="st-section__hint">
               {job.savedDeck
-                ? `“${job.savedDeck.title}” is on your home screen with ${job.savedDeck.cardCount} cards, ready for smart practice.`
-                : `${savable} finished card${savable === 1 ? '' : 's'} will become a personal deck — reviews, minigames and scheduling included.`}
+                ? t('run_page.saved_desc', { title: job.savedDeck.title, count: job.savedDeck.cardCount })
+                : t('run_page.savable_desc', { count: savable })}
             </p>
           </div>
           {!job.savedDeck ? (
             <label className="st-field">
-              <span className="st-field__label">Deck name</span>
+              <span className="st-field__label">{t('run_page.deck_name_label')}</span>
               <input
                 className="st-input"
                 value={deckTitle}
                 onChange={(event) => setDeckTitle(event.target.value)}
-                placeholder="Deck name"
+                placeholder={t('run_page.deck_name_placeholder')}
               />
             </label>
           ) : null}
@@ -363,17 +381,19 @@ function DeckRunPage() {
               disabled={saveState.status === 'working' || !deckTitle.trim()}
             >
               {saveState.status === 'working'
-                ? 'Saving…'
-                : job.savedDeck ? 'Save new cards again' : 'Save deck'}
+                ? t('run_page.saving_deck')
+                : job.savedDeck ? t('run_page.save_again') : t('run_page.save_deck')}
             </button>
             {job.savedDeck ? (
               <>
-                <Link className="button button--secondary" to={`/decks/${job.savedDeck.id}/words`}>Open the deck</Link>
-                <Link className="button button--secondary" to="/">Go to home</Link>
+                <Link className="button button--secondary" to={`/decks/${job.savedDeck.id}/words`}>
+                  {t('run_page.open_deck_btn')}
+                </Link>
+                <Link className="button button--secondary" to="/">{t('run_page.go_to_home_btn')}</Link>
               </>
             ) : null}
             <button type="button" className="button button--secondary st-button--compact" onClick={handleDownload}>
-              Download JSON
+              {t('run_page.download_json_btn')}
             </button>
           </div>
           {saveState.status === 'done' ? <p className="st-success">{saveState.message}</p> : null}
@@ -386,13 +406,13 @@ function DeckRunPage() {
           <div>
             <h2 className="st-section__title" id="ai-apply-title">
               {job.appliedDeck
-                ? `Applied to “${job.targetDeck?.title || 'deck'}”`
-                : `Apply to “${job.targetDeck?.title || 'deck'}”`}
+                ? t('run_page.applied_title', { title: job.targetDeck?.title || t('run_page.your_deck_fallback') })
+                : t('run_page.apply_title', { title: job.targetDeck?.title || t('run_page.your_deck_fallback') })}
             </h2>
             <p className="st-section__hint">
               {job.appliedDeck
-                ? `Patches applied to ${job.appliedDeck.appliedCount} card(s) in “${job.targetDeck?.title}”.`
-                : `${appliable} selected card(s) ready to be patched in “${job.targetDeck?.title}”. Progress and scheduling are untouched.`}
+                ? t('run_page.applied_patches_desc', { count: job.appliedDeck.appliedCount, title: job.targetDeck?.title })
+                : t('run_page.appliable_patches_desc', { count: appliable, title: job.targetDeck?.title })}
             </p>
           </div>
 
@@ -400,8 +420,8 @@ function DeckRunPage() {
             <div className="ai-warning-box">
               <span aria-hidden="true">⚠️</span>
               <div>
-                <strong>Market sync note:</strong> {locallyModifiedCount} card(s) will become locally modified
-                in your copy, which will appear in outgoing changes for deck sync.
+                <strong>{t('run_page.market_sync_note_title')}</strong>{' '}
+                {t('run_page.market_sync_note_desc', { count: locallyModifiedCount })}
               </div>
             </div>
           ) : null}
@@ -414,8 +434,8 @@ function DeckRunPage() {
               disabled={saveState.status === 'working' || appliable === 0}
             >
               {saveState.status === 'working'
-                ? 'Applying patches…'
-                : job.appliedDeck ? 'Apply changes again' : `Apply to ${job.targetDeck?.title || 'deck'}`}
+                ? t('run_page.applying_changes')
+                : job.appliedDeck ? t('run_page.apply_again') : t('run_page.apply_to_deck', { title: job.targetDeck?.title || t('run_page.your_deck_fallback') })}
             </button>
             {isMarketLinked && job.appliedDeck ? (
               <button
@@ -423,17 +443,17 @@ function DeckRunPage() {
                 className="button button--secondary"
                 onClick={() => setShowProposeModal(true)}
               >
-                Propose these to the market deck
+                {t('run_page.propose_to_market')}
               </button>
             ) : null}
             {job.targetDeck?.id ? (
               <Link className="button button--secondary" to={`/decks/${job.targetDeck.id}/words`}>
-                Open the deck
+                {t('run_page.open_deck_btn')}
               </Link>
             ) : null}
-            <Link className="button button--secondary" to="/">Go to home</Link>
+            <Link className="button button--secondary" to="/">{t('run_page.go_to_home_btn')}</Link>
             <button type="button" className="button button--secondary st-button--compact" onClick={handleDownload}>
-              Download JSON
+              {t('run_page.download_json_btn')}
             </button>
           </div>
           {saveState.status === 'done' ? <p className="st-success">{saveState.message}</p> : null}
@@ -456,16 +476,16 @@ function DeckRunPage() {
 
       <section className="panel st-section" aria-labelledby="ai-log-title">
         <div className="ai-run__log-head">
-          <h2 className="st-section__title" id="ai-log-title">Activity</h2>
+          <h2 className="st-section__title" id="ai-log-title">{t('run_page.activity_title')}</h2>
           <button type="button" className="ai-link" onClick={() => setShowLog((current) => !current)}>
-            {showLog ? 'Hide' : 'Show'}
+            {showLog ? t('run_page.hide_btn') : t('run_page.show_btn')}
           </button>
         </div>
         {showLog ? (
           <ol className="ai-log" ref={logBoxRef}>
             {job.log.map((entry) => (
               <li key={entry.id} className={`ai-log__row ai-log__row--${entry.level}`}>
-                <time dateTime={entry.at}>{new Date(entry.at).toLocaleTimeString()}</time>
+                <time dateTime={entry.at}>{formatDate(entry.at, { timeStyle: 'medium' })}</time>
                 <span>{entry.message}</span>
               </li>
             ))}

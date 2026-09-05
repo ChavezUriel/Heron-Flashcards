@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { classifyGuess, normalizeAnswer } from '../minigameText';
 import MinigameFeedback from './MinigameFeedback';
 import { AnswerShape, HintButton, TranslationHint, useHints } from './MinigameHints';
@@ -20,6 +21,7 @@ const FEEDBACK_MS = { known: 1100, almost: 2000, unknown: 2000 };
 // RPC — never graded, recycled for a clean rep (§4 near-miss aside). Selected only
 // when the card carries a definition (see selectModality).
 function RecallFromDefinition({ card, onResolve, onOpenDetails }) {
+  const { t } = useTranslation();
   const [guess, setGuess] = useState('');
   // null while typing; 'known' | 'almost' | 'unknown' once submitted (drives the reveal).
   const [outcome, setOutcome] = useState(null);
@@ -27,8 +29,12 @@ function RecallFromDefinition({ card, onResolve, onOpenDetails }) {
   const [confirmSkip, setConfirmSkip] = useState(false);
   const inputRef = useRef(null);
   const autoAdvance = useAutoAdvance();
-  // Two-step hint ladder (shape, then Spanish); revealing refocuses the input.
+  // Two-step hint ladder (shape, then prompt); revealing refocuses the input.
   const hints = useHints(inputRef);
+
+  const definition = card.l2_definition ?? card.definition_en;
+  const answer = card.answer_l2 ?? card.answer_en;
+  const prompt = card.prompt_l1 ?? card.prompt_es;
 
   // Focus the input while typing; once submitted, MinigameFeedback owns focus (its
   // Continue button, shown if the learner stays the auto-advance).
@@ -87,17 +93,17 @@ function RecallFromDefinition({ card, onResolve, onOpenDetails }) {
       </div>
 
       <div className="typegame__body">
-        <p className="flashcard__label">Recall from definition</p>
-        <p className="recallgame__definition">{card.definition_en}</p>
+        <p className="flashcard__label">{t('games.recall_from_definition.label')}</p>
+        <p className="recallgame__definition">{definition}</p>
 
         {/* Hint reveals under the definition: first the answer's shape (an underscore
-            per character, word gaps visible), then the Spanish side of the card. */}
+            per character, word gaps visible), then the prompt side of the card. */}
         {!isRevealed && hints.level >= 1 ? (
           <p className="typegame__hint-line">
-            <AnswerShape answer={card.answer_en} />
+            <AnswerShape answer={answer} />
           </p>
         ) : null}
-        {!isRevealed && hints.level >= 2 ? <TranslationHint text={card.prompt_es} /> : null}
+        {!isRevealed && hints.level >= 2 ? <TranslationHint text={prompt} /> : null}
 
         <form className="typegame__form" onSubmit={handleSubmit}>
           <input
@@ -112,8 +118,8 @@ function RecallFromDefinition({ card, onResolve, onOpenDetails }) {
                 setConfirmSkip(false);
               }
             }}
-            placeholder="Type the English word"
-            aria-label="Type the English word that matches this definition"
+            placeholder={t('games.recall_from_definition.placeholder')}
+            aria-label={t('games.recall_from_definition.input_label')}
             autoComplete="off"
             autoCapitalize="off"
             autoCorrect="off"
@@ -132,13 +138,13 @@ function RecallFromDefinition({ card, onResolve, onOpenDetails }) {
               {/* On a near miss, echo the guess so the learner can spot the typo. */}
               {outcome === 'almost' ? (
                 <p className="typegame__answer">
-                  <span className="typegame__answer-label">You typed</span>
+                  <span className="typegame__answer-label">{t('games.feedback.you_typed')}</span>
                   <span className="typegame__typed-text">{guess.trim()}</span>
                 </p>
               ) : null}
               <p className="typegame__answer">
-                <span className="typegame__answer-label">Answer</span>
-                <span className="typegame__answer-text">{card.answer_en}</span>
+                <span className="typegame__answer-label">{t('games.feedback.answer')}</span>
+                <span className="typegame__answer-text">{answer}</span>
               </p>
             </MinigameFeedback>
           ) : (
@@ -153,7 +159,7 @@ function RecallFromDefinition({ card, onResolve, onOpenDetails }) {
                     : `button typegame__action typegame__action--skip${confirmSkip ? ' typegame__action--confirm' : ''}`
                 }
               >
-                {guess.trim() ? 'Check' : confirmSkip ? 'Sure?' : 'Skip'}
+                {guess.trim() ? t('common.check') : confirmSkip ? t('common.sure') : t('common.skip')}
               </button>
             </>
           )}
@@ -162,7 +168,7 @@ function RecallFromDefinition({ card, onResolve, onOpenDetails }) {
 
       {isRevealed && onOpenDetails ? (
         <button
-          aria-label="Show flashcard metadata"
+          aria-label={t('deck.show_metadata')}
           className="info-button"
           type="button"
           onClick={onOpenDetails}

@@ -13,12 +13,21 @@ import {
   exampleFingerprint as esmExampleFingerprint,
   clozeFingerprint as esmClozeFingerprint,
 } from '../../../frontend/src/ai/enrich.js';
-import { validateCard, flatten } from '../../../frontend/src/ai/validate.js';
+import { validateCard, flatten, hasIssues, hasWarnings, flattenWarnings } from '../../../frontend/src/ai/validate.js';
+import * as esmValidate from '../../../frontend/src/ai/validate.js';
 import { locateAnswerInExample } from '../../../frontend/src/ai/cardText.js';
-import { normCard } from '../../../frontend/src/ai/cards.js';
+import * as esmCardText from '../../../frontend/src/ai/cardText.js';
+import * as esmMinigameText from '../../../frontend/src/minigameText.js';
+import { getLanguage, getPair, isGameSupportedForLanguage } from '../../../frontend/src/languages.js';
+import * as esmPrompts from '../../../frontend/src/ai/prompts.js';
+import { validateModelTier } from '../../../frontend/src/ai/providers.js';
 
 const require = createRequire(import.meta.url);
 const cjsEnrich = require('../../scripts/lib/enrich.cjs');
+const cjsPrompts = require('../../scripts/lib/prompts.cjs');
+const cjsValidate = require('../../scripts/lib/validate.cjs');
+const cjsMinigameText = require('../../scripts/lib/minigame_text.cjs');
+const { normCard } = require('../../scripts/lib/cards.cjs');
 
 const DECK = { slug: 'travel', title: 'Travel Phrases', description: 'Short phrases for transport, directions, and common travel moments.' };
 
@@ -125,9 +134,9 @@ async function test(name, fn) {
     assert.deepStrictEqual(flatten(issues), [], flatten(issues).join('; '));
     assert.strictEqual(calls.filter((c) => c === 'examples').length, 1, 'full set generated once');
     assert.strictEqual(calls.filter((c) => c === 'rewrite').length, 1, 'exactly one pair rewritten');
-    assert.strictEqual(card.examples[0].en, fixedPair.example_en, 'rejected pair replaced');
+    assert.strictEqual(card.examples[0].l2, fixedPair.example_en, 'rejected pair replaced');
     assert.strictEqual(card.example_en, fixedPair.example_en, 'legacy mirror follows pair 0');
-    assert.strictEqual(card.examples[1].en, PAIRS[1].example_en, 'good pairs untouched');
+    assert.strictEqual(card.examples[1].l2, PAIRS[1].example_en, 'good pairs untouched');
     assert.ok(card._audits.example_quality?.status === 'pass');
   });
 
@@ -187,7 +196,7 @@ async function test(name, fn) {
     const { card, issues } = await processCard({ ...DRAFT }, { deck: DECK, runPrompt: makeStub(script, calls) });
     assert.deepStrictEqual(flatten(issues), [], flatten(issues).join('; '));
     assert.strictEqual(calls.filter((c) => c === 'rewrite').length, 1);
-    assert.strictEqual(card.examples[2].en, fixedPair.example_en, 'offending sentence replaced');
+    assert.strictEqual(card.examples[2].l2, fixedPair.example_en, 'offending sentence replaced');
   });
 
   await test('T6 finished card: re-run makes zero LLM calls (fingerprint skip)', async () => {
@@ -205,12 +214,13 @@ async function test(name, fn) {
     const { card } = await processCard({ ...DRAFT }, { deck: DECK, runPrompt: makeStub(BASE_SCRIPT, calls) });
     const edited = {
       ...card,
-      examples: [{ es: card.examples[0].es, en: 'I must renew my passport before my trip to Paris.' }, ...card.examples.slice(1)],
+      examples: [{ l1: card.examples[0].l1, l2: 'I must renew my passport before my trip to Paris.' }, ...card.examples.slice(1)],
     };
-    edited.example_en = edited.examples[0].en;
-    edited.example_sentence = edited.examples[0].en;
+    edited.example_l2 = edited.examples[0].l2;
+    edited.example_en = edited.examples[0].l2;
+    edited.example_sentence = edited.examples[0].l2;
     assert.ok(cardStatus(edited, DECK).audits.length >= 1, 'edited sentence must re-flag audits');
-    const broken = { ...card, examples: [{ es: 'x', en: 'She renewed her passports yesterday.' }, ...card.examples.slice(1)] };
+    const broken = { ...card, examples: [{ l1: 'x', l2: 'She renewed her passports yesterday.' }, ...card.examples.slice(1)] };
     assert.ok(validateCard(broken).examples.some((m) => m.includes('verbatim')), 'inflected answer must flag');
   });
 
@@ -234,7 +244,7 @@ async function test(name, fn) {
     const { card, issues } = await processCard(legacy, { deck: DECK, runPrompt: spy });
     assert.deepStrictEqual(flatten(issues), [], flatten(issues).join('; '));
     assert.strictEqual(card.examples.length, 3);
-    assert.deepStrictEqual(sawExisting, [{ example_es: PAIRS[0].example_es, example_en: PAIRS[0].example_en }],
+    assert.deepStrictEqual(sawExisting, [{ example_l1: PAIRS[0].example_es, example_l2: PAIRS[0].example_en }],
       'prompt saw the legacy pair as keepable');
   });
 
@@ -523,6 +533,518 @@ async function test(name, fn) {
     };
 
     assert.deepStrictEqual(stripAuditTimestamp(esmResult.card), stripAuditTimestamp(cjsResult.card), 'resulting card must match across ESM and CJS');
+  });
+
+  await test('T20 browser/CLI prompt divergence check and pair-aware rules', async () => {
+    // 1. Verify prompt versions consistency
+    assert.deepStrictEqual(esmPrompts.PROMPT_VERSIONS, cjsPrompts.PROMPT_VERSIONS);
+    assert.deepStrictEqual(esmPrompts.BASE_PROMPT_VERSIONS, cjsPrompts.BASE_PROMPT_VERSIONS);
+
+    const esVersions = esmPrompts.getPromptVersions({ l1: 'es', l2: 'en' });
+    const cjsEsVersions = cjsPrompts.getPromptVersions({ l1: 'es', l2: 'en' });
+    assert.deepStrictEqual(esVersions, cjsEsVersions);
+    assert.strictEqual(esVersions.examples, 'enrich-examples-v3', 'es->en preserves base prompt versions');
+
+    const frVersions = esmPrompts.getPromptVersions({ l1: 'fr', l2: 'en' });
+    const cjsFrVersions = cjsPrompts.getPromptVersions({ l1: 'fr', l2: 'en' });
+    assert.deepStrictEqual(frVersions, cjsFrVersions);
+    assert.strictEqual(frVersions.examples, 'enrich-examples-v3:fr->en', 'fr->en encodes pair tag in version');
+
+    // 2. Cross-port divergence check across all prompt builders for multiple pairs
+    const pairsToTest = [
+      { l1: 'es', l2: 'en' },
+      { l1: 'fr', l2: 'en' },
+      { l1: 'en', l2: 'es' },
+    ];
+
+    const testSpec = { title: 'Gastronomy', description: 'Culinary traditions and recipes.', topic: 'Food' };
+    const testSection = { name: 'Cooking', communicative_goal: 'Order food', lexical_focus: ['knife', 'pan'] };
+    const testCard = {
+      l1_text: 'la pomme',
+      l2_text: 'the apple',
+      prompt_l1: 'la pomme',
+      answer_l2: 'the apple',
+      spanish_text: 'la manzana',
+      english_text: 'the apple',
+      part_of_speech: 'noun',
+      definition_en: 'A round fruit with red or green skin.',
+      l2_definition: 'A round fruit with red or green skin.',
+      main_translations_es: ['manzana'],
+      l1_translations: ['la pomme'],
+      collocations: ['apple tree'],
+      synonyms_en: ['orchard fruit'],
+      l2_synonyms: ['orchard fruit'],
+      examples: [{ l1: 'J’aime la pomme.', l2: 'I like the apple.' }],
+      cloze_distractors_en: ['pear', 'banana', 'orange'],
+      l2_cloze_distractors: ['pear', 'banana', 'orange'],
+    };
+    const pairItem = { l1: 'J’aime la pomme.', l2: 'I like the apple.' };
+
+    for (const pair of pairsToTest) {
+      // blueprintPrompt
+      assert.deepStrictEqual(
+        esmPrompts.blueprintPrompt(testSpec, pair),
+        cjsPrompts.blueprintPrompt(testSpec, pair),
+        `blueprintPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // wordSetPrompt
+      assert.deepStrictEqual(
+        esmPrompts.wordSetPrompt(testSpec, testSection, 5, [], pair),
+        cjsPrompts.wordSetPrompt(testSpec, testSection, 5, [], pair),
+        `wordSetPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // lexicalPrompt
+      assert.deepStrictEqual(
+        esmPrompts.lexicalPrompt(testCard, ['fix definition'], pair),
+        cjsPrompts.lexicalPrompt(testCard, ['fix definition'], pair),
+        `lexicalPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // equivalentsPrompt
+      assert.deepStrictEqual(
+        esmPrompts.equivalentsPrompt(testCard, undefined, pair),
+        cjsPrompts.equivalentsPrompt(testCard, undefined, pair),
+        `equivalentsPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // examplesPrompt
+      assert.deepStrictEqual(
+        esmPrompts.examplesPrompt(testCard, undefined, testSpec, pair),
+        cjsPrompts.examplesPrompt(testCard, undefined, testSpec, pair),
+        `examplesPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // exampleRewritePrompt
+      assert.deepStrictEqual(
+        esmPrompts.exampleRewritePrompt(testCard, testSpec, pairItem, ['improve context'], [], pair),
+        cjsPrompts.exampleRewritePrompt(testCard, testSpec, pairItem, ['improve context'], [], pair),
+        `exampleRewritePrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // synonymsPrompt
+      assert.deepStrictEqual(
+        esmPrompts.synonymsPrompt(testCard, undefined, pair),
+        cjsPrompts.synonymsPrompt(testCard, undefined, pair),
+        `synonymsPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // clozeDistractorsPrompt
+      assert.deepStrictEqual(
+        esmPrompts.clozeDistractorsPrompt(testCard, testSpec, undefined, pair),
+        cjsPrompts.clozeDistractorsPrompt(testCard, testSpec, undefined, pair),
+        `clozeDistractorsPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // exampleAuditPrompt
+      assert.deepStrictEqual(
+        esmPrompts.exampleAuditPrompt(testCard, testSpec, pairItem, pair),
+        cjsPrompts.exampleAuditPrompt(testCard, testSpec, pairItem, pair),
+        `exampleAuditPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // clozeSolvePrompt
+      assert.deepStrictEqual(
+        esmPrompts.clozeSolvePrompt('I like the ____.', ['the apple', 'pear', 'banana'], pair),
+        cjsPrompts.clozeSolvePrompt('I like the ____.', ['the apple', 'pear', 'banana'], pair),
+        `clozeSolvePrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // fieldAuditPrompt
+      assert.deepStrictEqual(
+        esmPrompts.fieldAuditPrompt(testCard, testSpec, pair),
+        cjsPrompts.fieldAuditPrompt(testCard, testSpec, pair),
+        `fieldAuditPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // cardSafetyAuditPrompt
+      assert.deepStrictEqual(
+        esmPrompts.cardSafetyAuditPrompt([testCard], testSpec, pair),
+        cjsPrompts.cardSafetyAuditPrompt([testCard], testSpec, pair),
+        `cardSafetyAuditPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // deckSafetyAuditPrompt
+      assert.deepStrictEqual(
+        esmPrompts.deckSafetyAuditPrompt(testSpec, [testCard], pair),
+        cjsPrompts.deckSafetyAuditPrompt(testSpec, [testCard], pair),
+        `deckSafetyAuditPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // cardSingleReviewPrompt
+      assert.deepStrictEqual(
+        esmPrompts.cardSingleReviewPrompt(testCard, testSpec, pair),
+        cjsPrompts.cardSingleReviewPrompt(testCard, testSpec, pair),
+        `cardSingleReviewPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+
+      // cardSingleFixPrompt
+      assert.deepStrictEqual(
+        esmPrompts.cardSingleFixPrompt(testCard, ['bad definition'], testSpec, pair),
+        cjsPrompts.cardSingleFixPrompt(testCard, ['bad definition'], testSpec, pair),
+        `cardSingleFixPrompt divergence for ${pair.l1}->${pair.l2}`
+      );
+    }
+
+    // 3. Verify French prompt-side rules specifically
+    const frBp = esmPrompts.blueprintPrompt(testSpec, { l1: 'fr', l2: 'en' });
+    assert.ok(frBp.system.includes('French to English'), 'French system prompt');
+    assert.ok(frBp.system.includes('French-speaking learners of English'), 'French learner profile');
+
+    const frEx = esmPrompts.examplesPrompt(testCard, undefined, testSpec, { l1: 'fr', l2: 'en' });
+    const frRules = JSON.parse(frEx.user).rules;
+    assert.ok(frRules.some((r) => r.includes('example_l2 must be in English; example_l1 is in French.')), 'French punctuation rule');
+    assert.ok(!frRules.some((r) => r.includes('no inverted ¿ ¡ punctuation')), 'No inverted punctuation rule for French prompt');
+
+    const esEx = esmPrompts.examplesPrompt(testCard, undefined, testSpec, { l1: 'es', l2: 'en' });
+    const esRules = JSON.parse(esEx.user).rules;
+    assert.ok(esRules.some((r) => r.includes('no inverted ¿ ¡ punctuation')), 'Inverted punctuation rule for Spanish prompt');
+
+    // 4. Model tier validation
+    assert.throws(
+      () => validateModelTier('gemini-2.5-flash-lite', { l1: 'es', l2: 'en', minModelTier: 'tier1' }),
+      /does not meet minimum model tier/
+    );
+    assert.doesNotThrow(
+      () => validateModelTier('gemini-2.5-flash', { l1: 'es', l2: 'en', minModelTier: 'tier1' })
+    );
+  });
+
+  await test('T21 language-aware validation: cross-port parity, script ranges, n-gram detection, and clozeStrategy warning', async () => {
+    // 1. Cross-port parity between ESM and CJS validate modules
+    assert.strictEqual(typeof esmValidate.validateCard, 'function');
+    assert.strictEqual(typeof cjsValidate.validateCard, 'function');
+    assert.strictEqual(esmValidate.EXAMPLES_MIN, cjsValidate.EXAMPLES_MIN);
+    assert.strictEqual(esmValidate.EXAMPLES_MAX, cjsValidate.EXAMPLES_MAX);
+    assert.strictEqual(esmValidate.CLOZE_DISTRACTORS_MIN, cjsValidate.CLOZE_DISTRACTORS_MIN);
+    assert.strictEqual(esmValidate.CLOZE_DISTRACTORS_MAX, cjsValidate.CLOZE_DISTRACTORS_MAX);
+
+    const cleanCard = {
+      l1_text: 'Pasaporte',
+      l2_text: 'Passport',
+      part_of_speech: 'noun',
+      l2_definition: 'An official travel document issued by a government.',
+      l1_translations: ['pasaporte'],
+      collocations: ['passport control', 'valid passport'],
+      examples: [
+        { l1: 'Necesito mi pasaporte.', l2: 'I need my passport for travel.' },
+        { l1: 'Muestre su pasaporte.', l2: 'Show your passport to the officer.' },
+        { l1: 'Renové mi pasaporte.', l2: 'I renewed my passport yesterday.' },
+      ],
+      example_l1: 'Necesito mi pasaporte.',
+      example_l2: 'I need my passport for travel.',
+      example_sentence: 'I need my passport for travel.',
+      l2_synonyms: ['travel document'],
+      l2_cloze_distractors: ['visa', 'ticket', 'boarding pass'],
+    };
+
+    const esmVerdicts = esmValidate.validateCard(cleanCard);
+    const cjsVerdicts = cjsValidate.validateCard(cleanCard);
+    assert.deepStrictEqual(esmVerdicts, cjsVerdicts, 'clean card validation must match across ESM and CJS');
+    assert.strictEqual(esmValidate.hasIssues(esmVerdicts), false, 'clean card has no issues');
+
+    // 2. es->en: Inverted punctuation marks (¿ / ¡) in English fields must flag
+    const cardWithSpanishPunct = {
+      ...cleanCard,
+      l2_definition: '¿An official document?',
+      collocations: ['¡passport photo!'],
+      examples: [
+        { l1: 'x', l2: '¿I need my passport?' },
+        cleanCard.examples[1],
+        cleanCard.examples[2],
+      ],
+      example_l1: 'x',
+      example_l2: '¿I need my passport?',
+      example_sentence: '¿I need my passport?',
+      l2_synonyms: ['¡travel document!'],
+      l2_cloze_distractors: ['¿visa?', 'ticket', 'boarding pass'],
+    };
+    const esIssues = esmValidate.validateCard(cardWithSpanishPunct, { l1: 'es', l2: 'en' });
+    assert.ok(esIssues.lexical.some((m) => m === 'l2_definition must be English (no ¿ or ¡)'));
+    assert.ok(esIssues.equivalents.some((m) => m === 'collocations must be English phrases (no ¿ or ¡)'));
+    assert.ok(esIssues.examples.some((m) => m === 'examples[0].l2 must be English (no ¿ or ¡)'));
+    assert.ok(esIssues.synonyms.some((m) => m === 'l2_synonyms must be English (no ¿ or ¡)'));
+    assert.ok(esIssues.clozeDistractors.some((m) => m === 'l2_cloze_distractors must be English (no ¿ or ¡)'));
+
+    // 3. en->es: Spanish target fields with inverted punctuation must NOT flag false positives
+    const cleanSpanishCard = {
+      l1_text: 'Passport',
+      l2_text: 'Pasaporte',
+      part_of_speech: 'noun',
+      l2_definition: '¿Qué es? Un documento oficial emitido por el gobierno.',
+      l1_translations: ['passport'],
+      collocations: ['control de pasaportes', 'pasaporte válido'],
+      examples: [
+        { l1: 'Where is your passport?', l2: '¿Dónde está su pasaporte?' },
+        { l1: 'Show your passport.', l2: '¡Muestre su pasaporte ahora mismo!' },
+        { l1: 'I have a passport.', l2: 'Tengo un pasaporte para viajar.' },
+      ],
+      example_l1: 'Where is your passport?',
+      example_l2: '¿Dónde está su pasaporte?',
+      example_sentence: '¿Dónde está su pasaporte?',
+      l2_synonyms: ['documento de viaje'],
+      l2_cloze_distractors: ['boleto', 'visado', 'tarjeta'],
+    };
+    const enEsIssues = esmValidate.validateCard(cleanSpanishCard, { l1: 'en', l2: 'es' });
+    assert.strictEqual(enEsIssues.lexical.length, 0, 'en->es must not flag ¿ in Spanish definition');
+    assert.strictEqual(enEsIssues.examples.length, 0, 'en->es must not flag ¿ or ¡ in Spanish examples');
+    assert.strictEqual(esmValidate.hasIssues(enEsIssues), false, 'clean en->es card has no issues');
+
+    // 4. en->es: English text in Spanish target fields must be caught by n-gram / language heuristic
+    const englishInSpanishCard = {
+      ...cleanSpanishCard,
+      l2_definition: 'An official document issued by the government for travel.',
+      examples: [
+        { l1: 'x', l2: 'I bought a ticket for the train yesterday.' },
+        cleanSpanishCard.examples[1],
+        cleanSpanishCard.examples[2],
+      ],
+    };
+    const enEsCaught = esmValidate.validateCard(englishInSpanishCard, { l1: 'en', l2: 'es' });
+    assert.ok(enEsCaught.lexical.some((m) => m === 'l2_definition must be Spanish'));
+    assert.ok(enEsCaught.examples.some((m) => m === 'examples[0].l2 must be Spanish'));
+
+    // 5. fr->en: French text in English target fields must be caught
+    const frenchInEnglishCard = {
+      ...cleanCard,
+      l2_definition: 'Un document officiel émis par le gouvernement pour voyager.',
+      examples: [
+        { l1: 'x', l2: 'J\'ai acheté un billet pour le train hier matin.' },
+        cleanCard.examples[1],
+        cleanCard.examples[2],
+      ],
+    };
+    const frEnCaught = esmValidate.validateCard(frenchInEnglishCard, { l1: 'fr', l2: 'en' });
+    assert.ok(frEnCaught.lexical.some((m) => m === 'l2_definition must be English'));
+    assert.ok(frEnCaught.examples.some((m) => m === 'examples[0].l2 must be English'));
+
+    // 6. Script range check: Cyrillic characters in Latin target fields must flag
+    const cyrillicCard = {
+      ...cleanCard,
+      l2_definition: 'Official document паспорт issued by government.',
+    };
+    const cyrillicIssues = esmValidate.validateCard(cyrillicCard, { l1: 'ru', l2: 'en' });
+    assert.ok(cyrillicIssues.lexical.some((m) => m.includes('must be English')));
+
+    // 7. Cloze strategy: when pair.clozeStrategy is 'lemma' (non-verbatim) or card.cloze_ineligible,
+    // inflected answers report as warnings rather than hard failures in examples
+    const nonVerbatimCard = {
+      ...cleanCard,
+      examples: [
+        { l1: 'x', l2: 'She renewed her passports yesterday.' },
+        cleanCard.examples[1],
+        cleanCard.examples[2],
+      ],
+      example_l1: 'x',
+      example_l2: 'She renewed her passports yesterday.',
+      example_sentence: 'She renewed her passports yesterday.',
+    };
+    // In verbatim pair (default es->en), inflected answer is a hard failure in examples
+    const verbatimIssues = esmValidate.validateCard(nonVerbatimCard, { l1: 'es', l2: 'en', clozeStrategy: 'verbatim' });
+    assert.ok(verbatimIssues.examples.some((m) => m.includes('verbatim')), 'verbatim failure flags in examples');
+    assert.strictEqual(esmValidate.hasIssues(verbatimIssues), true);
+
+    // In non-verbatim pair (e.g. clozeStrategy: 'lemma'), it reports as a warning
+    const lemmaIssues = esmValidate.validateCard(nonVerbatimCard, { l1: 'de', l2: 'en', clozeStrategy: 'lemma' });
+    assert.strictEqual(lemmaIssues.examples.length, 0, 'non-verbatim strategy does not fail examples');
+    assert.ok(lemmaIssues.warnings.length > 0, 'reports warning for cloze ineligibility');
+    assert.ok(lemmaIssues.warnings.some((w) => w.includes('cloze-ineligible')));
+    assert.strictEqual(esmValidate.hasIssues(lemmaIssues), false, 'warnings do not count as hard issues');
+    assert.deepStrictEqual(esmValidate.flatten(lemmaIssues), [], 'flatten ignores warnings');
+    assert.strictEqual(esmValidate.hasWarnings(lemmaIssues), true, 'hasWarnings detects warnings');
+
+    // If marked cloze_ineligible explicitly on verbatim pair
+    const markedIneligible = { ...nonVerbatimCard, cloze_ineligible: true };
+    const ineligibleIssues = esmValidate.validateCard(markedIneligible, { l1: 'es', l2: 'en' });
+    assert.strictEqual(ineligibleIssues.examples.length, 0, 'marked cloze_ineligible does not fail examples');
+    assert.ok(ineligibleIssues.warnings.length > 0, 'marked cloze_ineligible produces warning');
+  });
+
+  await test('T22 grading engine parameterization: Tier 1 regression, diacritics, function words, cloze seams, and games filtering', async () => {
+    // 1. Tier 1 regression contract: English baseline inputs produce byte-identical verdicts
+    const baselineClassify = [
+      { guess: 'receive', card: { answer_l2: 'receive', l2_synonyms: ['get', 'accept'] }, expected: 'correct' },
+      { guess: 'Receive', card: { answer_l2: 'receive', l2_synonyms: ['get', 'accept'] }, expected: 'correct' },
+      { guess: 'rèceive', card: { answer_l2: 'receive', l2_synonyms: ['get', 'accept'] }, expected: 'correct' },
+      { guess: '  receive  ', card: { answer_l2: 'receive', l2_synonyms: ['get', 'accept'] }, expected: 'correct' },
+      { guess: 'listen   to', card: { answer_l2: 'listen to', l2_synonyms: [] }, expected: 'correct' },
+      { guess: 'hold-up', card: { answer_l2: 'hold‑up', l2_synonyms: [] }, expected: 'correct' },
+      { guess: "don't", card: { answer_l2: "don’t", l2_synonyms: [] }, expected: 'correct' },
+      { guess: 'get', card: { answer_l2: 'receive', l2_synonyms: ['get', 'accept'] }, expected: 'correct' },
+      // Typo budget
+      { guess: 'cot', card: { answer_l2: 'cat' }, expected: 'wrong' },
+      { guess: 'cat', card: { answer_l2: 'cat' }, expected: 'correct' },
+      { guess: 'recieve', card: { answer_l2: 'receive' }, expected: 'almost' },
+      { guess: 'recxxve', card: { answer_l2: 'receive' }, expected: 'wrong' },
+      { guess: 'defenitely', card: { answer_l2: 'definitely' }, expected: 'almost' },
+      { guess: 'defenetely', card: { answer_l2: 'definitely' }, expected: 'almost' },
+      { guess: 'defenatily', card: { answer_l2: 'definitely' }, expected: 'wrong' },
+      // Function words
+      { guess: 'listen', card: { answer_l2: 'listen to' }, expected: 'almost' },
+      { guess: 'give up', card: { answer_l2: 'to give up' }, expected: 'almost' },
+      { guess: 'cat', card: { answer_l2: 'a cat' }, expected: 'almost' },
+      { guess: 'apple', card: { answer_l2: 'an apple' }, expected: 'almost' },
+      { guess: 'dog', card: { answer_l2: 'the dog' }, expected: 'almost' },
+      { guess: 'turn', card: { answer_l2: 'turn off' }, expected: 'almost' },
+      { guess: 'listen to', card: { answer_l2: 'listen' }, expected: 'almost' },
+      { guess: 'to run', card: { answer_l2: 'run' }, expected: 'almost' },
+      { guess: 'listen carefully', card: { answer_l2: 'listen' }, expected: 'wrong' },
+      { guess: 'big dog', card: { answer_l2: 'dog' }, expected: 'wrong' },
+      { guess: 'elephant', card: { answer_l2: 'cat' }, expected: 'wrong' },
+      { guess: '', card: { answer_l2: 'cat' }, expected: 'wrong' },
+    ];
+
+    for (const item of baselineClassify) {
+      assert.strictEqual(
+        esmMinigameText.classifyGuess(item.guess, item.card),
+        item.expected,
+        `classifyGuess baseline for "${item.guess}" against "${item.card.answer_l2}"`
+      );
+    }
+
+    // 2. Baseline locateAnswerInExample results
+    const baselineLocate = [
+      { example: 'The cat sat on the mat.', answer: 'cat', expected: { start: 4, end: 7 } },
+      { example: 'Cats are great.', answer: 'cats', expected: { start: 0, end: 4 } },
+      { example: 'Hello, cat!', answer: 'cat', expected: { start: 7, end: 10 } },
+      { example: 'Please listen to me.', answer: 'listen to', expected: { start: 7, end: 16 } },
+      { example: 'Never give up on your dreams.', answer: 'give up', expected: { start: 6, end: 13 } },
+      { example: 'The caterpillar crawled.', answer: 'cat', expected: null },
+      { example: 'Listen carefully.', answer: 'listen to', expected: null },
+      { example: 'I listened to music.', answer: 'listen to', expected: null },
+      { example: 'He gives it up.', answer: 'give up', expected: null },
+      { example: 'Ich rufe dich an.', answer: 'anrufen', expected: null },
+      { example: '', answer: 'cat', expected: null },
+      { example: null, answer: 'cat', expected: null },
+    ];
+
+    for (const item of baselineLocate) {
+      assert.deepStrictEqual(
+        esmMinigameText.locateAnswerInExample(item.example, item.answer),
+        item.expected,
+        `locateAnswerInExample baseline for "${item.answer}" in "${item.example}"`
+      );
+    }
+
+    // 3. Tier 1 diacritics stripping: en, es, fr strip unconditionally
+    assert.strictEqual(esmMinigameText.normalizeAnswer('café', 'en'), 'cafe');
+    assert.strictEqual(esmMinigameText.normalizeAnswer('café', 'es'), 'cafe');
+    assert.strictEqual(esmMinigameText.normalizeAnswer('café', 'fr'), 'cafe');
+    assert.strictEqual(esmMinigameText.normalizeAnswer('niño', 'es'), 'nino');
+
+    // 4. Phonemic diacritics preserved for languages where diacriticsSignificant: true (pl, tr)
+    assert.strictEqual(esmMinigameText.normalizeAnswer('Łódź', 'pl'), 'łódź');
+    assert.strictEqual(esmMinigameText.normalizeAnswer('Ağaç', 'tr'), 'ağaç');
+    assert.notStrictEqual(
+      esmMinigameText.normalizeAnswer('má', { diacriticsSignificant: true }),
+      esmMinigameText.normalizeAnswer('ma', { diacriticsSignificant: true })
+    );
+    assert.strictEqual(
+      esmMinigameText.classifyGuess('ma', { answer_l2: 'má', language_to: 'pl' }),
+      'wrong',
+      'diacritics matter when diacriticsSignificant is true'
+    );
+
+    // 5. Per-language function words (Spanish and French)
+    assert.strictEqual(
+      esmMinigameText.classifyGuess('perro', { answer_l2: 'el perro', language_to: 'es' }),
+      'almost',
+      'Spanish article "el" recognized as function word'
+    );
+    assert.strictEqual(
+      esmMinigameText.classifyGuess('el perro', { answer_l2: 'perro', language_to: 'es' }),
+      'almost',
+      'Spanish added article "el" recognized as near-miss'
+    );
+    assert.strictEqual(
+      esmMinigameText.classifyGuess('maison', { answer_l2: 'la maison', language_to: 'fr' }),
+      'almost',
+      'French article "la" recognized as function word'
+    );
+    assert.strictEqual(
+      esmMinigameText.classifyGuess('la maison', { answer_l2: 'maison', language_to: 'fr' }),
+      'almost',
+      'French added article "la" recognized as near-miss'
+    );
+
+    // 6. Typo budget parameterization
+    const enBudget = getLanguage('en').typoBudget;
+    assert.strictEqual(enBudget(3), 0);
+    assert.strictEqual(enBudget(5), 1);
+    assert.strictEqual(enBudget(9), 2);
+
+    const jaBudget = getLanguage('ja').typoBudget;
+    assert.strictEqual(jaBudget(10), 0, 'Japanese has zero typo budget');
+
+    // 7. Cloze strategy hook and seams
+    assert.strictEqual(typeof esmMinigameText.CLOZE_STRATEGIES.verbatim, 'function');
+    assert.strictEqual(typeof esmMinigameText.CLOZE_STRATEGIES.lemma, 'function');
+    assert.strictEqual(typeof esmMinigameText.CLOZE_STRATEGIES.segmenter, 'function');
+
+    // Verbatim strategy locates word
+    assert.deepStrictEqual(
+      esmMinigameText.locateAnswerInExample('A fast cat runs.', 'cat', 'verbatim'),
+      { start: 7, end: 10 }
+    );
+    // Lemma seam returns null (clearly stubbed for Tier 2)
+    assert.strictEqual(
+      esmMinigameText.locateAnswerInExample('A fast cat runs.', 'cat', 'lemma'),
+      null,
+      'lemma strategy seam returns null'
+    );
+    // Segmenter seam returns null (clearly stubbed for Tier 3b)
+    assert.strictEqual(
+      esmMinigameText.locateAnswerInExample('A fast cat runs.', 'cat', 'segmenter'),
+      null,
+      'segmenter strategy seam returns null'
+    );
+
+    // Default strategy resolution for Tier 1
+    assert.strictEqual(esmMinigameText.resolveClozeStrategy(), 'verbatim');
+    assert.strictEqual(esmMinigameText.resolveClozeStrategy({ l1: 'es', l2: 'en' }), 'verbatim');
+    assert.strictEqual(esmMinigameText.resolveClozeStrategy({ l1: 'en', l2: 'es' }), 'verbatim');
+    assert.strictEqual(esmMinigameText.resolveClozeStrategy({ strategy: 'lemma' }), 'lemma');
+    assert.strictEqual(esmMinigameText.resolveClozeStrategy({ strategy: 'segmenter' }), 'segmenter');
+
+    // 8. MinigameHost per-language games set filtering
+    assert.strictEqual(isGameSupportedForLanguage('scramble', 'en'), true);
+    assert.strictEqual(isGameSupportedForLanguage('hangman', 'es'), true);
+    assert.strictEqual(isGameSupportedForLanguage('scramble', 'fr'), true);
+    assert.strictEqual(isGameSupportedForLanguage('scramble', 'ja'), false, 'scramble withheld for Japanese');
+    assert.strictEqual(isGameSupportedForLanguage('hangman', 'zh'), false, 'hangman withheld for Chinese');
+    assert.strictEqual(isGameSupportedForLanguage('type_translation', 'ja'), true);
+
+    // 9. Cross-port parity: CJS re-export matches ESM exports exactly
+    const testCases = [
+      ['Excuse me, where is the station, please?', 'Where is the station?'],
+      ['Se dice: ¿dónde está la estación?', 'Dónde esta la estacion'],
+      ['I gave up quickly.', 'give up'],
+      ['The quick brown fox jumps.', 'fox'],
+    ];
+
+    for (const [ex, ans] of testCases) {
+      assert.deepStrictEqual(
+        esmCardText.locateAnswerInExample(ex, ans),
+        cjsMinigameText.locateAnswerInExample(ex, ans),
+        `ESM and CJS locateAnswerInExample parity for "${ans}"`
+      );
+      assert.strictEqual(
+        esmCardText.normalizeAnswer(ans),
+        cjsMinigameText.normalizeAnswer(ans),
+        `ESM and CJS normalizeAnswer parity for "${ans}"`
+      );
+      assert.strictEqual(
+        esmCardText.blankedExample(ex, ans),
+        cjsMinigameText.blankedExample(ex, ans),
+        `ESM and CJS blankedExample parity for "${ans}"`
+      );
+    }
+    assert.strictEqual(
+      esmCardText.contentHash('test content'),
+      cjsMinigameText.contentHash('test content'),
+      'ESM and CJS contentHash parity'
+    );
   });
 
   console.log(`\nALL ${passed} BROWSER ESM PIPELINE STUB TESTS PASSED`);

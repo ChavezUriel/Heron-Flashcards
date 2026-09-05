@@ -15,10 +15,13 @@ const CARD_INSERT_CHUNK = 100;
 // `_audits` is pipeline bookkeeping (which quality gates passed for which
 // content) — it has no column, and the CLI keeps it out of the database too.
 function toCardRow(card, deckId) {
+  const prompt = card.l1_text ?? card.prompt_l1;
+  const answer = card.l2_text ?? card.answer_l2;
+  const first = card.examples?.[0] ?? null;
   return {
     deck_id: deckId,
-    spanish_text: card.spanish_text,
-    english_text: card.english_text,
+    l1_text: prompt,
+    l2_text: answer,
     is_enabled: true,
     // 'refined' is what get_home_decks/get_review_card count; a 'draft' card
     // would be invisible everywhere in the app.
@@ -26,16 +29,19 @@ function toCardRow(card, deckId) {
     generation_metadata: {},
     section_name: card.section_name,
     part_of_speech: card.part_of_speech,
-    definition_en: card.definition_en,
-    main_translations_es: card.main_translations_es ?? [],
+    l2_definition: card.l2_definition ?? null,
+    l1_translations: card.l1_translations ?? [],
     collocations: card.collocations ?? [],
-    synonyms_en: card.synonyms_en ?? [],
-    example_sentence: card.example_sentence,
-    example_es: card.example_es,
-    example_en: card.example_en,
-    mnemonic_en: card.mnemonic_en ?? null,
-    cloze_distractors_en: card.cloze_distractors_en ?? [],
-    examples: card.examples ?? [],
+    l2_synonyms: card.l2_synonyms ?? [],
+    example_sentence: card.example_sentence ?? (first?.l2 ?? null),
+    example_l1: card.example_l1 ?? (first?.l1 ?? null),
+    example_l2: card.example_l2 ?? (first?.l2 ?? null),
+    l2_mnemonic: card.l2_mnemonic ?? null,
+    l2_cloze_distractors: card.l2_cloze_distractors ?? [],
+    examples: (card.examples ?? []).map((p) => ({
+      l1: p.l1 ?? p.example_l1,
+      l2: p.l2 ?? p.example_l2,
+    })),
   };
 }
 
@@ -101,15 +107,15 @@ export async function saveJobAsDeck(job, { title, description, existingDeckId = 
   if (existingDeckId) {
     const { data: existing, error } = await supabase
       .from('cards')
-      .select('spanish_text, english_text')
+      .select('l1_text, l2_text')
       .eq('deck_id', deck.id)
       .eq('is_deleted', false);
     if (error) throw new Error(error.message);
     const seen = new Set(
-      (existing ?? []).map((row) => `${row.spanish_text.toLowerCase()} ${row.english_text.toLowerCase()}`),
+      (existing ?? []).map((row) => `${(row.l1_text ?? '').toLowerCase()} ${(row.l2_text ?? '').toLowerCase()}`),
     );
     pendingCards = cards.filter(
-      (card) => !seen.has(`${card.spanish_text.toLowerCase()} ${card.english_text.toLowerCase()}`),
+      (card) => !seen.has(`${(card.l1_text ?? card.prompt_l1 ?? '').toLowerCase()} ${(card.l2_text ?? card.answer_l2 ?? '').toLowerCase()}`),
     );
   }
 

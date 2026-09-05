@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useLocale } from '../context/LocaleContext';
 import {
   claimMarketDeck,
   deleteCard,
@@ -18,16 +20,17 @@ import DeckPublishModal from '../components/DeckPublishModal';
 import DeckSyncModal from '../components/DeckSyncModal';
 import ProposeChangesModal from '../components/ProposeChangesModal';
 import { buildHighlightSegments, normalizeSearchText, scoreFieldMatch } from '../textSearch';
+import { getLanguage } from '../languages';
 
 const STATUS_FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'visible', label: 'Visible' },
-  { value: 'hidden', label: 'Hidden' },
+  { value: 'all', labelKey: 'deck_words.status_all' },
+  { value: 'visible', labelKey: 'deck_words.status_visible' },
+  { value: 'hidden', labelKey: 'deck_words.status_hidden' },
 ];
 
 const SORT_ACCESSORS = {
-  word: (card) => card.prompt_es ?? '',
-  translation: (card) => card.answer_en ?? '',
+  word: (card) => card.prompt_l1 ?? card.prompt_es ?? '',
+  translation: (card) => card.answer_l2 ?? card.answer_en ?? '',
   section: (card) => card.section_name ?? '',
 };
 
@@ -68,12 +71,37 @@ function ChevronIcon() {
 }
 
 // The bulk actions still obey the table's search and filter even though they now
-// live in the deck menu, far from the controls that scope them. The label is the
-// only thing carrying that scope, so it spells out the reach: "Hide all 120
-// cards" on a clean table, "Hide 12 matching cards" once a query narrows it.
-function bulkActionLabel(verb, count, isFiltered) {
-  const noun = `card${count === 1 ? '' : 's'}`;
-  return isFiltered ? `${verb} ${count} matching ${noun}` : `${verb} all ${count} ${noun}`;
+// live in the deck menu, far from the controls that scope them.
+function getBulkActionLabel(action, count, isFiltered, t) {
+  if (action === 'hide') {
+    return isFiltered
+      ? t('deck_words.bulk_hide_matching', { count })
+      : t('deck_words.bulk_hide_all', { count });
+  }
+  if (action === 'show') {
+    return isFiltered
+      ? t('deck_words.bulk_show_matching', { count })
+      : t('deck_words.bulk_show_all', { count });
+  }
+  if (action === 'delete') {
+    return isFiltered
+      ? t('deck_words.bulk_delete_matching', { count })
+      : t('deck_words.bulk_delete_all', { count });
+  }
+  return '';
+}
+
+function getMatchFieldLabel(field, t) {
+  const map = {
+    translations: 'diff.l1_translations',
+    synonyms: 'diff.l2_synonyms',
+    section: 'diff.section_name',
+    'part of speech': 'diff.part_of_speech',
+    definition: 'diff.l2_definition',
+    collocations: 'diff.collocations',
+    examples: 'diff.examples',
+  };
+  return map[field] ? t(map[field]) : field;
 }
 
 // Dismiss-on-outside-click menu holding the deck-level toolbar actions. Not a
@@ -81,6 +109,7 @@ function bulkActionLabel(verb, count, isFiltered) {
 // carrying a count chip; `hasPending` dots the trigger so a deck needing
 // attention still says so while collapsed.
 function OverflowMenu({ label, items, triggerText = null, hasPending = false }) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
   const triggerRef = useRef(null);
@@ -134,7 +163,7 @@ function OverflowMenu({ label, items, triggerText = null, hasPending = false }) 
         {triggerText ? <span>{triggerText}</span> : <EllipsisIcon />}
         {triggerText ? <ChevronIcon /> : null}
         {hasPending ? <span className="deck-menu__dot" /> : null}
-        {hasPending ? <span className="sr-only">(needs attention)</span> : null}
+        {hasPending ? <span className="sr-only">{t('deck_words.needs_attention_sr')}</span> : null}
       </button>
       {isOpen ? (
         <div className="deck-menu__list" role="menu">
@@ -182,23 +211,27 @@ function OverflowMenu({ label, items, triggerText = null, hasPending = false }) 
 // only ever break ties. `matchedIn` names the field that carried the match
 // when the headline pair itself did not hit.
 function scoreCardMatch(card, query) {
+  const prompt = card.prompt_l1 ?? card.prompt_es;
+  const answer = card.answer_l2 ?? card.answer_en;
   const wordScore = Math.max(
-    scoreFieldMatch(card.prompt_es, query),
-    scoreFieldMatch(card.answer_en, query),
+    scoreFieldMatch(prompt, query),
+    scoreFieldMatch(answer, query),
   );
 
-  const translationsScore = (card.main_translations_es ?? [])
+  const l1Translations = card.l1_translations ?? card.main_translations_es ?? [];
+  const translationsScore = l1Translations
     .reduce((best, value) => Math.max(best, scoreFieldMatch(value, query)), 0);
-  const synonymsScore = (card.synonyms_en ?? [])
+  const l2Synonyms = card.l2_synonyms ?? card.synonyms_en ?? [];
+  const synonymsScore = l2Synonyms
     .reduce((best, value) => Math.max(best, scoreFieldMatch(value, query)), 0);
   const altWordScore = Math.max(translationsScore, synonymsScore);
 
   const secondaryFields = [
     ['section', card.section_name],
     ['part of speech', card.part_of_speech],
-    ['definition', card.definition_en],
+    ['definition', card.l2_definition ?? card.definition_en],
     ['collocations', (card.collocations ?? []).join(' ')],
-    ['examples', [card.example_sentence, card.example_es, card.example_en].filter(Boolean).join(' ')],
+    ['examples', [card.example_sentence, card.example_l1, card.example_l2, card.example_es, card.example_en].filter(Boolean).join(' ')],
   ];
   let secondaryScore = 0;
   let secondaryLabel = null;
@@ -237,6 +270,7 @@ function HighlightText({ text, query }) {
 }
 
 function SortableHeader({ label, sortKey, sort, onSort, className = '' }) {
+  const { t } = useTranslation();
   const isActive = sort.key === sortKey;
   return (
     <th
@@ -247,7 +281,7 @@ function SortableHeader({ label, sortKey, sort, onSort, className = '' }) {
         className={`deck-table__sort ${isActive ? 'deck-table__sort--active' : ''}`}
         type="button"
         onClick={() => onSort(sortKey)}
-        title={`Sort by ${label.toLowerCase()}`}
+        title={t('deck_words.sort_by_title', { label: label.toLowerCase() })}
       >
         <span>{label}</span>
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -268,6 +302,8 @@ function SortableHeader({ label, sortKey, sort, onSort, className = '' }) {
 }
 
 function DeckWordsPage() {
+  const { t } = useTranslation();
+  const { localeCompare } = useLocale();
   const { deckId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -299,7 +335,7 @@ function DeckWordsPage() {
       setIsDeleteDeckModalOpen(false);
       navigate('/', { replace: true });
     } catch (err) {
-      setActionError(err.message || 'Failed to delete deck');
+      setActionError(err.message || t('deck_words.failed_delete_deck'));
       setIsDeleteDeckPending(false);
     }
   }
@@ -318,7 +354,7 @@ function DeckWordsPage() {
         };
       });
     } catch (err) {
-      setActionError(err.message || (isSelectedOnHome ? 'Failed to add deck to home' : 'Failed to remove deck from home'));
+      setActionError(err.message || (isSelectedOnHome ? t('deck_words.failed_add_home') : t('deck_words.failed_remove_home')));
     } finally {
       setIsHomeSelectionPending(false);
     }
@@ -392,7 +428,7 @@ function DeckWordsPage() {
         if (!leftValue && !rightValue) return left.index - right.index;
         if (!leftValue) return 1;
         if (!rightValue) return -1;
-        const compared = leftValue.localeCompare(rightValue, undefined, { sensitivity: 'base' }) * sort.dir;
+        const compared = localeCompare(leftValue, rightValue, { sensitivity: 'base' }) * sort.dir;
         return compared || left.index - right.index;
       });
     } else if (normalizedQuery) {
@@ -400,7 +436,7 @@ function DeckWordsPage() {
     }
 
     return rows;
-  }, [preview, normalizedQuery, statusFilter, sort]);
+  }, [preview, normalizedQuery, statusFilter, sort, localeCompare]);
 
   // A new query, filter, or sort order should be read from the top.
   useEffect(() => {
@@ -408,17 +444,17 @@ function DeckWordsPage() {
   }, [normalizedQuery, statusFilter, sort]);
 
   if (status === 'loading') {
-    return <section className="panel empty-state">Loading deck words...</section>;
+    return <section className="panel empty-state">{t('deck_words.loading_words')}</section>;
   }
 
   if (status === 'error') {
     return (
       <section className="panel empty-state">
-        <p>There was a problem loading the deck words.</p>
+        <p>{t('deck_words.loading_error')}</p>
         <p>{error}</p>
         <Link className="back-link back-link--home back-link--button" to="/">
           <HomeIcon />
-          <span>Back to home</span>
+          <span>{t('deck_words.back_to_home')}</span>
         </Link>
       </section>
     );
@@ -426,7 +462,7 @@ function DeckWordsPage() {
 
   const from = location?.state?.from;
   const backPath = from === 'market' ? '/market' : '/';
-  const backLabel = from === 'market' ? 'Back to market' : 'Back home';
+  const backLabel = from === 'market' ? t('deck_words.back_to_market') : t('deck_words.back_to_home');
 
   // Market-sync capabilities. These fields only exist once migration 0017 is
   // live; every fallback preserves the pre-sync behavior.
@@ -440,6 +476,8 @@ function DeckWordsPage() {
   const totalCards = preview.cards.length;
   const hiddenCount = preview.cards.filter((card) => !card.is_enabled).length;
   const isFiltered = Boolean(normalizedQuery) || statusFilter !== 'all';
+  const promptLabel = getLanguage(preview?.language_from ?? 'es')?.name ?? t('diff.prompt');
+  const answerLabel = getLanguage(preview?.language_to ?? 'en')?.name ?? t('diff.answer');
 
   // How many of the rows currently on screen each bulk action would actually
   // change — drives whether the menu item is worth offering.
@@ -459,7 +497,7 @@ function DeckWordsPage() {
   if (isLinked) {
     deckActions.push({
       key: 'market-version',
-      label: 'View market version',
+      label: t('deck_words.menu_view_market_version'),
       to: `/decks/${preview.base_deck_id}/words`,
       state: { from: 'market' },
     });
@@ -467,14 +505,14 @@ function DeckWordsPage() {
   if (isMarket && preview.user_copy_deck_id) {
     deckActions.push({
       key: 'my-copy',
-      label: 'View my copy',
+      label: t('deck_words.menu_view_my_copy'),
       to: `/decks/${preview.user_copy_deck_id}/words`,
     });
   }
   if (isLinked) {
     deckActions.push({
       key: 'sync',
-      label: 'Market updates',
+      label: t('deck_words.menu_market_updates', { count: updatesAvailable }),
       count: updatesAvailable,
       onSelect: () => setActiveSyncModal('sync'),
     });
@@ -482,7 +520,7 @@ function DeckWordsPage() {
   if (isLinked && outgoingChanges > 0) {
     deckActions.push({
       key: 'propose',
-      label: 'Propose to market',
+      label: t('deck_words.menu_propose_changes', { count: outgoingChanges }),
       count: outgoingChanges,
       onSelect: () => setActiveSyncModal('propose'),
     });
@@ -490,7 +528,7 @@ function DeckWordsPage() {
   if (isMarket && preview.is_owner) {
     deckActions.push({
       key: 'proposals',
-      label: 'Proposals',
+      label: t('deck_words.menu_proposals', { count: openProposals }),
       count: openProposals,
       to: '/market/proposals',
     });
@@ -498,21 +536,21 @@ function DeckWordsPage() {
   if (canEdit) {
     deckActions.push({
       key: 'complete-ai',
-      label: 'Complete with AI',
+      label: t('deck_words.menu_complete_ai'),
       to: `/decks/complete?deck=${preview.deck_id}`,
     });
   }
   if (canEdit && !isMarket && !isLinked && totalCards > 0) {
     deckActions.push({
       key: 'publish',
-      label: preview.publish_status === 'published' ? 'Republish to market' : 'Publish to market',
+      label: preview.publish_status === 'published' ? t('deck_words.menu_republish') : t('deck_words.menu_publish'),
       onSelect: () => setActiveSyncModal('publish'),
     });
   }
   if (isClaimable) {
     deckActions.push({
       key: 'claim',
-      label: isClaimPending ? 'Claiming…' : 'Become maintainer',
+      label: isClaimPending ? t('common.loading') : t('deck_words.menu_claim'),
       isDisabled: isClaimPending,
       onSelect: handleClaimDeck,
     });
@@ -524,14 +562,14 @@ function DeckWordsPage() {
   if (isSelectedOnHome) {
     deckActions.push({
       key: 'remove-from-home',
-      label: isHomeSelectionPending ? 'Removing from home…' : 'Remove from home',
+      label: isHomeSelectionPending ? t('deck_words.removing_from_home') : t('deck_words.remove_from_home'),
       isDisabled: isHomeSelectionPending,
       onSelect: () => handleToggleHomeSelection(false),
     });
   } else {
     deckActions.push({
       key: 'add-to-home',
-      label: isHomeSelectionPending ? 'Adding to home…' : 'Add to home',
+      label: isHomeSelectionPending ? t('deck_words.adding_to_home') : t('deck_words.add_to_home'),
       isDisabled: isHomeSelectionPending,
       onSelect: () => handleToggleHomeSelection(true),
     });
@@ -542,19 +580,19 @@ function DeckWordsPage() {
   if (canEdit && totalCards > 0) {
     deckActions.push({
       key: 'bulk-hide',
-      label: bulkActionLabel('Hide', tableRows.length, isFiltered),
+      label: getBulkActionLabel('hide', tableRows.length, isFiltered, t),
       isDisabled: isBulkPending || hideableCount === 0,
       onSelect: () => handleBulkVisibility(false),
     });
     deckActions.push({
       key: 'bulk-show',
-      label: bulkActionLabel('Show', tableRows.length, isFiltered),
+      label: getBulkActionLabel('show', tableRows.length, isFiltered, t),
       isDisabled: isBulkPending || showableCount === 0,
       onSelect: () => handleBulkVisibility(true),
     });
     deckActions.push({
       key: 'bulk-delete',
-      label: bulkActionLabel('Delete', tableRows.length, isFiltered),
+      label: getBulkActionLabel('delete', tableRows.length, isFiltered, t),
       isDisabled: isBulkPending || tableRows.length === 0,
       onSelect: () => setBulkDeleteConfirm(true),
     });
@@ -562,7 +600,7 @@ function DeckWordsPage() {
   if (canEdit && !isMarket) {
     deckActions.push({
       key: 'delete-deck',
-      label: 'Delete deck',
+      label: t('deck_words.menu_delete'),
       isDanger: true,
       onSelect: () => setIsDeleteDeckModalOpen(true),
     });
@@ -766,41 +804,43 @@ function DeckWordsPage() {
           <span>{backLabel}</span>
         </Link>
         <div className="deck-preview-page__toolbar-actions">
-          <OverflowMenu label="Deck actions" triggerText="Deck actions" hasPending={hasPendingDeckWork} items={deckActions} />
+          <OverflowMenu label={t('deck_words.deck_menu_label')} triggerText={t('deck_words.deck_menu_trigger')} hasPending={hasPendingDeckWork} items={deckActions} />
         </div>
       </div>
 
       <div className="deck-preview__header">
-        <p className="eyebrow">Deck explorer</p>
+        <p className="eyebrow">{t('deck_words.deck_explorer_kicker')}</p>
         <div className="deck-preview__title-row">
           <h2>{preview.deck_title}</h2>
           <span className={`deck-scope-chip deck-scope-chip--${previewOriginType}`}>
             <DeckOriginIcon type={previewOriginType} size={12} />
             <span>
               {previewOriginType === 'personal'
-                ? 'Personal deck'
+                ? t('deck.origin_personal_scope')
                 : previewOriginType === 'managing'
-                  ? 'Managing · Maintainer'
-                  : 'Public · Market deck'}
+                  ? t('deck.origin_managing_scope')
+                  : t('deck.origin_public_scope')}
             </span>
           </span>
-          {!canEdit ? <span className="deck-scope-chip deck-scope-chip--readonly">Read-only</span> : null}
+          {!canEdit ? <span className="deck-scope-chip deck-scope-chip--readonly">{t('deck_words.read_only_badge')}</span> : null}
         </div>
         <p className="deck-preview__description">{preview.deck_description}</p>
         {isMarket && preview.owner_id !== undefined ? (
           <p className="deck-preview__maintainer">
             {preview.is_owner
-              ? 'You maintain this public market deck — edits here publish to every subscriber.'
+              ? t('deck_words.maintainer_you')
               : preview.owner_id
-                ? (<>Public deck maintained by <strong>{preview.owner_name}</strong>{canEdit ? '' : ' — browse it here, or add it to your home from the market to edit your own copy.'}</>)
-                : 'Community deck · no maintainer yet'}
+                ? (canEdit
+                    ? t('deck_words.maintainer_other_readonly', { name: preview.owner_name })
+                    : t('deck_words.maintainer_other', { name: preview.owner_name }))
+                : t('deck_words.maintainer_none')}
           </p>
         ) : null}
         {!isMarket ? (
           <p className="deck-preview__maintainer">
             {isLinked
-              ? 'Your private copy of a market deck — edits stay in your account until you propose them to the market.'
-              : 'Your private deck — edits here only affect you.'}
+              ? t('deck_words.linked_private_desc')
+              : t('deck_words.unlinked_private_desc')}
           </p>
         ) : null}
       </div>
@@ -810,7 +850,7 @@ function DeckWordsPage() {
       {totalCards ? (
         <>
           <div className="deck-table-controls">
-            <label className="h-deck-search deck-table-controls__search" aria-label="Search cards in this deck">
+            <label className="h-deck-search deck-table-controls__search" aria-label={t('deck_words.search_aria')}>
               <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
                 <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.7" />
                 <path d="m16 16 4 4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -819,14 +859,14 @@ function DeckWordsPage() {
                 type="search"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search words, translations, examples…"
+                placeholder={t('deck_words.search_placeholder_full')}
               />
               {searchQuery ? (
                 <button
                   className="deck-table-controls__clear"
                   type="button"
-                  aria-label="Clear search"
-                  title="Clear search"
+                  aria-label={t('deck_words.clear_search')}
+                  title={t('deck_words.clear_search')}
                   onClick={() => setSearchQuery('')}
                 >
                   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -837,8 +877,8 @@ function DeckWordsPage() {
               ) : null}
             </label>
 
-            <div className="h-seg deck-table-controls__filter" role="group" aria-label="Filter cards by visibility">
-              {STATUS_FILTERS.map(({ value, label }) => (
+            <div className="h-seg deck-table-controls__filter" role="group" aria-label={t('deck_words.filter_aria')}>
+              {STATUS_FILTERS.map(({ value, labelKey }) => (
                 <button
                   key={value}
                   type="button"
@@ -846,14 +886,16 @@ function DeckWordsPage() {
                   aria-pressed={statusFilter === value}
                   onClick={() => setStatusFilter(value)}
                 >
-                  {label}
+                  {t(labelKey)}
                 </button>
               ))}
             </div>
 
             <p className="deck-table-controls__count" role="status">
-              {isFiltered ? `${tableRows.length} of ${totalCards} cards` : `${totalCards} card${totalCards === 1 ? '' : 's'}`}
-              {hiddenCount > 0 ? ` · ${hiddenCount} hidden` : ''}
+              {isFiltered
+                ? t('deck_words.showing_count', { visible: tableRows.length, total: totalCards })
+                : t('deck.cards_count', { count: totalCards })}
+              {hiddenCount > 0 ? ` · ${t('deck_words.hidden_count', { count: hiddenCount })}` : ''}
             </p>
           </div>
 
@@ -863,11 +905,11 @@ function DeckWordsPage() {
                 <table className="deck-table">
                   <thead>
                     <tr>
-                      <SortableHeader label="Spanish" sortKey="word" sort={sort} onSort={handleSort} className="deck-table__col--word" />
-                      <SortableHeader label="English" sortKey="translation" sort={sort} onSort={handleSort} className="deck-table__col--translation" />
-                      <SortableHeader label="Section" sortKey="section" sort={sort} onSort={handleSort} className="deck-table__col--section" />
-                      <th className="deck-table__col--pos">Part of speech</th>
-                      {canEdit ? <th className="deck-table__col--actions">Visible</th> : null}
+                      <SortableHeader label={promptLabel} sortKey="word" sort={sort} onSort={handleSort} className="deck-table__col--word" />
+                      <SortableHeader label={answerLabel} sortKey="translation" sort={sort} onSort={handleSort} className="deck-table__col--translation" />
+                      <SortableHeader label={t('deck_words.sort_section')} sortKey="section" sort={sort} onSort={handleSort} className="deck-table__col--section" />
+                      <th className="deck-table__col--pos">{t('diff.part_of_speech')}</th>
+                      {canEdit ? <th className="deck-table__col--actions">{t('deck_words.col_visible')}</th> : null}
                     </tr>
                   </thead>
                   <tbody>
@@ -881,6 +923,7 @@ function DeckWordsPage() {
                         highlightQuery={normalizedQuery}
                         onOpenDetails={() => setDetailsCardId(card.card_id)}
                         onToggle={() => handleToggleCard(card.card_id, !card.is_enabled)}
+                        t={t}
                       />
                     ))}
                   </tbody>
@@ -890,22 +933,22 @@ function DeckWordsPage() {
               <div className="deck-table-empty">
                 <p>
                   {normalizedQuery
-                    ? <>No cards match <strong>“{searchQuery.trim()}”</strong>{statusFilter !== 'all' ? ` among ${statusFilter} cards` : ''}.</>
-                    : `This deck has no ${statusFilter} cards.`}
+                    ? t('deck_words.empty_no_matches_query', { query: searchQuery.trim(), filter: statusFilter })
+                    : t('deck_words.empty_no_filtered_cards', { filter: statusFilter })}
                 </p>
                 <button
                   className="button button--secondary"
                   type="button"
                   onClick={() => { setSearchQuery(''); setStatusFilter('all'); }}
                 >
-                  Clear search & filters
+                  {t('deck_words.clear_search_filters')}
                 </button>
               </div>
             )}
           </div>
         </>
       ) : (
-        <p className="deck-preview__status">This deck has no cards yet.</p>
+        <p className="deck-preview__status">{t('deck_words.empty_no_cards')}</p>
       )}
 
       {detailsCard ? (
@@ -921,16 +964,16 @@ function DeckWordsPage() {
       ) : null}
 
       {bulkDeleteConfirm ? (
-        <div className="details-modal" role="dialog" aria-modal="true" aria-label="Confirm bulk delete">
+        <div className="details-modal" role="dialog" aria-modal="true" aria-label={t('deck_words.confirm_bulk_delete_aria')}>
           <button
-            aria-label="Close dialog"
+            aria-label={t('common.close_dialog')}
             className="details-modal__backdrop"
             type="button"
             onClick={() => setBulkDeleteConfirm(false)}
           />
           <div className="details-modal__panel details-modal__panel--confirm">
             <button
-              aria-label="Close dialog"
+              aria-label={t('common.close_dialog')}
               className="details-modal__close"
               type="button"
               onClick={() => setBulkDeleteConfirm(false)}
@@ -942,19 +985,19 @@ function DeckWordsPage() {
             </button>
 
             <div className="details-modal__header">
-              <p className="flashcard__label">Delete cards</p>
-              <h3>Delete {tableRows.length} {tableRows.length === 1 ? 'card' : 'cards'}?</h3>
+              <p className="flashcard__label">{t('deck_words.delete_cards_label')}</p>
+              <h3>{t('deck_words.delete_cards_title', { count: tableRows.length })}</h3>
             </div>
 
             <div className="bulk-delete-dialog__body">
               <p>
                 {isFiltered
-                  ? `Are you sure you want to delete all ${tableRows.length} matching cards currently shown?`
-                  : `Are you sure you want to delete all ${tableRows.length} cards from this deck?`}
+                  ? t('deck_words.confirm_delete_filtered_desc', { count: tableRows.length })
+                  : t('deck_words.confirm_delete_all_desc', { count: tableRows.length })}
               </p>
               {isLinked ? (
                 <p className="bulk-delete-dialog__note">
-                  Linked cards will be marked as removed in your copy, and you can propose these deletions to the market deck.
+                  {t('deck_words.confirm_delete_linked_note')}
                 </p>
               ) : null}
             </div>
@@ -968,7 +1011,7 @@ function DeckWordsPage() {
                   onClick={() => setBulkDeleteConfirm(false)}
                   disabled={isBulkPending}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   className="button button--danger"
@@ -976,7 +1019,7 @@ function DeckWordsPage() {
                   onClick={() => handleBulkDelete(tableRows.map((row) => row.card.card_id))}
                   disabled={isBulkPending}
                 >
-                  {isBulkPending ? 'Deleting…' : 'Confirm delete'}
+                  {isBulkPending ? t('common.deleting') : t('deck_words.confirm_delete_btn')}
                 </button>
               </div>
             </div>
@@ -1026,8 +1069,10 @@ function DeckWordsPage() {
   );
 }
 
-function DeckWordRow({ card, canEdit = true, isPending, matchedIn, highlightQuery, onToggle, onOpenDetails }) {
-  const toggleTitle = card.is_enabled ? 'Hide card from deck' : 'Show card in deck again';
+function DeckWordRow({ card, canEdit = true, isPending, matchedIn, highlightQuery, onToggle, onOpenDetails, t }) {
+  const toggleTitle = card.is_enabled ? t('deck_words.hide_card_tooltip') : t('deck_words.show_card_tooltip');
+  const prompt = card.prompt_l1 ?? card.prompt_es;
+  const answer = card.answer_l2 ?? card.answer_en;
 
   return (
     <tr
@@ -1035,12 +1080,12 @@ function DeckWordRow({ card, canEdit = true, isPending, matchedIn, highlightQuer
       onClick={onOpenDetails}
     >
       <td className="deck-table__cell deck-table__cell--word">
-        <strong><HighlightText text={card.prompt_es} query={highlightQuery} /></strong>
-        {!card.is_enabled ? <span className="deck-table__state-chip">Hidden</span> : null}
-        {matchedIn ? <span className="deck-table__match-chip">Matched in {matchedIn}</span> : null}
+        <strong><HighlightText text={prompt} query={highlightQuery} /></strong>
+        {!card.is_enabled ? <span className="deck-table__state-chip">{t('deck_words.status_hidden')}</span> : null}
+        {matchedIn ? <span className="deck-table__match-chip">{t('deck_words.matched_in', { field: getMatchFieldLabel(matchedIn, t) })}</span> : null}
       </td>
       <td className="deck-table__cell deck-table__cell--translation">
-        <HighlightText text={card.answer_en} query={highlightQuery} />
+        <HighlightText text={answer} query={highlightQuery} />
       </td>
       <td className="deck-table__cell deck-table__cell--section">
         {card.section_name
@@ -1058,7 +1103,7 @@ function DeckWordRow({ card, canEdit = true, isPending, matchedIn, highlightQuer
               type="button"
               role="switch"
               aria-checked={card.is_enabled}
-              aria-label={`Card ${card.prompt_es} visible in deck`}
+              aria-label={t('deck_words.card_visible_aria', { word: prompt })}
               title={toggleTitle}
               onClick={(event) => { event.stopPropagation(); onToggle(); }}
               disabled={isPending}

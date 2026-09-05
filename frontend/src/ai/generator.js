@@ -16,6 +16,8 @@ import { processCard, cardStatus } from './enrich.js';
 import { normCard, pairKey, optText } from './cards.js';
 import { flatten } from './validate.js';
 import { plannedCardCount } from './deckSpec.js';
+import { validateModelTier } from './providers.js';
+import { getPair, defaultPair } from '../languages.js';
 
 export const CARD_STATUS = {
   pending: 'pending',
@@ -34,6 +36,10 @@ export function makeLogEntry(level, message) {
 
 // A fresh job record for `spec`, ready to be persisted and run.
 export function createJob({ spec, provider, concurrency = 3 }) {
+  if (provider?.model) {
+    const pair = getPair(spec?.language_from ?? 'es', spec?.language_to ?? 'en') || defaultPair();
+    validateModelTier(provider.model, pair);
+  }
   const now = new Date().toISOString();
   return {
     id: `job_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
@@ -130,6 +136,10 @@ export function recomputeMismatchCard(card) {
 }
 
 export function createFillJob({ deck, cards = [], deckCtx = {}, mode = 'fill', groups = null, provider, concurrency = 3 }) {
+  if (provider?.model) {
+    const pair = getPair(deck?.language_from ?? 'es', deck?.language_to ?? 'en') || defaultPair();
+    validateModelTier(provider.model, pair);
+  }
   const now = new Date().toISOString();
   const groupSet = groups ? Array.from(groups) : ['fields', 'examples', 'cloze-options'];
   const rawCards = Array.isArray(cards) ? cards : [];
@@ -321,6 +331,12 @@ export async function runJob(job, { client, onUpdate = () => {}, signal }) {
   });
 
   try {
+    const pair = getPair(job.spec?.language_from ?? 'es', job.spec?.language_to ?? 'en') || defaultPair();
+    const model = job.provider?.model || client?.model;
+    if (model) {
+      validateModelTier(model, pair);
+    }
+
     if (!isFill) {
       // --- stage 1: blueprint ------------------------------------------------
       if (!job.sections.length) {
@@ -330,7 +346,7 @@ export async function runJob(job, { client, onUpdate = () => {}, signal }) {
         } else {
           touch(() => { job.stage = 'blueprint'; });
           log('info', 'Planning the deck sections…');
-          const response = await runPrompt(blueprintPrompt(job.spec));
+          const response = await runPrompt(blueprintPrompt(job.spec, pair));
           touch(() => { job.sections = normalizeBlueprint(response, job.spec); });
           log('success', `Blueprint ready: ${job.sections.map((section) => section.name).join(', ')}.`);
         }
@@ -348,7 +364,7 @@ export async function runJob(job, { client, onUpdate = () => {}, signal }) {
           // rediscover the same words section after section.
           const avoid = drafts.map((draft) => ({ spanish: draft.spanish_text, english: draft.english_text }));
           const response = await runPrompt(
-            wordSetPrompt(job.spec, section, section.target_card_count, avoid),
+            wordSetPrompt(job.spec, section, section.target_card_count, avoid, pair),
           );
           const rows = Array.isArray(response?.cards) ? response.cards : [];
           let kept = 0;
@@ -388,6 +404,7 @@ export async function runJob(job, { client, onUpdate = () => {}, signal }) {
       try {
         const { card: enriched, issues } = await processCard(card, {
           deck: job.spec,
+          pair,
           maxRepairs: job.spec.quality?.max_repairs ?? 2,
           runPrompt,
           auditFields: isFill ? (job.mode === 'audit') : (job.spec.quality?.field_audit ?? true),
