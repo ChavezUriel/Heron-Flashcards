@@ -98,26 +98,31 @@ function recommendedSessionMeta(plan, dueSummary, settings, t) {
 }
 
 function formatNextDue(nextDueAt, t) {
-  if (!nextDueAt) {
-    return null;
-  }
+  if (!nextDueAt) return null;
+  const due = new Date(nextDueAt);
+  const now = new Date();
+  const diffHours = Math.round((due - now) / 3_600_000);
+  if (diffHours <= 1) return t('home.next_due_soon');
+  if (diffHours < 24) return t('home.next_due_hours', { hours: diffHours });
+  const diffDays = Math.round(diffHours / 24);
+  return t('home.next_due_days', { days: diffDays });
+}
 
-  const dueDate = new Date(nextDueAt);
-  if (Number.isNaN(dueDate.getTime())) {
-    return null;
-  }
-
-  const hoursAway = (dueDate.getTime() - Date.now()) / 3_600_000;
-  if (hoursAway <= 0) {
-    return t('home.next_due_now');
-  }
-  if (hoursAway < 1) {
-    return t('home.next_due_under_hour');
-  }
-  if (hoursAway < 24) {
-    return t('home.next_due_hours', { count: Math.round(hoursAway) });
-  }
-  return t('home.next_due_days', { count: Math.round(hoursAway / 24) });
+function ActionArrowIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </svg>
+  );
 }
 
 function uniqueDeckIds(deckIds) {
@@ -413,7 +418,9 @@ function HomePage() {
           >
             <div className="h-mode-card__top">
               <span className="h-action-kicker">{t('home.recommended_kicker')}</span>
-              <span className="h-action-arrow">→</span>
+              <span className="h-action-arrow">
+                <ActionArrowIcon />
+              </span>
             </div>
             <div>
               <div className="h-mode-card__title">{t('home.smart_session_title')}</div>
@@ -452,7 +459,9 @@ function HomePage() {
           >
             <div className="h-mode-card__top">
               <span className="h-action-kicker h-action-kicker--muted">{t('home.session_kicker')}</span>
-              <span className="h-action-arrow h-action-arrow--muted">→</span>
+              <span className="h-action-arrow h-action-arrow--muted">
+                <ActionArrowIcon />
+              </span>
             </div>
             <div>
               <div className="h-mode-card__title">{t('home.new_material_title')}</div>
@@ -479,7 +488,9 @@ function HomePage() {
           >
             <div className="h-mode-card__top">
               <span className="h-action-kicker h-action-kicker--muted">{t('home.session_kicker')}</span>
-              <span className="h-action-arrow h-action-arrow--muted">→</span>
+              <span className="h-action-arrow h-action-arrow--muted">
+                <ActionArrowIcon />
+              </span>
             </div>
             <div>
               <div className="h-mode-card__title">{t('home.review_title')}</div>

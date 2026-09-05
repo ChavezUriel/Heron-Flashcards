@@ -31,7 +31,14 @@ function PrivateRoute({ children, session }) {
 function App() {
   const { t } = useTranslation();
   const location = useLocation();
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(() => {
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
+      if (window.localStorage.getItem('heron.devMockSession')) {
+        return { user: { id: 'dev-user', email: 'dev@heron.local' } };
+      }
+    }
+    return null;
+  });
   const [authReady, setAuthReady] = useState(false);
 
   // App-level so every keyboard-facing surface gets the flags, not just smart
@@ -40,12 +47,24 @@ function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+      if (data.session) {
+        setSession(data.session);
+      } else if (import.meta.env.DEV && window.localStorage.getItem('heron.devMockSession')) {
+        setSession({ user: { id: 'dev-user', email: 'dev@heron.local' } });
+      } else {
+        setSession(null);
+      }
       setAuthReady(true);
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
+      if (nextSession) {
+        setSession(nextSession);
+      } else if (import.meta.env.DEV && window.localStorage.getItem('heron.devMockSession')) {
+        setSession({ user: { id: 'dev-user', email: 'dev@heron.local' } });
+      } else {
+        setSession(null);
+      }
     });
 
     return () => subscription.subscription.unsubscribe();

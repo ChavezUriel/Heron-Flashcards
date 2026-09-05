@@ -62,6 +62,15 @@ export async function logout() {
 }
 
 export async function fetchMe() {
+  if (import.meta.env.DEV && typeof window !== 'undefined' && window.localStorage.getItem('heron.devMockSession')) {
+    return {
+      id: 'dev-user',
+      email: 'dev@heron.local',
+      full_name: 'Developer',
+      created_at: new Date().toISOString(),
+      ui_locale: null,
+    };
+  }
   const { data, error } = await supabase.auth.getUser();
   if (error) throw new Error(error.message);
   const user = data.user;
@@ -120,6 +129,9 @@ export async function updateNickname(nickname) {
 }
 
 export async function fetchUserIdentities() {
+  if (import.meta.env.DEV && typeof window !== 'undefined' && window.localStorage.getItem('heron.devMockSession')) {
+    return [];
+  }
   const { data, error } = await supabase.auth.getUserIdentities();
   if (error) throw new Error(error.message);
   return data?.identities ?? [];
@@ -145,6 +157,9 @@ export async function unlinkUserIdentity(identity) {
 // the user object, and an `email` identity is NOT created when a Google-first
 // user sets a password, so we read auth.users.encrypted_password server-side.
 export async function hasPassword() {
+  if (import.meta.env.DEV && typeof window !== 'undefined' && window.localStorage.getItem('heron.devMockSession')) {
+    return true;
+  }
   return Boolean(await rpc('has_password'));
 }
 
@@ -212,10 +227,22 @@ export async function exportAccountData() {
 // Decks
 // ===========================================================================
 export function fetchDecks() {
-  return rpc('get_home_decks');
+  return fetchHomeDecks();
 }
 
 export function fetchHomeDecks() {
+  if (import.meta.env.DEV && typeof window !== 'undefined' && window.localStorage.getItem('heron.devMockSession')) {
+    return Promise.resolve([
+      {
+        id: 1,
+        title: 'Farmacia básica',
+        description: 'Inglés práctico para comprar medicamentos y describir síntomas.',
+        total_cards: 40,
+        due_cards_count: 5,
+        is_enabled_in_smart_practice: true,
+      },
+    ]);
+  }
   return rpc('get_home_decks');
 }
 
@@ -284,6 +311,13 @@ export function fetchDeckProgress(deckId) {
 }
 
 export function fetchDeckPreview(deckId) {
+  if (import.meta.env.DEV && typeof window !== 'undefined' && window.localStorage.getItem('heron.devMockSession')) {
+    return Promise.resolve({
+      deck: { id: deckId, title: 'Farmacia básica' },
+      cards: [],
+      words: [],
+    });
+  }
   return rpc('get_deck_preview', { p_deck_id: deckId });
 }
 
@@ -437,6 +471,14 @@ export function transferMarketDeckOwnership(deckId, email) {
 // Spaced repetition
 // ===========================================================================
 export function fetchDueSummary() {
+  if (import.meta.env.DEV && typeof window !== 'undefined' && window.localStorage.getItem('heron.devMockSession')) {
+    return Promise.resolve({
+      due_now: 8,
+      new_available: 12,
+      learned_total: 45,
+      next_due_at: null,
+    });
+  }
   return rpc('get_due_summary');
 }
 

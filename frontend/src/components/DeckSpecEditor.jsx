@@ -7,6 +7,7 @@ import {
   specFromYaml,
   specToYaml,
 } from '../ai/deckSpec';
+import CustomSelect from './CustomSelect';
 
 // Two views of one spec: a form for people who want fields, and a YAML document
 // for people who want a file they can keep, diff and re-run. Switching tabs
@@ -102,20 +103,18 @@ function SpecForm({ spec, onChange }) {
             placeholder={t('builder.deck_title_placeholder')}
           />
         </label>
-        <label className="st-field">
+        <div className="st-field">
           <span className="st-field__label">{t('builder.difficulty_label')}</span>
-          <select
-            className="st-input"
+          <CustomSelect
             value={spec.difficulty}
-            onChange={(event) => patch({ difficulty: event.target.value })}
-          >
-            {DIFFICULTIES.map((level) => (
-              <option key={level} value={level}>
-                {t(`builder.difficulty_${level}`, { defaultValue: level })}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={(difficulty) => patch({ difficulty })}
+            options={DIFFICULTIES.map((level) => ({
+              value: level,
+              label: t(`builder.difficulty_${level}`, { defaultValue: level }),
+            }))}
+            ariaLabel={t('builder.difficulty_label')}
+          />
+        </div>
       </div>
 
       <label className="st-field">

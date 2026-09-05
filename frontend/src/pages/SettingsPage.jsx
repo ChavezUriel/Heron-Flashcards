@@ -28,6 +28,7 @@ import AiProviderPanel from '../components/AiProviderPanel';
 import { loadBuilderPrefs, saveBuilderPrefs } from '../ai/keyStore';
 import { useLocale, SUPPORTED_LOCALES } from '../context/LocaleContext';
 import { getLanguage } from '../languages';
+import CustomSelect from '../components/CustomSelect';
 
 // OAuth failures (e.g. Google linking) come back appended to the redirect URL.
 function readOAuthErrorFromUrl() {
@@ -109,41 +110,39 @@ function AccountSection({ me, onNicknameSaved }) {
       </form>
 
       <div className="st-form" style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))', paddingTop: '1.5rem' }}>
-        <label className="st-field">
+        <div className="st-field">
           <span className="st-field__label">{t('settings.account.language_label')}</span>
-          <select
-            className="st-input"
+          <CustomSelect
             value={profileLocale || ''}
-            onChange={async (event) => {
-              const nextVal = event.target.value || null;
+            onChange={async (nextVal) => {
+              const nextLocale = nextVal || null;
               setLocaleStatus('saving');
               setLocaleError('');
               try {
-                await setProfileLocale(nextVal);
+                await setProfileLocale(nextLocale);
                 setLocaleStatus('saved');
               } catch (err) {
                 setLocaleError(err?.message || 'Failed to update UI language');
                 setLocaleStatus('error');
               }
             }}
-          >
-            <option value="">{t('settings.account.language_follow_deck')}</option>
-            {SUPPORTED_LOCALES.map((loc) => {
-              const lang = getLanguage(loc);
-              const label = lang ? (lang.endonym !== lang.name ? `${lang.name} (${lang.endonym})` : lang.name) : loc;
-              return (
-                <option key={loc} value={loc}>
-                  {label}
-                </option>
-              );
-            })}
-          </select>
+            placeholder={t('settings.account.language_follow_deck')}
+            options={[
+              { value: '', label: t('settings.account.language_follow_deck') },
+              ...SUPPORTED_LOCALES.map((loc) => {
+                const lang = getLanguage(loc);
+                const label = lang ? (lang.endonym !== lang.name ? `${lang.name} (${lang.endonym})` : lang.name) : loc;
+                return { value: loc, label };
+              }),
+            ]}
+            ariaLabel={t('settings.account.language_label')}
+          />
           <span className="st-section__hint" style={{ marginTop: '0.25rem' }}>
             {!profileLocale
               ? t('settings.account.language_auto_hint')
               : t('settings.account.language_explicit_hint')}
           </span>
-        </label>
+        </div>
         {localeStatus === 'saved' ? <span className="st-success">{t('settings.account.language_updated')}</span> : null}
         {localeStatus === 'error' ? <span className="st-error">{localeError}</span> : null}
       </div>
@@ -532,27 +531,26 @@ function MinigamesSection() {
         </label>
       </div>
 
-      <label className="st-field">
+      <div className="st-field">
         <span className="st-field__label">{t('settings.minigames.frequency_label')}</span>
-        <select
-          className="st-input"
+        <CustomSelect
           value={minigames.frequency}
-          onChange={(event) => persistMinigames({ ...minigames, frequency: event.target.value })}
+          onChange={(frequency) => persistMinigames({ ...minigames, frequency })}
           disabled={!minigames.enabled}
-        >
-          {MINIGAME_FREQUENCY_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.value === 'off'
+          options={MINIGAME_FREQUENCY_OPTIONS.map((option) => ({
+            value: option.value,
+            label:
+              option.value === 'off'
                 ? t('settings.minigames.freq_off')
                 : option.value === 'light'
                 ? t('settings.minigames.freq_light')
                 : option.value === 'balanced'
                 ? t('settings.minigames.freq_balanced')
-                : t('settings.minigames.freq_heavy')}
-            </option>
-          ))}
-        </select>
-      </label>
+                : t('settings.minigames.freq_heavy'),
+          }))}
+          ariaLabel={t('settings.minigames.frequency_label')}
+        />
+      </div>
 
       <div>
         <h3 className="st-subtitle">{t('settings.minigames.games_subtitle')}</h3>

@@ -18,6 +18,7 @@ import AiProviderPanel from '../components/AiProviderPanel';
 import { fetchHomeDecks, fetchMarketDecks, fetchDeckCardsForAi } from '../api';
 import { scanDeck, estimateFillRun } from '../ai/deckAudit';
 import { DIFFICULTIES } from '../ai/deckSpec';
+import CustomSelect from '../components/CustomSelect';
 import {
   specFromDeckPrompt,
   loadDeckContextCache,
@@ -339,21 +340,24 @@ export default function AiDeckCompletePage() {
             />
           </div>
         ) : (
-          <label className="st-field">
+          <div className="st-field">
             <span className="st-field__label">{t('builder.target_deck_label')}</span>
-            <select
-              className="st-input"
+            <CustomSelect
               value={selectedDeckId || ''}
-              onChange={(e) => setSelectedDeckId(e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">{t('builder.select_deck_placeholder')}</option>
-              {decks.map((deck) => (
-                <option key={`${deck.isMarket ? 'market-' : 'home-'}${deck.id}`} value={deck.id}>
-                  {deck.title} ({t('deck.cards_count', { count: deck.total_cards ?? 0 })}){deck.isMarket ? t('builder.deck_option_market_tag') : ''}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(val) => setSelectedDeckId(val ? Number(val) : null)}
+              placeholder={t('builder.select_deck_placeholder')}
+              options={[
+                { value: '', label: t('builder.select_deck_placeholder') },
+                ...decks.map((deck) => ({
+                  value: deck.id,
+                  label: deck.title,
+                  sublabel: `(${t('deck.cards_count', { count: deck.total_cards ?? 0 })})`,
+                  badge: deck.isMarket ? t('builder.deck_option_market_tag') : null,
+                })),
+              ]}
+              ariaLabel={t('builder.target_deck_label')}
+            />
+          </div>
         )}
       </section>
 
@@ -493,20 +497,18 @@ export default function AiDeckCompletePage() {
               />
             </label>
 
-            <label className="st-field">
+            <div className="st-field">
               <span className="st-field__label">{t('builder.difficulty_label')}</span>
-              <select
-                className="st-input"
+              <CustomSelect
                 value={deckCtx.difficulty}
-                onChange={(e) => setDeckCtx((c) => ({ ...c, difficulty: e.target.value }))}
-              >
-                {DIFFICULTIES.map((d) => (
-                  <option key={d} value={d}>
-                    {t(`builder.difficulty_${d}`, { defaultValue: d.charAt(0).toUpperCase() + d.slice(1) })}
-                  </option>
-                ))}
-              </select>
-            </label>
+                onChange={(difficulty) => setDeckCtx((c) => ({ ...c, difficulty }))}
+                options={DIFFICULTIES.map((d) => ({
+                  value: d,
+                  label: t(`builder.difficulty_${d}`, { defaultValue: d.charAt(0).toUpperCase() + d.slice(1) }),
+                }))}
+                ariaLabel={t('builder.difficulty_label')}
+              />
+            </div>
 
             <label className="st-field">
               <span className="st-field__label">{t('builder.learner_profile_label')}</span>

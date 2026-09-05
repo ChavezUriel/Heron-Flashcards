@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { PROVIDERS, PROVIDER_IDS, getProvider, maskKey } from '../ai/providers';
 import { loadCredentials, saveCredential, clearCredential } from '../ai/keyStore';
 import { listProviderModels, testLlmConnection } from '../ai/llmClient';
+import ModelSelect from './ModelSelect';
 
 // Provider + key + model, in one panel. Used by the deck builder and by
 // Settings → AI providers; both edit the same stored credentials, so a key
@@ -149,19 +150,19 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
           </span>
         </label>
 
-        <label className="st-field">
+        <div className="st-field">
           <span className="st-field__label">{t('provider.model_label')}</span>
-          <input
-            className="st-input"
-            list={`ai-models-${providerId}`}
+          <ModelSelect
             value={credential.model}
-            onChange={(event) => updateCredential({ model: event.target.value })}
+            onChange={(model) => updateCredential({ model })}
+            suggestedModels={provider.models ?? []}
+            models={models}
+            defaultModel={provider.defaultModel}
             placeholder={provider.defaultModel}
-            spellCheck="false"
+            hasKey={hasKey}
+            onLoadModels={handleLoadModels}
+            modelsLoading={modelsState.status === 'working'}
           />
-          <datalist id={`ai-models-${providerId}`}>
-            {modelOptions.map((model) => <option key={model} value={model} />)}
-          </datalist>
           <span className="ai-provider__hint">
             <button
               type="button"
@@ -173,7 +174,7 @@ function AiProviderPanel({ providerId, onProviderChange, onCredentialChange }) {
             </button>
             {modelsState.message ? <> — {modelsState.message}</> : null}
           </span>
-        </label>
+        </div>
       </div>
 
       <div className="st-actions">

@@ -3887,20 +3887,42 @@ html {
 }
 
 .h-action-arrow {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.18);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
   flex-shrink: 0;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.h-action-arrow svg {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .h-action-arrow--muted {
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+/* Micro-interaction on card hover */
+.h-mode-card:hover .h-action-arrow svg {
+  transform: translateX(3px);
+}
+
+.h-mode-card--primary:hover .h-action-arrow {
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.h-mode-card:hover .h-action-arrow--muted {
+  background: rgba(47, 93, 107, 0.16);
+  box-shadow: 0 4px 12px rgba(47, 93, 107, 0.10);
 }
 
 .h-action-kicker {
@@ -5044,6 +5066,529 @@ html {
 
 .st-input::placeholder {
   color: var(--muted);
+}
+
+/* Fallback: native select styling for any un-migrated selects */
+select.st-input {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236c7278' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.95rem center;
+  background-size: 1rem 1rem;
+  padding-right: 2.6rem;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   CustomSelect component
+   ========================================================================== */
+.st-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.st-select-wrapper--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.st-select__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.st-select__trigger:hover:not(:disabled) {
+  border-color: rgba(47, 93, 107, 0.35);
+  background: var(--surface);
+}
+
+.st-select__trigger:focus,
+.st-select__trigger--open {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.st-select__trigger:disabled {
+  cursor: not-allowed;
+}
+
+.st-select__label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.st-select__text {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.st-select__sublabel {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.st-select__placeholder {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.st-select__chevron {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 180ms ease, color 160ms ease;
+  margin-left: 0.5rem;
+}
+
+.st-select__trigger--open .st-select__chevron {
+  transform: rotate(180deg);
+  color: var(--accent);
+}
+
+.st-select__menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem;
+  margin: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 16px 36px -10px rgba(34, 42, 45, 0.22), 0 4px 12px rgba(34, 42, 45, 0.08);
+  max-height: min(280px, 45vh);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.st-select__menu--bottom {
+  top: calc(100% + 5px);
+}
+
+.st-select__menu--top {
+  bottom: calc(100% + 5px);
+}
+
+.st-select__menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.st-select__menu::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+}
+
+.st-select__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 0.92rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.st-select__option:hover:not(.st-select__option--disabled),
+.st-select__option--highlighted {
+  background: var(--surface-2);
+}
+
+.st-select__option--selected {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.st-select__option--selected.st-select__option--highlighted {
+  background: rgba(47, 93, 107, 0.16);
+}
+
+.st-select__option--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.st-select__option-content {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.st-select__option-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.st-select__option-sublabel {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.st-select__option-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.st-select__check {
+  width: 1rem;
+  height: 1rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.st-select__empty {
+  padding: 0.9rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* ==========================================================================
+   ModelSelect (AI Model Picker & Combobox)
+   ========================================================================== */
+.model-select {
+  position: relative;
+  width: 100%;
+}
+
+.model-select--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.model-select__control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+  cursor: text;
+}
+
+.model-select__control:hover {
+  border-color: rgba(47, 93, 107, 0.35);
+}
+
+.model-select__control--focused,
+.model-select__control:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.model-select__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 0.85rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.model-select__icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.model-select__input {
+  flex: 1;
+  min-width: 0;
+  height: 2.85rem;
+  padding: 0 0.5rem 0 0.65rem;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono-font);
+  font-size: 0.88rem;
+  outline: none;
+}
+
+.model-select__input::placeholder {
+  color: var(--muted);
+  font-family: inherit;
+  font-style: normal;
+}
+
+.model-select__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-right: 0.4rem;
+  flex-shrink: 0;
+}
+
+.model-select__badge {
+  flex-shrink: 0;
+  font-size: 0.6rem;
+}
+
+.model-select__badge-default {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.model-select__clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.model-select__clear:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.model-select__clear svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.model-select__chevron-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.model-select__chevron-btn:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.model-select__chevron {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 180ms ease, color 160ms ease;
+}
+
+.model-select__chevron--open {
+  transform: rotate(180deg);
+  color: var(--accent);
+}
+
+.model-select__menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  padding: 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 16px 36px -10px rgba(34, 42, 45, 0.22), 0 4px 12px rgba(34, 42, 45, 0.08);
+  max-height: min(320px, 48vh);
+}
+
+.model-select__menu--bottom {
+  top: calc(100% + 5px);
+}
+
+.model-select__menu--top {
+  bottom: calc(100% + 5px);
+}
+
+.model-select__menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.55rem 0.45rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 0.3rem;
+  font-size: 0.72rem;
+}
+
+.model-select__count {
+  font-family: var(--mono-font);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.model-select__load-link {
+  font-size: 0.75rem;
+}
+
+.model-select__list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.model-select__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.model-select__list::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+}
+
+.model-select__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 120ms ease;
+}
+
+.model-select__option:hover,
+.model-select__option--highlighted {
+  background: var(--surface-2);
+}
+
+.model-select__option--selected {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.model-select__option--selected.model-select__option--highlighted {
+  background: rgba(47, 93, 107, 0.16);
+}
+
+.model-select__option-left {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.model-select__name {
+  font-size: 0.86rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-select__option--selected .model-select__name {
+  color: var(--accent);
+}
+
+.model-select__option-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.model-select__check {
+  width: 1rem;
+  height: 1rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.model-select__option--custom {
+  border-bottom: 1px dashed var(--line);
+  margin-bottom: 0.25rem;
+  padding-bottom: 0.65rem;
+}
+
+.model-select__custom-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.model-select__custom-label {
+  font-size: 0.72rem;
+  font-family: var(--mono-font);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.model-select__empty {
+  padding: 1.25rem 0.75rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.st-chip--compact {
+  padding: 0.18rem 0.45rem;
+  font-size: 0.6rem;
+}
+
+.st-chip--accent {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .st-actions {
