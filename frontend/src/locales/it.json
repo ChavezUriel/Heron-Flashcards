@@ -1137,7 +1137,7 @@
   },
   "notifications": {
     "due_title": "Heron — ora di ripassare",
-    "due_body": "{count, plural, one {1 carta è} other {# carte sono}} pronte per il ripasso. Una breve sessione adesso le fisserà nella memoria."
+    "due_body": "{count, plural, one {1 carta è pronta} other {# carte sono pronte}} per il ripasso. Una breve sessione adesso le fisserà nella memoria."
   },
   "sync": {
     "title": "Aggiornamenti dal mercato",

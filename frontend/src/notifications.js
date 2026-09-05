@@ -3,6 +3,12 @@
 // Scope: notifications can only fire while the app is open in a tab — true
 // push while the site is closed needs a service worker + push server. The
 // once-per-day guard lives in localStorage so reopening the app does not spam.
+//
+// This module runs outside React, so it reads the i18next instance directly
+// (same idiom as DeckOriginBadge) and resolves strings at fire time, which
+// keeps the notification in whatever locale the user is currently reading.
+
+import i18n from './i18n';
 
 const REMINDER_SETTINGS_KEY = 'heron.reminderSettings';
 const LAST_NOTIFIED_KEY = 'heron.lastDueNotificationDate';
@@ -82,10 +88,9 @@ export function maybeNotifyDueCards(dueSummary) {
 
   window.localStorage.setItem(LAST_NOTIFIED_KEY, todayKey());
 
-  const cardsLabel = dueNow === 1 ? '1 card is' : `${dueNow} cards are`;
   try {
-    const notification = new Notification('Heron — time to review', {
-      body: `${cardsLabel} due for review. A short session now keeps them in memory.`,
+    const notification = new Notification(i18n.t('notifications.due_title'), {
+      body: i18n.t('notifications.due_body', { count: dueNow }),
       tag: 'heron-due-reminder',
     });
     notification.onclick = () => {
